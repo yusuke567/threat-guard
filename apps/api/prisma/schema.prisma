@@ -23,6 +23,7 @@ model Brand {
   domain         String
   logoUrl        String?
   keywords       String         @default("")
+  whitelistDomains String       @default("")
   detectedDomains DetectedDomain[]
   scanJobs       ScanJob[]
   createdAt      DateTime       @default(now())

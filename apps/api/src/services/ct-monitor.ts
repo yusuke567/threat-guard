@@ -72,8 +72,12 @@ export async function monitorBrand(brandId: string): Promise<number> {
     }
   }
 
-  // Filter out the brand's own domain
+  // Filter out the brand's own domain and whitelisted domains
   allDomains.delete(brand.domain.toLowerCase());
+  const whitelist = new Set(
+    (brand.whitelistDomains || '').split(',').map((d: string) => d.trim().toLowerCase()).filter(Boolean)
+  );
+  for (const d of whitelist) allDomains.delete(d);
 
   let newCount = 0;
 

@@ -192,6 +192,9 @@ export async function scanDomainVariations(brandId: string): Promise<number> {
   });
 
   const variations = generateAllVariations(brand.domain);
+  const whitelist = new Set(
+    (brand.whitelistDomains || '').split(',').map((d: string) => d.trim().toLowerCase()).filter(Boolean)
+  );
   let newCount = 0;
 
   // Process in batches of 10 to avoid DNS rate limiting
@@ -209,6 +212,7 @@ export async function scanDomainVariations(brandId: string): Promise<number> {
       if (result.status !== 'fulfilled' || !result.value.exists) continue;
 
       const { domain } = result.value;
+      if (whitelist.has(domain.toLowerCase())) continue;
       const existing = await prisma.detectedDomain.findFirst({
         where: { brandId, domain },
       });
