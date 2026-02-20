@@ -3,46 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum ThreatCategory {
-  phishing
-  brand_abuse
-  parked
-  legitimate
-  unknown
-}
-
-enum DomainStatus {
-  new_domain
-  analyzing
-  confirmed_threat
-  false_positive
-  takedown_sent
-  resolved
-}
-
-enum TakedownStatus {
-  draft
-  sent
-  acknowledged
-  completed
-  rejected
-}
-
-enum ScanType {
-  ct_monitor
-  domain_generation
-  manual
-}
-
-enum ScanJobStatus {
-  pending
-  running
-  completed
-  failed
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model Organization {
@@ -60,7 +22,7 @@ model Brand {
   name           String
   domain         String
   logoUrl        String?
-  keywords       String[]       @default([])
+  keywords       String         @default("")
   detectedDomains DetectedDomain[]
   scanJobs       ScanJob[]
   createdAt      DateTime       @default(now())
@@ -75,14 +37,14 @@ model DetectedDomain {
   brandId       String
   brand         Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
   domain        String
-  source        ScanType
+  source        String          @default("manual")
   firstSeen     DateTime        @default(now())
   lastSeen      DateTime        @default(now())
-  status        DomainStatus    @default(new_domain)
+  status        String          @default("new_domain")
   riskScore     Int?
   screenshotUrl String?
-  whoisData     Json?
-  sslInfo       Json?
+  whoisData     String?
+  sslInfo       String?
   analyses      ThreatAnalysis[]
   takedowns     TakedownRequest[]
   createdAt     DateTime        @default(now())
@@ -98,10 +60,10 @@ model ThreatAnalysis {
   id               String         @id @default(uuid())
   detectedDomainId String
   detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
-  category         ThreatCategory
+  category         String
   confidence       Float
   reasoning        String
-  rawResponse      Json?
+  rawResponse      String?
   analyzedAt       DateTime       @default(now())
 
   @@index([detectedDomainId])
@@ -113,8 +75,8 @@ model TakedownRequest {
   detectedDomainId String
   detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
   registrar        String
-  template         String         @db.Text
-  status           TakedownStatus @default(draft)
+  template         String
+  status           String         @default("draft")
   sentAt           DateTime?
   respondedAt      DateTime?
   createdAt        DateTime       @default(now())
@@ -124,14 +86,14 @@ model TakedownRequest {
 }
 
 model ScanJob {
-  id            String        @id @default(uuid())
+  id            String   @id @default(uuid())
   brandId       String
-  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  type          ScanType
-  status        ScanJobStatus @default(pending)
-  startedAt     DateTime      @default(now())
+  brand         Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  type          String
+  status        String   @default("pending")
+  startedAt     DateTime @default(now())
   completedAt   DateTime?
-  findingsCount Int           @default(0)
+  findingsCount Int      @default(0)
   error         String?
 
   @@index([brandId])

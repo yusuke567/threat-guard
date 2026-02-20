@@ -16,7 +16,8 @@ export async function generateTakedownTemplate(
   });
 
   const analysis = domain.analyses[0];
-  const registrar = (domain.whoisData as Record<string, unknown>)?.registrar as string || 'Unknown Registrar';
+  const whois = domain.whoisData ? JSON.parse(domain.whoisData) : {};
+  const registrar = whois?.registrar || 'Unknown Registrar';
 
   const prompt = `You are a brand protection legal specialist. Generate a professional takedown request letter for the following case.
 

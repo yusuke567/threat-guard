@@ -1,9 +1,7 @@
 import { anthropic } from '../lib/anthropic.js';
 import { prisma } from '../lib/prisma.js';
-import type { ThreatCategory } from '@brand-shield/shared';
-
 interface AnalysisResult {
-  category: ThreatCategory;
+  category: string;
   confidence: number;
   reasoning: string;
 }
@@ -30,7 +28,7 @@ export async function analyzeThreat(
 **Legitimate Brand:**
 - Name: ${detectedDomain.brand.name}
 - Domain: ${detectedDomain.brand.domain}
-- Keywords: ${detectedDomain.brand.keywords.join(', ') || 'none'}
+- Keywords: ${detectedDomain.brand.keywords || 'none'}
 
 **Detected Domain:**
 - Domain: ${detectedDomain.domain}
@@ -67,7 +65,7 @@ Respond in JSON format:
     if (!jsonMatch) throw new Error('No JSON in response');
     const parsed = JSON.parse(jsonMatch[0]);
     result = {
-      category: parsed.category as ThreatCategory,
+      category: parsed.category as string,
       confidence: Math.min(1, Math.max(0, parsed.confidence)),
       reasoning: parsed.reasoning,
     };
@@ -86,7 +84,7 @@ Respond in JSON format:
       category: result.category,
       confidence: result.confidence,
       reasoning: result.reasoning,
-      rawResponse: response as unknown as Record<string, unknown>,
+      rawResponse: JSON.stringify(response),
     },
   });
 

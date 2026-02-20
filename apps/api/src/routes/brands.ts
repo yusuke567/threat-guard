@@ -9,7 +9,7 @@ const createBrandSchema = z.object({
   name: z.string().min(1),
   domain: z.string().min(1),
   logoUrl: z.string().url().optional(),
-  keywords: z.array(z.string()).default([]),
+  keywords: z.string().default(''),
 });
 
 const updateBrandSchema = createBrandSchema.partial().omit({ organizationId: true });

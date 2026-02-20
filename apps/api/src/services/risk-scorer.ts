@@ -112,10 +112,11 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
 
   const latestAnalysis = domain.analyses[0] ?? null;
 
+  const sslData = domain.sslInfo ? JSON.parse(domain.sslInfo) : null;
   const factors: RiskFactors = {
     domainSimilarity: calculateDomainSimilarity(domain.domain, domain.brand.domain),
     domainAge: calculateDomainAgeRisk(domain.firstSeen),
-    sslRisk: calculateSSLRisk(domain.sslInfo as Record<string, unknown> | null),
+    sslRisk: calculateSSLRisk(sslData),
     threatCategory: categoryToRisk(latestAnalysis?.category ?? null),
     contentSimilarity: 50, // Default when no screenshot comparison available
   };

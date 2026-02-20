@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import type { DomainStatus, ThreatCategory } from '@prisma/client';
-
 const router = Router();
 
 // List threats with filtering and pagination
@@ -18,11 +16,11 @@ router.get('/', async (req, res) => {
   } = req.query;
 
   const where: Record<string, unknown> = {};
-  if (status) where.status = status as DomainStatus;
+  if (status) where.status = String(status);
   if (brandId) where.brandId = String(brandId);
   if (minRiskScore) where.riskScore = { gte: Number(minRiskScore) };
   if (category) {
-    where.analyses = { some: { category: category as ThreatCategory } };
+    where.analyses = { some: { category: String(category) } };
   }
 
   const skip = (Number(page) - 1) * Number(pageSize);

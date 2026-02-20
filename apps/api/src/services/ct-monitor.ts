@@ -58,7 +58,8 @@ export async function monitorBrand(brandId: string): Promise<number> {
     where: { id: brandId },
   });
 
-  const searchTerms = [brand.domain, brand.name, ...brand.keywords];
+  const keywords = brand.keywords ? brand.keywords.split(',').map((k: string) => k.trim()).filter(Boolean) : [];
+  const searchTerms = [brand.domain, brand.name, ...keywords];
   const allDomains = new Set<string>();
 
   for (const term of searchTerms) {
