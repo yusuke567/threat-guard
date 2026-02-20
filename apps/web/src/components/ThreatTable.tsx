@@ -1,5 +1,7 @@
 'use client';
 
+import Tooltip from './Tooltip';
+
 interface Threat {
   id: string;
   domain: string;
@@ -68,7 +70,12 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
             <th className="pb-3 font-medium">ドメイン</th>
             <th className="pb-3 font-medium">ブランド</th>
             <th className="pb-3 font-medium">カテゴリ</th>
-            <th className="pb-3 font-medium">リスク</th>
+            <th className="pb-3 font-medium">
+              <span className="flex items-center gap-1">
+                リスク
+                <Tooltip content="0〜100のリスクスコア。ドメイン類似度（30%）・ドメイン年齢（20%）・SSL状態（15%）・AI脅威分類（25%）・コンテンツ類似度（10%）から算出。80以上は重大脅威です。" />
+              </span>
+            </th>
             <th className="pb-3 font-medium">ステータス</th>
             <th className="pb-3 font-medium">検知日</th>
           </tr>
