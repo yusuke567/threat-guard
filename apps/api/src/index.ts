@@ -5,6 +5,7 @@ import brandsRouter from './routes/brands.js';
 import threatsRouter from './routes/threats.js';
 import scansRouter from './routes/scans.js';
 import takedownsRouter from './routes/takedowns.js';
+import authRouter from './routes/auth.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -18,6 +19,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Routes
+app.use('/api/auth', authRouter);
 app.use('/api/brands', brandsRouter);
 app.use('/api/threats', threatsRouter);
 app.use('/api/scans', scansRouter);

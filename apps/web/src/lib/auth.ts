@@ -1,0 +1,58 @@
+'use client';
+
+import { useState, useEffect, createContext, useContext } from 'react';
+
+interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  organizationId: string | null;
+}
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+}
+
+const API_BASE = typeof window !== 'undefined'
+  ? `http://${window.location.hostname}:3001/api`
+  : 'http://localhost:3001/api';
+
+export function useAuthState(): AuthContextType {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('brandshield_user');
+    if (stored) {
+      try { setUser(JSON.parse(stored)); } catch {}
+    }
+    setLoading(false);
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Login failed');
+    }
+    const userData = await res.json();
+    localStorage.setItem('brandshield_user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('brandshield_user');
+    setUser(null);
+  };
+
+  return { user, loading, login, logout };
+}
+
+export { type User, type AuthContextType };
