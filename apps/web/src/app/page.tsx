@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [showGuide, setShowGuide] = useState(true);
 
   useEffect(() => {
-    getThreats({ sortBy: 'riskScore', order: 'desc', pageSize: '10' })
+    getThreats({ sortBy: 'riskScore', order: 'desc', pageSize: '100' })
       .then(setThreats)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -32,16 +32,16 @@ export default function Dashboard() {
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
         <p className="font-medium">エラーが発生しました</p>
         <p className="text-sm mt-1">{error}</p>
-        <p className="text-xs mt-2 text-red-500">APIサーバー (localhost:3001) が起動しているか確認してください</p>
+        <p className="text-xs mt-2 text-red-500">APIサーバーが起動しているか確認してください</p>
       </div>
     );
   }
 
   const data = threats?.data || [];
-  const total = threats?.total || 0;
-  const critical = data.filter((t: any) => (t.riskScore ?? 0) >= 80).length;
-  const pending = data.filter((t: any) => t.status === 'confirmed_threat').length;
-  const resolved = data.filter((t: any) => t.status === 'resolved').length;
+  const danger = data.filter((t: any) => (t.riskScore ?? 0) >= 80).length;
+  const high = data.filter((t: any) => { const s = t.riskScore ?? 0; return s >= 60 && s < 80; }).length;
+  const medium = data.filter((t: any) => { const s = t.riskScore ?? 0; return s >= 40 && s < 60; }).length;
+  const low = data.filter((t: any) => (t.riskScore ?? 0) < 40).length;
 
   return (
     <div className="space-y-8">
@@ -69,7 +69,7 @@ export default function Dashboard() {
             </div>
             <div className="bg-white/60 rounded-lg p-3">
               <p className="font-bold text-blue-900 text-sm">③ 脅威に対応</p>
-              <p className="text-blue-700 text-xs mt-1">AI分析結果を確認し、ワンクリックでテイクダウン申請を生成</p>
+              <p className="text-blue-700 text-xs mt-1">リスクレベルに応じてテイクダウン申請を生成・送信</p>
             </div>
           </div>
         </div>
@@ -82,51 +82,51 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="検知脅威数"
-          value={total}
-          icon="🔍"
-          color="blue"
-          subtitle="全期間"
-          tooltip="CT Logs監視や類似ドメイン生成アルゴリズムによって検知された、ブランドになりすましている可能性のあるドメインの総数です。誤検知を含む場合があります。"
-        />
-        <StatCard
-          title="重大脅威"
-          value={critical}
+          title="🔴 危険"
+          value={danger}
           icon="🚨"
           color="red"
-          subtitle="リスクスコア 80+"
-          tooltip="リスクスコアが80以上の脅威です。フィッシングやブランド悪用の可能性が高く、早急な対応が推奨されます。スコアはドメイン類似度・年齢・SSL状態・AI分類から算出されます。"
+          subtitle="即テイクダウン推奨"
+          tooltip="リスクスコア80以上。フィッシングやブランド悪用の可能性が非常に高く、即座にテイクダウン申請の送信が必要です。"
         />
         <StatCard
-          title="要対応"
-          value={pending}
-          icon="⚡"
+          title="🟠 高"
+          value={high}
+          icon="⚠️"
           color="yellow"
-          subtitle="テイクダウン待ち"
-          tooltip="AI分析で脅威が確認され、まだテイクダウン申請が送信されていないドメインの数です。「脅威一覧」から個別にテイクダウン申請を生成できます。"
+          subtitle="要確認・テイクダウン検討"
+          tooltip="リスクスコア60〜79。脅威の詳細を確認し、テイクダウンが必要か判断してください。"
         />
         <StatCard
-          title="解決済"
-          value={resolved}
+          title="🟡 中"
+          value={medium}
+          icon="👁"
+          color="blue"
+          subtitle="監視継続"
+          tooltip="リスクスコア40〜59。現時点では監視を継続してください。状況変化でリスクが上昇する可能性があります。"
+        />
+        <StatCard
+          title="🟢 低"
+          value={low}
           icon="✅"
           color="green"
-          subtitle="今月"
-          tooltip="テイクダウンが完了し、脅威が解決されたドメインの数です。ドメインの停止やコンテンツの削除が確認されたものが含まれます。"
+          subtitle="対応不要"
+          tooltip="リスクスコア39以下。現時点で対応は不要です。定期スキャンで自動監視されます。"
         />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-gray-900">最新の脅威</h2>
-            <Tooltip content="リスクスコアが高い順に最新の脅威を表示しています。リスクスコアは0〜100で、ドメイン類似度（30%）・ドメイン年齢（20%）・SSL状態（15%）・AI脅威分類（25%）・コンテンツ類似度（10%）から算出されます。" />
+            <h2 className="text-lg font-bold text-gray-900">検知された脅威</h2>
+            <Tooltip content="リスクスコアが高い順に表示。🔴危険 = 即テイクダウン、🟠高 = 要確認、🟡中 = 監視継続、🟢低 = 対応不要。" />
           </div>
           <a href="/threats" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
             すべて表示 →
           </a>
         </div>
         <ThreatTable
-          threats={data}
+          threats={data.slice(0, 10)}
           onSelect={(id) => window.location.href = `/threats/${id}`}
         />
       </div>
