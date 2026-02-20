@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getThreat, generateTakedown } from '@/lib/api';
+import { RiskBadgeFull } from '@/components/RiskBadge';
 
 const statusColors: Record<string, string> = {
   new_domain: 'bg-blue-100 text-blue-800',
@@ -65,28 +66,20 @@ export default function ThreatDetailPage() {
 
   const latestAnalysis = threat.analyses?.[0];
   const riskScore = threat.riskScore ?? 0;
-  const riskColor =
-    riskScore >= 80 ? 'text-red-600' :
-    riskScore >= 60 ? 'text-orange-600' :
-    riskScore >= 40 ? 'text-yellow-600' :
-    'text-green-600';
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <a href="/threats" className="text-blue-600 hover:text-blue-700 text-sm">← 脅威一覧</a>
-          <h1 className="text-2xl font-bold text-gray-900 mt-2 font-mono">{threat.domain}</h1>
-          <p className="text-gray-500 mt-1">
-            ブランド: {threat.brand?.name} ({threat.brand?.domain})
-          </p>
-        </div>
-        <div className="text-right">
-          <div className={`text-4xl font-bold ${riskColor}`}>{riskScore}</div>
-          <div className="text-sm text-gray-500">リスクスコア</div>
-        </div>
+      <div>
+        <a href="/threats" className="text-blue-600 hover:text-blue-700 text-sm">← 脅威一覧</a>
+        <h1 className="text-2xl font-bold text-gray-900 mt-2 font-mono">{threat.domain}</h1>
+        <p className="text-gray-500 mt-1">
+          ブランド: {threat.brand?.name} ({threat.brand?.domain})
+        </p>
       </div>
+
+      {/* Risk Score with Action */}
+      <RiskBadgeFull score={threat.riskScore} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main info */}

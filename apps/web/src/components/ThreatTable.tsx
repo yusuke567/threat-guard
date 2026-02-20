@@ -1,6 +1,7 @@
 'use client';
 
 import Tooltip from './Tooltip';
+import { RiskBadgeCompact } from './RiskBadge';
 
 interface Threat {
   id: string;
@@ -38,21 +39,6 @@ const categoryLabels: Record<string, string> = {
   unknown: '❓ 不明',
 };
 
-function RiskBadge({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-gray-400">—</span>;
-  const color =
-    score >= 80 ? 'bg-red-500' :
-    score >= 60 ? 'bg-orange-500' :
-    score >= 40 ? 'bg-yellow-500' :
-    'bg-green-500';
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`w-2 h-2 rounded-full ${color}`} />
-      <span className="font-mono font-bold">{score}</span>
-    </div>
-  );
-}
-
 export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; onSelect?: (id: string) => void }) {
   if (threats.length === 0) {
     return (
@@ -68,12 +54,11 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
         <thead>
           <tr className="border-b border-gray-200 text-left text-sm text-gray-500">
             <th className="pb-3 font-medium">ドメイン</th>
-            <th className="pb-3 font-medium">ブランド</th>
             <th className="pb-3 font-medium">カテゴリ</th>
             <th className="pb-3 font-medium">
               <span className="flex items-center gap-1">
                 リスク
-                <Tooltip content="0〜100のリスクスコア。ドメイン類似度（30%）・ドメイン年齢（20%）・SSL状態（15%）・AI脅威分類（25%）・コンテンツ類似度（10%）から算出。80以上は重大脅威です。" />
+                <Tooltip content="リスクスコア（0〜100）と推奨アクション。🔴危険（80+）= 即テイクダウン、🟠高（60-79）= 要確認、🟡中（40-59）= 監視継続、🟢低（0-39）= 対応不要。" />
               </span>
             </th>
             <th className="pb-3 font-medium">ステータス</th>
@@ -87,14 +72,18 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
               className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
               onClick={() => onSelect?.(threat.id)}
             >
-              <td className="py-3 font-mono text-sm font-medium">{threat.domain}</td>
-              <td className="py-3 text-sm text-gray-600">{threat.brand.name}</td>
+              <td className="py-3">
+                <div className="font-mono text-sm font-medium">{threat.domain}</div>
+                <div className="text-xs text-gray-400 mt-0.5">vs {threat.brand.domain}</div>
+              </td>
               <td className="py-3 text-sm">
                 {threat.analyses[0]
                   ? categoryLabels[threat.analyses[0].category] || threat.analyses[0].category
                   : '—'}
               </td>
-              <td className="py-3"><RiskBadge score={threat.riskScore} /></td>
+              <td className="py-3">
+                <RiskBadgeCompact score={threat.riskScore} threatId={threat.id} />
+              </td>
               <td className="py-3">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[threat.status] || 'bg-gray-100'}`}>
                   {statusLabels[threat.status] || threat.status}
