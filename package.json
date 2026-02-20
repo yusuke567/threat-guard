@@ -1,0 +1,10 @@
+{
+  "name": "brand-shield",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev:api": "npm run dev -w @brand-shield/api",
+    "build": "npm run build -w @brand-shield/shared && npm run build -w @brand-shield/api"
+  }
+}

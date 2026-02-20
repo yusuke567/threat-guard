@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ThreatCategory {
+  phishing
+  brand_abuse
+  parked
+  legitimate
+  unknown
+}
+
+enum DomainStatus {
+  new_domain
+  analyzing
+  confirmed_threat
+  false_positive
+  takedown_sent
+  resolved
+}
+
+enum TakedownStatus {
+  draft
+  sent
+  acknowledged
+  completed
+  rejected
+}
+
+enum ScanType {
+  ct_monitor
+  domain_generation
+  manual
+}
+
+enum ScanJobStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  brands    Brand[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Brand {
+  id             String         @id @default(uuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  domain         String
+  logoUrl        String?
+  keywords       String[]       @default([])
+  detectedDomains DetectedDomain[]
+  scanJobs       ScanJob[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([organizationId])
+  @@index([domain])
+}
+
+model DetectedDomain {
+  id            String          @id @default(uuid())
+  brandId       String
+  brand         Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  domain        String
+  source        ScanType
+  firstSeen     DateTime        @default(now())
+  lastSeen      DateTime        @default(now())
+  status        DomainStatus    @default(new_domain)
+  riskScore     Int?
+  screenshotUrl String?
+  whoisData     Json?
+  sslInfo       Json?
+  analyses      ThreatAnalysis[]
+  takedowns     TakedownRequest[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([brandId])
+  @@index([status])
+  @@index([riskScore])
+  @@index([domain])
+}
+
+model ThreatAnalysis {
+  id               String         @id @default(uuid())
+  detectedDomainId String
+  detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  category         ThreatCategory
+  confidence       Float
+  reasoning        String
+  rawResponse      Json?
+  analyzedAt       DateTime       @default(now())
+
+  @@index([detectedDomainId])
+  @@index([category])
+}
+
+model TakedownRequest {
+  id               String         @id @default(uuid())
+  detectedDomainId String
+  detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  registrar        String
+  template         String         @db.Text
+  status           TakedownStatus @default(draft)
+  sentAt           DateTime?
+  respondedAt      DateTime?
+  createdAt        DateTime       @default(now())
+
+  @@index([detectedDomainId])
+  @@index([status])
+}
+
+model ScanJob {
+  id            String        @id @default(uuid())
+  brandId       String
+  brand         Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  type          ScanType
+  status        ScanJobStatus @default(pending)
+  startedAt     DateTime      @default(now())
+  completedAt   DateTime?
+  findingsCount Int           @default(0)
+  error         String?
+
+  @@index([brandId])
+  @@index([status])
+}
