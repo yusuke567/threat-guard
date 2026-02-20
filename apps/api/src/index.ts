@@ -29,8 +29,8 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(port, () => {
-  console.log(`🛡️  BrandShield API running on http://localhost:${port}`);
+app.listen(Number(port), '0.0.0.0', () => {
+  console.log(`🛡️  BrandShield API running on http://0.0.0.0:${port}`);
 });
 
 export default app;
