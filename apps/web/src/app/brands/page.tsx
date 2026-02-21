@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrands, createBrand, deleteBrand, triggerScan, getOrganizations, createOrganization } from '@/lib/api';
+import { getBrands, createBrand, updateBrand, deleteBrand, triggerScan, getOrganizations, createOrganization } from '@/lib/api';
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState<any[]>([]);
@@ -9,6 +9,8 @@ export default function BrandsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [scanning, setScanning] = useState<string | null>(null);
+  const [editingBrand, setEditingBrand] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '', managedDomains: '' });
   const [form, setForm] = useState({
     name: '',
     domain: '',
@@ -74,6 +76,43 @@ export default function BrandsPage() {
       console.error(e);
     } finally {
       setScanning(null);
+    }
+  };
+
+  const startEdit = (brand: any) => {
+    setEditingBrand(brand);
+    const wl = brand.whitelistDomains
+      ? brand.whitelistDomains.split(',').filter((d: string) => d.trim() !== brand.domain).join('\n')
+      : '';
+    setEditForm({
+      name: brand.name,
+      domain: brand.domain,
+      keywords: Array.isArray(brand.keywords) ? brand.keywords.join(', ') : (brand.keywords || ''),
+      managedDomains: wl,
+    });
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBrand) return;
+    try {
+      const managed = editForm.managedDomains
+        .split(/[,;\n\r]+/)
+        .map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+        .filter((d) => d.length > 0 && d.includes('.'));
+      const allDomains = [editForm.domain, ...managed].filter(Boolean);
+      const uniqueDomains = [...new Set(allDomains)];
+
+      await updateBrand(editingBrand.id, {
+        name: editForm.name,
+        domain: editForm.domain,
+        keywords: editForm.keywords,
+        whitelistDomains: uniqueDomains.join(','),
+      });
+      setEditingBrand(null);
+      loadBrands();
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -200,47 +239,109 @@ export default function BrandsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {brands.map((brand: any) => (
             <div key={brand.id} className="bg-white rounded-xl border border-gray-200 p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-lg">{brand.name}</h3>
-                  <p className="text-gray-500 text-sm font-mono">{brand.domain}</p>
-                  {brand.keywords && brand.keywords.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {(Array.isArray(brand.keywords) ? brand.keywords : brand.keywords.split(',')).map((kw: string) => (
-                        <span key={kw} className="px-2 py-0.5 bg-gray-100 rounded text-xs">{kw.trim()}</span>
-                      ))}
+              {editingBrand?.id === brand.id ? (
+                <form onSubmit={handleUpdate} className="space-y-4">
+                  <h3 className="text-lg font-bold">ブランド編集</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ブランド名</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      />
                     </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {brand._count?.detectedDomains ?? 0}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ドメイン</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        value={editForm.domain}
+                        onChange={(e) => setEditForm({ ...editForm, domain: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500">検知数</div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
-                <button
-                  onClick={() => handleScan(brand.id, 'ct_monitor')}
-                  disabled={scanning === brand.id}
-                  className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 disabled:opacity-50"
-                >
-                  🔍 CT監視スキャン
-                </button>
-                <button
-                  onClick={() => handleScan(brand.id, 'domain_generation')}
-                  disabled={scanning === brand.id}
-                  className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-100 disabled:opacity-50"
-                >
-                  🔤 類似ドメインスキャン
-                </button>
-                <button
-                  onClick={() => handleDelete(brand.id)}
-                  className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-xs font-medium ml-auto"
-                >
-                  削除
-                </button>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">検知キーワード（カンマ区切り）</label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      value={editForm.keywords}
+                      onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">管理ドメイン（任意）</label>
+                    <textarea
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      rows={3}
+                      value={editForm.managedDomains}
+                      onChange={(e) => setEditForm({ ...editForm, managedDomains: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                      保存
+                    </button>
+                    <button type="button" onClick={() => setEditingBrand(null)} className="px-4 py-2 border rounded-lg text-sm">
+                      キャンセル
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold text-lg">{brand.name}</h3>
+                      <p className="text-gray-500 text-sm font-mono">{brand.domain}</p>
+                      {brand.keywords && brand.keywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {(Array.isArray(brand.keywords) ? brand.keywords : brand.keywords.split(',')).map((kw: string) => (
+                            <span key={kw} className="px-2 py-0.5 bg-gray-100 rounded text-xs">{kw.trim()}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {brand._count?.detectedDomains ?? 0}
+                      </div>
+                      <div className="text-xs text-gray-500">検知数</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => handleScan(brand.id, 'ct_monitor')}
+                      disabled={scanning === brand.id}
+                      className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 disabled:opacity-50"
+                    >
+                      🔍 CT監視スキャン
+                    </button>
+                    <button
+                      onClick={() => handleScan(brand.id, 'domain_generation')}
+                      disabled={scanning === brand.id}
+                      className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-medium hover:bg-purple-100 disabled:opacity-50"
+                    >
+                      🔤 類似ドメインスキャン
+                    </button>
+                    <button
+                      onClick={() => startEdit(brand)}
+                      className="px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-100"
+                    >
+                      ✏️ 編集
+                    </button>
+                    <button
+                      onClick={() => handleDelete(brand.id)}
+                      className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-xs font-medium ml-auto"
+                    >
+                      削除
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

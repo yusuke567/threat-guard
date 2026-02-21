@@ -22,6 +22,8 @@ export const getBrands = () => fetchAPI<any[]>('/brands');
 export const getBrand = (id: string) => fetchAPI<any>(`/brands/${id}`);
 export const createBrand = (data: any) =>
   fetchAPI<any>('/brands', { method: 'POST', body: JSON.stringify(data) });
+export const updateBrand = (id: string, data: any) =>
+  fetchAPI<any>(`/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteBrand = (id: string) =>
   fetchAPI<void>(`/brands/${id}`, { method: 'DELETE' });
 
