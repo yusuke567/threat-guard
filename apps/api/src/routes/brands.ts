@@ -79,7 +79,7 @@ router.post('/:id/whitelist/import', async (req, res) => {
 
   // Deduplicate with existing whitelist
   const existing = brand.whitelistDomains
-    ? brand.whitelistDomains.split(',').map((d) => d.trim().toLowerCase()).filter(Boolean)
+    ? brand.whitelistDomains.split(',').map((d: string) => d.trim().toLowerCase()).filter(Boolean)
     : [];
 
   const existingSet = new Set(existing);
