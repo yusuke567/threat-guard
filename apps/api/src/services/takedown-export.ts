@@ -130,21 +130,31 @@ export async function sendTakedownEmail(
 
   const pdf = await generateTakedownPdf(takedownId);
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  const brand = takedown.detectedDomain.brand;
 
-  const brandName = takedown.detectedDomain.brand.name;
+  // Use brand-specific SMTP if configured, otherwise fall back to env defaults
+  const smtpConfig = brand.smtpHost
+    ? {
+        host: brand.smtpHost,
+        port: brand.smtpPort || 587,
+        secure: (brand.smtpPort || 587) === 465,
+        auth: { user: brand.smtpUser || '', pass: brand.smtpPass || '' },
+      }
+    : {
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT || 587),
+        secure: false,
+        auth: { user: process.env.SMTP_USER || '', pass: process.env.SMTP_PASS || '' },
+      };
+
+  const transporter = nodemailer.createTransport(smtpConfig);
+
+  const senderEmail = brand.senderEmail || process.env.SMTP_FROM || process.env.SMTP_USER;
+  const brandName = brand.name;
   const domain = takedown.detectedDomain.domain;
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    from: senderEmail,
     to: recipientEmail,
     subject: `Takedown Request: ${domain} — Brand Infringement on ${brandName}`,
     text: takedown.template,

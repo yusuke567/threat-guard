@@ -10,7 +10,7 @@ export default function BrandsPage() {
   const [showForm, setShowForm] = useState(false);
   const [scanning, setScanning] = useState<string | null>(null);
   const [editingBrand, setEditingBrand] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '', managedDomains: '' });
+  const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '', managedDomains: '', senderEmail: '', smtpHost: '', smtpPort: '', smtpUser: '', smtpPass: '' });
   const [form, setForm] = useState({
     name: '',
     domain: '',
@@ -89,6 +89,11 @@ export default function BrandsPage() {
       domain: brand.domain,
       keywords: Array.isArray(brand.keywords) ? brand.keywords.join(', ') : (brand.keywords || ''),
       managedDomains: wl,
+      senderEmail: brand.senderEmail || '',
+      smtpHost: brand.smtpHost || '',
+      smtpPort: brand.smtpPort ? String(brand.smtpPort) : '',
+      smtpUser: brand.smtpUser || '',
+      smtpPass: brand.smtpPass || '',
     });
   };
 
@@ -108,6 +113,11 @@ export default function BrandsPage() {
         domain: editForm.domain,
         keywords: editForm.keywords,
         whitelistDomains: uniqueDomains.join(','),
+        senderEmail: editForm.senderEmail || null,
+        smtpHost: editForm.smtpHost || null,
+        smtpPort: editForm.smtpPort ? Number(editForm.smtpPort) : null,
+        smtpUser: editForm.smtpUser || null,
+        smtpPass: editForm.smtpPass || null,
       });
       setEditingBrand(null);
       loadBrands();
@@ -282,6 +292,63 @@ export default function BrandsPage() {
                       onChange={(e) => setEditForm({ ...editForm, managedDomains: e.target.value })}
                     />
                   </div>
+                  {/* SMTP Settings */}
+                  <div className="border-t border-gray-200 pt-4 mt-2">
+                    <h4 className="text-sm font-bold text-gray-700 mb-3">📧 メール送信設定（テイクダウン申請用）</h4>
+                    <p className="text-xs text-gray-400 mb-3">自社ドメインのメールアドレスから送信するとレジストラの信頼度が上がります</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">送信元メールアドレス</label>
+                        <input
+                          type="email"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.senderEmail}
+                          onChange={(e) => setEditForm({ ...editForm, senderEmail: e.target.value })}
+                          placeholder="abuse@yourcompany.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPホスト</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.smtpHost}
+                          onChange={(e) => setEditForm({ ...editForm, smtpHost: e.target.value })}
+                          placeholder="smtp.yourcompany.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPポート</label>
+                        <input
+                          type="number"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.smtpPort}
+                          onChange={(e) => setEditForm({ ...editForm, smtpPort: e.target.value })}
+                          placeholder="587"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPユーザー</label>
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.smtpUser}
+                          onChange={(e) => setEditForm({ ...editForm, smtpUser: e.target.value })}
+                          placeholder="user@yourcompany.com"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPパスワード</label>
+                        <input
+                          type="password"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          value={editForm.smtpPass}
+                          onChange={(e) => setEditForm({ ...editForm, smtpPass: e.target.value })}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
                       保存
@@ -297,6 +364,9 @@ export default function BrandsPage() {
                     <div>
                       <h3 className="font-bold text-lg">{brand.name}</h3>
                       <p className="text-gray-500 text-sm font-mono">{brand.domain}</p>
+                      {brand.senderEmail && (
+                        <p className="text-xs text-green-600 mt-1">📧 {brand.senderEmail}</p>
+                      )}
                       {brand.keywords && String(brand.keywords).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {String(brand.keywords).split(',').filter(Boolean).map((kw: string) => (

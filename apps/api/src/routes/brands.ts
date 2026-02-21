@@ -11,6 +11,11 @@ const createBrandSchema = z.object({
   logoUrl: z.string().url().optional(),
   keywords: z.string().default(''),
   whitelistDomains: z.string().default(''),
+  senderEmail: z.string().email().optional().nullable(),
+  smtpHost: z.string().optional().nullable(),
+  smtpPort: z.number().int().optional().nullable(),
+  smtpUser: z.string().optional().nullable(),
+  smtpPass: z.string().optional().nullable(),
 });
 
 const updateBrandSchema = createBrandSchema.partial().omit({ organizationId: true });

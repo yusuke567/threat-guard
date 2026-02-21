@@ -34,6 +34,11 @@ model Brand {
   logoUrl        String?
   keywords       String         @default("")
   whitelistDomains String       @default("")
+  senderEmail      String?
+  smtpHost         String?
+  smtpPort         Int?
+  smtpUser         String?
+  smtpPass         String?
   detectedDomains DetectedDomain[]
   scanJobs       ScanJob[]
   createdAt      DateTime       @default(now())
