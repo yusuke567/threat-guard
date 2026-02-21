@@ -14,6 +14,7 @@ export default function BrandsPage() {
     domain: '',
     organizationId: '',
     keywords: '',
+    managedDomains: '',
   });
 
   const loadBrands = () => {
@@ -31,12 +32,23 @@ export default function BrandsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Merge primary domain + managed domains into whitelistDomains
+      const managed = form.managedDomains
+        .split(/[,;\n\r]+/)
+        .map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+        .filter((d) => d.length > 0 && d.includes('.'));
+      const allDomains = [form.domain, ...managed].filter(Boolean);
+      const uniqueDomains = [...new Set(allDomains)];
+
       await createBrand({
-        ...form,
-        keywords: form.keywords.split(',').map((k) => k.trim()).filter(Boolean),
+        name: form.name,
+        domain: form.domain,
+        organizationId: form.organizationId,
+        keywords: form.keywords,
+        whitelistDomains: uniqueDomains.join(','),
       });
       setShowForm(false);
-      setForm({ name: '', domain: '', organizationId: '', keywords: '' });
+      setForm({ name: '', domain: '', organizationId: '', keywords: '', managedDomains: '' });
       loadBrands();
     } catch (e) {
       console.error(e);
@@ -132,6 +144,19 @@ export default function BrandsPage() {
                 ブランドの別名・略称・日本語名など。なりすましドメインの検知精度が上がります。
               </p>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">管理ドメイン（任意）</label>
+            <textarea
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              rows={3}
+              value={form.managedDomains}
+              onChange={(e) => setForm({ ...form, managedDomains: e.target.value })}
+              placeholder={"例:\ncoincheck.jp\ncoincheck.co.jp\ncoincheck.net"}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              自社で管理しているドメインを入力（カンマ・改行区切り）。ホワイトリストに自動登録され、誤検知を防ぎます。
+            </p>
           </div>
           <div className="flex gap-2">
             <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
