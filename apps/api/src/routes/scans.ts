@@ -5,6 +5,7 @@ import { monitorBrand } from '../services/ct-monitor.js';
 import { scanDomainVariations } from '../services/domain-generator.js';
 import { analyzeThreat } from '../services/threat-analyzer.js';
 import { calculateRiskScore } from '../services/risk-scorer.js';
+import { notifyNewThreat, notifyScanSummary } from '../services/slack-notifier.js';
 
 const router = Router();
 
@@ -36,19 +37,35 @@ router.post('/trigger', async (req, res) => {
         findingsCount = await scanDomainVariations(brandId);
       }
 
-      // Analyze new domains
+      // Analyze new domains and send Slack alerts
+      const brand = await prisma.brand.findUnique({ where: { id: brandId } });
       const newDomains = await prisma.detectedDomain.findMany({
         where: { brandId, status: 'new_domain' },
       });
 
+      let highRiskCount = 0;
+
       for (const domain of newDomains) {
         try {
-          await analyzeThreat(domain.id);
-          await calculateRiskScore(domain.id);
+          const analysis = await analyzeThreat(domain.id);
+          const score = await calculateRiskScore(domain.id);
+
+          if (score >= 60) {
+            await notifyNewThreat({
+              brandName: brand?.name || 'Unknown',
+              domain: domain.domain,
+              riskScore: score,
+              category: analysis.category,
+              source: domain.source,
+            });
+          }
+          if (score >= 80) highRiskCount++;
         } catch (err) {
           console.error(`Analysis failed for ${domain.domain}:`, err);
         }
       }
+
+      await notifyScanSummary(brand?.name || 'Unknown', newDomains.length, highRiskCount);
 
       await prisma.scanJob.update({
         where: { id: scanJob.id },

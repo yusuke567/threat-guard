@@ -4,6 +4,7 @@ import { monitorBrand } from './ct-monitor.js';
 import { scanDomainVariations } from './domain-generator.js';
 import { analyzeThreat } from './threat-analyzer.js';
 import { calculateRiskScore } from './risk-scorer.js';
+import { notifyNewThreat, notifyScanSummary } from './slack-notifier.js';
 
 async function runFullScan(brandId: string, brandName: string) {
   console.log(`[Scheduler] Starting scan for brand: ${brandName} (${brandId})`);
@@ -22,19 +23,35 @@ async function runFullScan(brandId: string, brandName: string) {
         findingsCount = await scanDomainVariations(brandId);
       }
 
-      // Analyze new domains
+      // Analyze new domains and send alerts
       const newDomains = await prisma.detectedDomain.findMany({
         where: { brandId, status: 'new_domain' },
       });
 
+      let highRiskCount = 0;
+
       for (const domain of newDomains) {
         try {
-          await analyzeThreat(domain.id);
-          await calculateRiskScore(domain.id);
+          const analysis = await analyzeThreat(domain.id);
+          const score = await calculateRiskScore(domain.id);
+
+          if (score >= 60) {
+            await notifyNewThreat({
+              brandName,
+              domain: domain.domain,
+              riskScore: score,
+              category: analysis.category,
+              source: domain.source,
+            });
+          }
+          if (score >= 80) highRiskCount++;
         } catch (err) {
           console.error(`[Scheduler] Analysis failed for ${domain.domain}:`, err);
         }
       }
+
+      // Send scan summary
+      await notifyScanSummary(brandName, newDomains.length, highRiskCount);
 
       await prisma.scanJob.update({
         where: { id: scanJob.id },
