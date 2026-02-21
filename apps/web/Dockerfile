@@ -12,8 +12,7 @@ RUN npm ci --workspace=@brand-shield/shared --workspace=@brand-shield/web --incl
 
 RUN npm run build -w @brand-shield/shared
 
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=https://api-production-7376b.up.railway.app/api
 RUN npm run build -w @brand-shield/web
 
 WORKDIR /app/apps/web
