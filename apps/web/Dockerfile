@@ -11,6 +11,9 @@ COPY apps/web ./apps/web
 RUN npm ci --workspace=@brand-shield/shared --workspace=@brand-shield/web --include-workspace-root
 
 RUN npm run build -w @brand-shield/shared
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build -w @brand-shield/web
 
 WORKDIR /app/apps/web
