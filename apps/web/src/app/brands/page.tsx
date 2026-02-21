@@ -120,14 +120,17 @@ export default function BrandsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">キーワード（カンマ区切り）</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">検知キーワード（カンマ区切り）</label>
               <input
                 type="text"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 value={form.keywords}
                 onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-                placeholder="例: マイブランド, mybrand"
+                placeholder="例: コインチェック, coinchk, coin-check"
               />
+              <p className="text-xs text-gray-400 mt-1">
+                ブランドの別名・略称・日本語名など。なりすましドメインの検知精度が上がります。
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
