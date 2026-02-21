@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrands, createBrand, deleteBrand, triggerScan, getOrganizations } from '@/lib/api';
+import { getBrands, createBrand, deleteBrand, triggerScan, getOrganizations, createOrganization } from '@/lib/api';
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState<any[]>([]);
@@ -13,6 +13,7 @@ export default function BrandsPage() {
     name: '',
     domain: '',
     organizationId: '',
+    newOrgName: '',
     keywords: '',
     managedDomains: '',
   });
@@ -32,6 +33,15 @@ export default function BrandsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Resolve organization: use existing or create new
+      let orgId = form.organizationId;
+      if (!orgId && form.newOrgName.trim()) {
+        const newOrg = await createOrganization(form.newOrgName.trim());
+        orgId = newOrg.id;
+        setOrganizations((prev) => [...prev, newOrg]);
+      }
+      if (!orgId) return alert('組織を選択するか、新しい組織名を入力してください');
+
       // Merge primary domain + managed domains into whitelistDomains
       const managed = form.managedDomains
         .split(/[,;\n\r]+/)
@@ -43,12 +53,12 @@ export default function BrandsPage() {
       await createBrand({
         name: form.name,
         domain: form.domain,
-        organizationId: form.organizationId,
+        organizationId: orgId,
         keywords: form.keywords,
         whitelistDomains: uniqueDomains.join(','),
       });
       setShowForm(false);
-      setForm({ name: '', domain: '', organizationId: '', keywords: '', managedDomains: '' });
+      setForm({ name: '', domain: '', organizationId: '', newOrgName: '', keywords: '', managedDomains: '' });
       loadBrands();
     } catch (e) {
       console.error(e);
@@ -117,19 +127,27 @@ export default function BrandsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">組織</label>
-              <select
-                required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                value={form.organizationId}
-                onChange={(e) => setForm({ ...form, organizationId: e.target.value })}
-              >
-                <option value="">組織を選択してください</option>
-                {organizations.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
-                  </option>
-                ))}
-              </select>
+              {organizations.length > 0 ? (
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={form.organizationId}
+                  onChange={(e) => setForm({ ...form, organizationId: e.target.value, newOrgName: '' })}
+                >
+                  <option value="">既存の組織を選択</option>
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>{org.name}</option>
+                  ))}
+                </select>
+              ) : null}
+              {!form.organizationId && (
+                <input
+                  type="text"
+                  className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm ${organizations.length > 0 ? 'mt-2' : ''}`}
+                  value={form.newOrgName}
+                  onChange={(e) => setForm({ ...form, newOrgName: e.target.value })}
+                  placeholder="新しい組織名を入力（例: 株式会社〇〇）"
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">検知キーワード（カンマ区切り）</label>
