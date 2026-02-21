@@ -59,7 +59,7 @@ export default function BrandsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">ブランド管理</h1>
           <p className="text-gray-500 mt-1">監視対象のブランドを管理</p>
@@ -164,7 +164,7 @@ export default function BrandsPage() {
                   <div className="text-xs text-gray-500">検知数</div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+              <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => handleScan(brand.id, 'ct_monitor')}
                   disabled={scanning === brand.id}

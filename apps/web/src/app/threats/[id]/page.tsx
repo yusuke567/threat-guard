@@ -87,7 +87,7 @@ export default function ThreatDetailPage() {
           {/* Domain Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-bold mb-4">ドメイン情報</h2>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <dt className="text-gray-500">ステータス</dt>
                 <dd className="mt-1">
@@ -136,7 +136,7 @@ export default function ThreatDetailPage() {
 
           {/* Takedowns */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-lg font-bold">テイクダウン申請</h2>
               <button
                 onClick={handleTakedown}
