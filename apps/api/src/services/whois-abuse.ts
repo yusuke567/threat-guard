@@ -1,24 +1,19 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { prisma } from '../lib/prisma.js';
-
-const execAsync = promisify(exec);
 
 interface AbuseContact {
   registrar: string;
   abuseEmail: string | null;
-  source: 'whois_data' | 'whois_lookup' | 'none';
+  source: 'whois_data' | 'rdap' | 'none';
 }
 
 /**
  * Extract abuse email from stored WHOIS data
  */
-function extractFromWhoisData(whoisData: string | null): { registrar: string; abuseEmail: string | null } {
+function extractFromStoredData(whoisData: string | null): { registrar: string; abuseEmail: string | null } {
   if (!whoisData) return { registrar: 'Unknown', abuseEmail: null };
 
   try {
     const parsed = JSON.parse(whoisData);
-    // Common WHOIS JSON structures
     const registrar = parsed.registrar || parsed.Registrar || parsed.registrar_name || 'Unknown';
     const abuseEmail =
       parsed.abuse_email ||
@@ -28,47 +23,91 @@ function extractFromWhoisData(whoisData: string | null): { registrar: string; ab
       null;
     return { registrar: String(registrar), abuseEmail };
   } catch {
-    // Try parsing as raw WHOIS text
+    // Raw WHOIS text
     return extractFromWhoisText(whoisData);
   }
 }
 
-/**
- * Extract abuse email from raw WHOIS text output
- */
 function extractFromWhoisText(text: string): { registrar: string; abuseEmail: string | null } {
   let registrar = 'Unknown';
   let abuseEmail: string | null = null;
 
-  const lines = text.split('\n');
-  for (const line of lines) {
+  for (const line of text.split('\n')) {
     const lower = line.toLowerCase();
     if (lower.includes('registrar:') && registrar === 'Unknown') {
       registrar = line.split(':').slice(1).join(':').trim();
     }
-    if (lower.includes('abuse') && lower.includes('email')) {
-      const match = line.match(/[\w.+-]+@[\w.-]+\.\w+/);
-      if (match) abuseEmail = match[0];
-    }
-    if (lower.includes('registrar abuse contact email:')) {
+    if (lower.includes('registrar abuse contact email:') || (lower.includes('abuse') && lower.includes('email'))) {
       const match = line.match(/[\w.+-]+@[\w.-]+\.\w+/);
       if (match) abuseEmail = match[0];
     }
   }
-
   return { registrar, abuseEmail };
 }
 
 /**
- * Live WHOIS lookup for a domain
+ * RDAP lookup via public RDAP bootstrap (works on any server, no CLI needed)
  */
-async function liveWhoisLookup(domain: string): Promise<string | null> {
-  try {
-    const { stdout } = await execAsync(`whois ${domain}`, { timeout: 15000 });
-    return stdout;
-  } catch {
-    return null;
+async function rdapLookup(domain: string): Promise<{ registrar: string; abuseEmail: string | null }> {
+  // Extract the registrable domain (last two parts)
+  const parts = domain.split('.');
+  const baseDomain = parts.length > 2 ? parts.slice(-2).join('.') : domain;
+
+  const url = `https://rdap.org/domain/${baseDomain}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/rdap+json' },
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!res.ok) throw new Error(`RDAP returned ${res.status}`);
+  const data = await res.json();
+
+  let registrar = 'Unknown';
+  let abuseEmail: string | null = null;
+
+  // Extract registrar from entities with "registrar" role
+  if (data.entities) {
+    for (const entity of data.entities) {
+      const roles: string[] = entity.roles || [];
+      if (roles.includes('registrar')) {
+        // Get registrar name from vcardArray
+        if (entity.vcardArray?.[1]) {
+          for (const field of entity.vcardArray[1]) {
+            if (field[0] === 'fn') registrar = field[3];
+          }
+        }
+        // Get abuse email from nested entities or remarks
+        if (entity.entities) {
+          for (const sub of entity.entities) {
+            if ((sub.roles || []).includes('abuse') && sub.vcardArray?.[1]) {
+              for (const field of sub.vcardArray[1]) {
+                if (field[0] === 'email') abuseEmail = field[3];
+              }
+            }
+          }
+        }
+      }
+      // Also check top-level abuse role
+      if (roles.includes('abuse') && entity.vcardArray?.[1]) {
+        for (const field of entity.vcardArray[1]) {
+          if (field[0] === 'email') abuseEmail = field[3];
+        }
+      }
+    }
   }
+
+  // Fallback: check remarks for abuse contact
+  if (!abuseEmail && data.remarks) {
+    for (const remark of data.remarks) {
+      const desc = (remark.description || []).join(' ');
+      const match = desc.match(/[\w.+-]+@[\w.-]+\.\w+/);
+      if (match && desc.toLowerCase().includes('abuse')) {
+        abuseEmail = match[0];
+      }
+    }
+  }
+
+  return { registrar, abuseEmail };
 }
 
 /**
@@ -80,30 +119,23 @@ export async function getAbuseContacts(detectedDomainId: string): Promise<AbuseC
   });
 
   // 1. Try stored WHOIS data first
-  const stored = extractFromWhoisData(domain.whoisData);
+  const stored = extractFromStoredData(domain.whoisData);
   if (stored.abuseEmail) {
     return { ...stored, source: 'whois_data' };
   }
 
-  // 2. Fallback: live WHOIS lookup
-  const whoisText = await liveWhoisLookup(domain.domain);
-  if (whoisText) {
-    const live = extractFromWhoisText(whoisText);
-
-    // Update stored WHOIS data if we got new info
-    if (!domain.whoisData) {
-      await prisma.detectedDomain.update({
-        where: { id: detectedDomainId },
-        data: { whoisData: whoisText.slice(0, 10000) },
-      });
+  // 2. Fallback: RDAP lookup (HTTP-based, works anywhere)
+  try {
+    const rdap = await rdapLookup(domain.domain);
+    if (rdap.abuseEmail || rdap.registrar !== 'Unknown') {
+      return {
+        registrar: rdap.registrar !== 'Unknown' ? rdap.registrar : stored.registrar,
+        abuseEmail: rdap.abuseEmail,
+        source: 'rdap',
+      };
     }
-
-    if (live.abuseEmail) {
-      return { ...live, source: 'whois_lookup' };
-    }
-    if (live.registrar !== 'Unknown') {
-      return { registrar: live.registrar, abuseEmail: null, source: 'whois_lookup' };
-    }
+  } catch (err) {
+    console.error('RDAP lookup failed for', domain.domain, err);
   }
 
   return { registrar: stored.registrar, abuseEmail: null, source: 'none' };
