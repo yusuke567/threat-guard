@@ -14,6 +14,9 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
+// Organizations
+export const getOrganizations = () => fetchAPI<any[]>('/organizations');
+
 // Brands
 export const getBrands = () => fetchAPI<any[]>('/brands');
 export const getBrand = (id: string) => fetchAPI<any>(`/brands/${id}`);

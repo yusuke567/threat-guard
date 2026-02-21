@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrands, createBrand, deleteBrand, triggerScan } from '@/lib/api';
+import { getBrands, createBrand, deleteBrand, triggerScan, getOrganizations } from '@/lib/api';
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [scanning, setScanning] = useState<string | null>(null);
@@ -22,7 +23,10 @@ export default function BrandsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadBrands(); }, []);
+  useEffect(() => {
+    loadBrands();
+    getOrganizations().then(setOrganizations).catch(console.error);
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,15 +104,20 @@ export default function BrandsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">組織ID</label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-gray-700 mb-1">組織</label>
+              <select
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 value={form.organizationId}
                 onChange={(e) => setForm({ ...form, organizationId: e.target.value })}
-                placeholder="UUID"
-              />
+              >
+                <option value="">組織を選択してください</option>
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">キーワード（カンマ区切り）</label>
