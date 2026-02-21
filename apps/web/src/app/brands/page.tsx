@@ -297,9 +297,9 @@ export default function BrandsPage() {
                     <div>
                       <h3 className="font-bold text-lg">{brand.name}</h3>
                       <p className="text-gray-500 text-sm font-mono">{brand.domain}</p>
-                      {brand.keywords && brand.keywords.length > 0 && (
+                      {brand.keywords && String(brand.keywords).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {(Array.isArray(brand.keywords) ? brand.keywords : brand.keywords.split(',')).map((kw: string) => (
+                          {String(brand.keywords).split(',').filter(Boolean).map((kw: string) => (
                             <span key={kw} className="px-2 py-0.5 bg-gray-100 rounded text-xs">{kw.trim()}</span>
                           ))}
                         </div>
