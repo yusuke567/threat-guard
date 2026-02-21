@@ -141,13 +141,15 @@ export default function ThreatDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-lg font-bold">テイクダウン申請</h2>
-              <button
-                onClick={handleTakedown}
-                disabled={generating}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
-              >
-                {generating ? '生成中...' : '📝 テイクダウン申請を生成'}
-              </button>
+              {(!threat.takedowns || threat.takedowns.length === 0) && (
+                <button
+                  onClick={handleTakedown}
+                  disabled={generating}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  {generating ? '生成中...' : '📝 テイクダウン申請を生成'}
+                </button>
+              )}
             </div>
             {threat.takedowns?.length > 0 ? (
               <div className="space-y-4">
