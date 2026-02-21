@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getThreat, generateTakedown } from '@/lib/api';
+import { getThreat, generateTakedown, sendTakedownEmail } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 
 const statusColors: Record<string, string> = {
@@ -27,6 +27,9 @@ export default function ThreatDetailPage() {
   const [threat, setThreat] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [emailInputs, setEmailInputs] = useState<Record<string, string>>({});
+  const [sendingEmail, setSendingEmail] = useState<Record<string, boolean>>({});
+  const [sendResult, setSendResult] = useState<Record<string, { success: boolean; message: string }>>({});
 
   useEffect(() => {
     if (params.id) {
@@ -164,6 +167,52 @@ export default function ThreatDetailPage() {
                     <pre className="text-xs text-gray-600 bg-gray-50 rounded p-3 overflow-x-auto whitespace-pre-wrap max-h-60">
                       {td.template}
                     </pre>
+                    <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                      <input
+                        type="email"
+                        placeholder="abuse@registrar.com"
+                        value={emailInputs[td.id] || ''}
+                        onChange={(e) => setEmailInputs((prev) => ({ ...prev, [td.id]: e.target.value }))}
+                        className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={async () => {
+                            const email = emailInputs[td.id];
+                            if (!email) return;
+                            setSendingEmail((prev) => ({ ...prev, [td.id]: true }));
+                            setSendResult((prev) => ({ ...prev, [td.id]: undefined as any }));
+                            try {
+                              await sendTakedownEmail(td.id, email);
+                              setSendResult((prev) => ({ ...prev, [td.id]: { success: true, message: `${email} に送信しました` } }));
+                              const updated = await getThreat(threat.id);
+                              setThreat(updated);
+                            } catch (e: any) {
+                              setSendResult((prev) => ({ ...prev, [td.id]: { success: false, message: e.message || '送信失敗' } }));
+                            } finally {
+                              setSendingEmail((prev) => ({ ...prev, [td.id]: false }));
+                            }
+                          }}
+                          disabled={!emailInputs[td.id] || sendingEmail[td.id]}
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium whitespace-nowrap"
+                        >
+                          {sendingEmail[td.id] ? '送信中...' : '📧 メール送信'}
+                        </button>
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_API_URL || '/api'}/takedowns/${td.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium whitespace-nowrap"
+                        >
+                          📄 PDF
+                        </a>
+                      </div>
+                    </div>
+                    {sendResult[td.id] && (
+                      <p className={`mt-2 text-sm ${sendResult[td.id].success ? 'text-green-600' : 'text-red-600'}`}>
+                        {sendResult[td.id].message}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

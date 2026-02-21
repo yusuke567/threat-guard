@@ -51,3 +51,9 @@ export const generateTakedown = (detectedDomainId: string) =>
     method: 'POST',
     body: JSON.stringify({ detectedDomainId }),
   });
+
+export const sendTakedownEmail = (takedownId: string, email: string) =>
+  fetchAPI<any>(`/takedowns/${takedownId}/send`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
