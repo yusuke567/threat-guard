@@ -62,7 +62,20 @@ router.post('/:id/send', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   try {
+    // Save the abuse email to the takedown record
+    await prisma.takedownRequest.update({
+      where: { id: req.params.id },
+      data: { abuseEmail: parsed.data.email },
+    });
+
     await sendTakedownEmail(req.params.id, parsed.data.email);
+
+    // Update status to sent
+    await prisma.takedownRequest.update({
+      where: { id: req.params.id },
+      data: { status: 'sent', sentAt: new Date() },
+    });
+
     res.json({ success: true, message: `Takedown sent to ${parsed.data.email}` });
   } catch (err) {
     console.error('Email send failed:', err);

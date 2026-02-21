@@ -86,6 +86,7 @@ model TakedownRequest {
   detectedDomainId String
   detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
   registrar        String
+  abuseEmail       String?
   template         String
   status           String         @default("draft")
   sentAt           DateTime?

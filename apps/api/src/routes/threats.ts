@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { getAbuseContacts } from '../services/whois-abuse.js';
 const router = Router();
 
 // List threats with filtering and pagination
@@ -61,6 +62,18 @@ router.get('/:id', async (req, res) => {
   });
   if (!threat) return res.status(404).json({ error: 'Threat not found' });
   res.json(threat);
+});
+
+// Get abuse contacts for a threat
+router.get('/:id/abuse-contacts', async (req, res) => {
+  try {
+    const contacts = await getAbuseContacts(req.params.id);
+    res.json(contacts);
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Threat not found' });
+    console.error('Abuse contact lookup failed:', err);
+    res.status(500).json({ error: 'Abuse contact lookup failed' });
+  }
 });
 
 export default router;

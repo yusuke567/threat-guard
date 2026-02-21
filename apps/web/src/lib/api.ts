@@ -57,3 +57,10 @@ export const sendTakedownEmail = (takedownId: string, email: string) =>
     method: 'POST',
     body: JSON.stringify({ email }),
   });
+
+export const downloadTakedownPdf = (takedownId: string) =>
+  `${process.env.NEXT_PUBLIC_API_URL || '/api'}/takedowns/${takedownId}/pdf`;
+
+// Abuse contacts
+export const getAbuseContacts = (threatId: string) =>
+  fetchAPI<{ registrar: string; abuseEmail: string | null; source: string }>(`/threats/${threatId}/abuse-contacts`);
