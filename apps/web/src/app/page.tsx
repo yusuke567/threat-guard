@@ -4,20 +4,48 @@ import { useEffect, useState } from 'react';
 import StatCard from '@/components/StatCard';
 import ThreatTable from '@/components/ThreatTable';
 import Tooltip from '@/components/Tooltip';
-import { getThreats } from '@/lib/api';
+import { getBrands, getScans, getThreats, triggerScan } from '@/lib/api';
 
 export default function Dashboard() {
   const [threats, setThreats] = useState<any>(null);
+  const [brand, setBrand] = useState<any>(null);
+  const [lastScan, setLastScan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showGuide, setShowGuide] = useState(true);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
-    getThreats({ sortBy: 'riskScore', order: 'desc', pageSize: '100' })
-      .then(setThreats)
+    Promise.all([
+      getThreats({ sortBy: 'riskScore', order: 'desc', pageSize: '200' }),
+      getBrands().catch(() => []),
+    ])
+      .then(async ([threatData, brands]) => {
+        setThreats(threatData);
+        const firstBrand = brands[0];
+        if (firstBrand) {
+          setBrand(firstBrand);
+          const scans = await getScans(firstBrand.id).catch(() => []);
+          const completed = scans
+            .filter((s: any) => s.status === 'completed')
+            .sort((a: any, b: any) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+          if (completed[0]) setLastScan(completed[0]);
+        }
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleScan = async () => {
+    if (!brand || scanning) return;
+    setScanning(true);
+    try {
+      await triggerScan(brand.id, 'ct_monitor');
+    } catch {
+      // ignore
+    } finally {
+      setScanning(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -39,96 +67,134 @@ export default function Dashboard() {
 
   const data = threats?.data || [];
   const danger = data.filter((t: any) => (t.riskScore ?? 0) >= 80).length;
-  const high = data.filter((t: any) => { const s = t.riskScore ?? 0; return s >= 60 && s < 80; }).length;
-  const medium = data.filter((t: any) => { const s = t.riskScore ?? 0; return s >= 40 && s < 60; }).length;
-  const low = data.filter((t: any) => (t.riskScore ?? 0) < 40).length;
+  const needsAction = data.filter((t: any) => { const s = t.riskScore ?? 0; return s >= 60 && s < 80; }).length;
+  const takedownSent = data.filter((t: any) => t.status === 'takedown_sent').length;
+  const resolved = data.filter((t: any) => t.status === 'resolved').length;
+  const actionable = data.filter((t: any) => (t.riskScore ?? 0) >= 60);
+
+  // Trend: threats per week for last 30 days
+  const now = new Date();
+  const weeks = Array.from({ length: 4 }, (_, i) => {
+    const weekEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+    const weekStart = new Date(weekEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const count = data.filter((t: any) => {
+      const d = new Date(t.firstSeen);
+      return d >= weekStart && d < weekEnd;
+    }).length;
+    const label = `${weekStart.getMonth() + 1}/${weekStart.getDate()}〜`;
+    return { label, count };
+  }).reverse();
+  const maxCount = Math.max(...weeks.map((w) => w.count), 1);
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Guide */}
-      {showGuide && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 relative">
-          <button
-            onClick={() => setShowGuide(false)}
-            className="absolute top-3 right-3 text-blue-400 hover:text-blue-600 text-lg"
-          >
-            ✕
-          </button>
-          <h2 className="font-bold text-blue-900 text-lg">🛡️ BrandShieldへようこそ</h2>
-          <p className="text-blue-700 text-sm mt-2 leading-relaxed">
-            このダッシュボードでブランドのなりすまし脅威を監視・管理できます。
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 text-sm">① ブランドを登録</p>
-              <p className="text-blue-700 text-xs mt-1">「ブランド管理」から監視したいブランドとドメインを登録</p>
+    <div className="space-y-6">
+      {/* Brand Summary */}
+      {brand && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🛡️</span>
+                <h1 className="text-xl font-bold text-gray-900">{brand.name}</h1>
+              </div>
+              <p className="text-sm text-gray-500 mt-1 font-mono">{brand.domain}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                最終スキャン: {lastScan
+                  ? new Date(lastScan.completedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                  : '未実行'}
+              </p>
             </div>
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 text-sm">② スキャンを実行</p>
-              <p className="text-blue-700 text-xs mt-1">CT監視や類似ドメインスキャンでなりすましを自動検知</p>
-            </div>
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 text-sm">③ 脅威に対応</p>
-              <p className="text-blue-700 text-xs mt-1">リスクレベルに応じてテイクダウン申請を生成・送信</p>
-            </div>
+            <button
+              onClick={handleScan}
+              disabled={scanning}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {scanning ? 'スキャン中...' : '🔍 今すぐスキャン'}
+            </button>
           </div>
         </div>
       )}
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
-        <p className="text-gray-500 mt-1">ブランド保護状況の概要</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="🔴 危険"
           value={danger}
           icon="🚨"
           color="red"
           subtitle="即テイクダウン推奨"
-          tooltip="リスクスコア80以上。フィッシングやブランド悪用の可能性が非常に高く、即座にテイクダウン申請の送信が必要です。"
+          tooltip="リスクスコア80以上。即座にテイクダウン申請が必要です。"
         />
         <StatCard
-          title="🟠 高"
-          value={high}
-          icon="⚠️"
-          color="yellow"
-          subtitle="要確認・テイクダウン検討"
-          tooltip="リスクスコア60〜79。脅威の詳細を確認し、テイクダウンが必要か判断してください。"
-        />
-        <StatCard
-          title="🟡 中"
-          value={medium}
+          title="⚠️ 要対応"
+          value={needsAction}
           icon="👁"
-          color="blue"
-          subtitle="監視継続"
-          tooltip="リスクスコア40〜59。現時点では監視を継続してください。状況変化でリスクが上昇する可能性があります。"
+          color="yellow"
+          subtitle="確認・テイクダウン検討"
+          tooltip="リスクスコア60〜79。詳細を確認し、テイクダウンが必要か判断してください。"
         />
         <StatCard
-          title="🟢 低"
-          value={low}
-          icon="✅"
+          title="📨 テイクダウン済"
+          value={takedownSent}
+          icon="📤"
+          color="blue"
+          subtitle="申請送信済み"
+          tooltip="テイクダウン申請が送信済みの脅威です。レジストラの対応を待っています。"
+        />
+        <StatCard
+          title="✅ 解決済"
+          value={resolved}
+          icon="🎉"
           color="green"
-          subtitle="対応不要"
-          tooltip="リスクスコア39以下。現時点で対応は不要です。定期スキャンで自動監視されます。"
+          subtitle="対応完了"
+          tooltip="テイクダウンが完了し、脅威が解決した件数です。"
         />
       </div>
 
+      {/* Trend Chart */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-bold text-gray-900">📈 検知トレンド</h2>
+          <Tooltip content="過去4週間の脅威検知数の推移。増加傾向の場合はスキャン頻度の見直しを検討してください。" />
+        </div>
+        <div className="flex items-end gap-3 h-32">
+          {weeks.map((week, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <span className="text-xs font-medium text-gray-700">{week.count}</span>
+              <div
+                className="w-full bg-blue-500 rounded-t-md transition-all"
+                style={{ height: `${(week.count / maxCount) * 100}%`, minHeight: week.count > 0 ? '8px' : '2px' }}
+              />
+              <span className="text-xs text-gray-400">{week.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Actionable Threats */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-gray-900">検知された脅威</h2>
-            <Tooltip content="リスクスコアが高い順に表示。🔴危険 = 即テイクダウン、🟠高 = 要確認、🟡中 = 監視継続、🟢低 = 対応不要。" />
+            <h2 className="text-lg font-bold text-gray-900">⚡ 要対応の脅威</h2>
+            <Tooltip content="リスクスコア60以上の脅威を表示。🔴危険 = 即テイクダウン、🟠高 = 要確認。" />
+            <span className="text-sm text-gray-400">({actionable.length}件)</span>
           </div>
           <a href="/threats" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
             すべて表示 →
           </a>
         </div>
-        <ThreatTable
-          threats={data.slice(0, 10)}
-          onSelect={(id) => window.location.href = `/threats/${id}`}
-        />
+        {actionable.length > 0 ? (
+          <ThreatTable
+            threats={actionable.slice(0, 10)}
+            onSelect={(id) => window.location.href = `/threats/${id}`}
+          />
+        ) : (
+          <div className="text-center py-8 text-gray-400">
+            <p className="text-2xl mb-2">🎉</p>
+            <p className="font-medium">要対応の脅威はありません</p>
+            <p className="text-sm mt-1">すべての脅威は低〜中リスクです</p>
+          </div>
+        )}
       </div>
     </div>
   );
