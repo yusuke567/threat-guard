@@ -458,12 +458,17 @@ export default function ThreatDetailPage() {
               const isLive = probe?.httpStatus === 200;
               const overallScore = Math.max(riskScore, isLive && similarity > 70 ? 80 : 0);
               const riskLevel = overallScore >= 70 ? 'high' : overallScore >= 30 ? 'medium' : 'low';
+              // ドメインリスクスコア（threat.riskScore）が高いのにプローブ結果が低い場合を補正
+              const domainRiskScore = threat.riskScore ?? 0;
+              const isHighDomainRiskButLowProbe = domainRiskScore >= 80 && riskLevel === 'low';
               const riskConfig = {
                 high: { color: 'red', bg: 'bg-red-50 border-red-200', icon: '🔴', label: '高リスク', desc: 'このサイトはフィッシングの疑いがあります', action: 'テイクダウン申請を推奨します', actionColor: 'bg-red-600 hover:bg-red-700 text-white' },
                 medium: { color: 'amber', bg: 'bg-amber-50 border-amber-200', icon: '🟡', label: '要注意', desc: '不審な兆候があります。経過観察を推奨します', action: '監視を継続してください', actionColor: 'bg-amber-500 hover:bg-amber-600 text-white' },
                 low: { color: 'green', bg: 'bg-green-50 border-green-200', icon: '🟢', label: '低リスク', desc: '現時点で脅威の兆候は確認されていません', action: '現時点で対応不要です', actionColor: '' },
               };
-              const rc = riskConfig[riskLevel];
+              const rc = isHighDomainRiskButLowProbe
+                ? { color: 'amber', bg: 'bg-amber-50 border-amber-200', icon: '⚠️', label: '要警戒', desc: 'ドメインは高リスクですが、現時点でフィッシングコンテンツは未検出です', action: 'フィッシングに利用される前に、テイクダウン申請をおすすめします', actionColor: 'bg-amber-500 hover:bg-amber-600 text-white' }
+                : riskConfig[riskLevel];
 
               // Site status description
               const getSiteStatus = () => {
@@ -487,7 +492,7 @@ export default function ThreatDetailPage() {
                         <span className={`text-lg font-bold text-${rc.color}-700`}>{rc.label}</span>
                       </div>
                       <p className={`text-sm text-${rc.color}-700 mb-3`}>{rc.desc}</p>
-                      <div className={`text-xs rounded-lg p-3 ${riskLevel === 'high' ? 'bg-red-100' : riskLevel === 'medium' ? 'bg-amber-100' : 'bg-green-100'}`}>
+                      <div className={`text-xs rounded-lg p-3 ${rc.color === 'red' ? 'bg-red-100' : rc.color === 'amber' ? 'bg-amber-100' : 'bg-green-100'}`}>
                         <span className="font-medium">💡 推奨アクション:</span> {rc.action}
                       </div>
                     </div>
