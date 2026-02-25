@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getThreat, generateTakedown, getAbuseContacts, sendTakedownEmail, downloadTakedownPdf } from '@/lib/api';
+import { getThreat, generateTakedown, getAbuseContacts, sendTakedownEmail, downloadTakedownPdf, getContentAnalysis, triggerProbe } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 
 const statusColors: Record<string, string> = {
@@ -37,6 +37,8 @@ export default function ThreatDetailPage() {
   const params = useParams();
   const [threat, setThreat] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [contentAnalysis, setContentAnalysis] = useState<any>(null);
+  const [probing, setProbing] = useState(false);
 
   // Takedown flow state
   const [step, setStep] = useState<TakedownStep>('idle');
@@ -50,11 +52,30 @@ export default function ThreatDetailPage() {
   useEffect(() => {
     if (params.id) {
       getThreat(params.id as string)
-        .then(setThreat)
+        .then((t) => {
+          setThreat(t);
+          getContentAnalysis(params.id as string).then(setContentAnalysis).catch(() => {});
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
     }
   }, [params.id]);
+
+  const handleProbe = async () => {
+    if (!threat) return;
+    setProbing(true);
+    try {
+      await triggerProbe(threat.id);
+      const updated = await getThreat(threat.id);
+      setThreat(updated);
+      const ca = await getContentAnalysis(threat.id);
+      setContentAnalysis(ca);
+    } catch (e) {
+      console.error('Probe failed', e);
+    } finally {
+      setProbing(false);
+    }
+  };
 
   // Step 1: Start takedown — fetch abuse contacts
   const handleStartTakedown = async () => {
@@ -402,6 +423,99 @@ export default function ThreatDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Probe & Analysis */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold">Webプローブ</h3>
+              <button
+                onClick={handleProbe}
+                disabled={probing}
+                className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium disabled:opacity-50"
+              >
+                {probing ? '実行中...' : '🔍 プローブ実行'}
+              </button>
+            </div>
+            {threat.webProbes?.[0] ? (
+              <dl className="text-xs space-y-2">
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">HTTPステータス</dt>
+                  <dd className={`font-mono font-medium ${threat.webProbes[0].httpStatus === 200 ? 'text-green-600' : threat.webProbes[0].httpStatus ? 'text-amber-600' : 'text-gray-400'}`}>
+                    {threat.webProbes[0].httpStatus ?? 'N/A'}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">IP</dt>
+                  <dd className="font-mono">{threat.webProbes[0].ip ?? 'N/A'}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">DNS解決</dt>
+                  <dd>{threat.webProbes[0].dnsResolved ? '✅' : '❌'}</dd>
+                </div>
+                {threat.webProbes[0].finalUrl && (
+                  <div>
+                    <dt className="text-gray-500">最終URL</dt>
+                    <dd className="font-mono text-[10px] break-all mt-1">{threat.webProbes[0].finalUrl}</dd>
+                  </div>
+                )}
+                <div className="text-gray-400 mt-1">
+                  最終プローブ: {new Date(threat.webProbes[0].probeAt).toLocaleString('ja-JP')}
+                </div>
+                {threat.webProbes[0].error && (
+                  <div className="text-red-500 mt-1">⚠️ {threat.webProbes[0].error}</div>
+                )}
+              </dl>
+            ) : (
+              <p className="text-xs text-gray-400">まだプローブされていません</p>
+            )}
+          </div>
+
+          {/* Content Analysis */}
+          {contentAnalysis && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="text-sm font-bold mb-3">コンテンツ分析</h3>
+              <div className="space-y-3 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">コンテンツリスク</span>
+                  <span className={`font-bold text-sm ${contentAnalysis.contentRiskScore >= 70 ? 'text-red-600' : contentAnalysis.contentRiskScore >= 40 ? 'text-amber-600' : 'text-green-600'}`}>
+                    {contentAnalysis.contentRiskScore}/100
+                  </span>
+                </div>
+                {contentAnalysis.imageSimilarity !== null && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">画像類似度</span>
+                    <span className={`font-bold ${contentAnalysis.imageSimilarity > 0.7 ? 'text-red-600' : 'text-gray-600'}`}>
+                      {Math.round(contentAnalysis.imageSimilarity * 100)}%
+                    </span>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span>{contentAnalysis.hasLoginForm ? '🔴' : '⚪'}</span>
+                    <span>ログインフォーム</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>{contentAnalysis.hasPasswordField ? '🔴' : '⚪'}</span>
+                    <span>パスワード入力</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>{contentAnalysis.logoDetected ? '🟡' : '⚪'}</span>
+                    <span>ロゴ検出</span>
+                  </div>
+                </div>
+                {contentAnalysis.keywordMatches.length > 0 && (
+                  <div>
+                    <span className="text-gray-500">キーワード一致:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {contentAnalysis.keywordMatches.map((kw: string) => (
+                        <span key={kw} className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px]">{kw}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {threat.screenshotUrl && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-sm font-bold mb-3">スクリーンショット</h3>

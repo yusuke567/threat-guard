@@ -61,6 +61,19 @@ export const sendTakedownEmail = (takedownId: string, email: string) =>
 export const downloadTakedownPdf = (takedownId: string) =>
   `${process.env.NEXT_PUBLIC_API_URL || '/api'}/takedowns/${takedownId}/pdf`;
 
+// Dashboard
+export const getDashboardStats = () => fetchAPI<any>('/dashboard/stats');
+
+// Content analysis
+export const getContentAnalysis = (threatId: string) =>
+  fetchAPI<any>(`/threats/${threatId}/content-analysis`);
+
+// Web probe
+export const triggerProbe = (domainId: string) =>
+  fetchAPI<any>(`/web-probe/${domainId}`, { method: 'POST' });
+export const getProbeHistory = (domainId: string) =>
+  fetchAPI<any>(`/web-probe/${domainId}/history`);
+
 // Abuse contacts
 export const getAbuseContacts = (threatId: string) =>
   fetchAPI<{ registrar: string; abuseEmail: string | null; source: string }>(`/threats/${threatId}/abuse-contacts`);
