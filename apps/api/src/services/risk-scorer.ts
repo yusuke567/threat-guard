@@ -142,7 +142,14 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
     factors.contentSimilarity * 0.1
   );
 
-  const finalScore = Math.min(100, Math.max(0, score));
+  // User report boost: if this domain was reported by users, increase score
+  const patternMatch = await prisma.phishingPattern.findFirst({
+    where: { brandId: domain.brandId, domain: domain.domain, status: { not: 'archived' } },
+  });
+  const userReportBoost = patternMatch ? 15 : 0;
+  const victimBoost = (patternMatch?.victimCount ?? 0) > 0 ? 10 : 0;
+
+  const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost));
 
   // Update the domain's risk score
   await prisma.detectedDomain.update({

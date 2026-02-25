@@ -81,6 +81,22 @@ export const generateReport = (type: string, brandId?: string) => {
   return fetchAPI<any>(`/reports/generate?${params}`);
 };
 
+// Phishing Patterns
+export const getPhishingPatterns = (brandId: string, status?: string) => {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  const query = params.toString() ? `?${params}` : '';
+  return fetchAPI<any[]>(`/brands/${brandId}/phishing-patterns${query}`);
+};
+export const createPhishingPattern = (brandId: string, data: any) =>
+  fetchAPI<any>(`/brands/${brandId}/phishing-patterns`, { method: 'POST', body: JSON.stringify(data) });
+export const updatePhishingPattern = (id: string, data: any) =>
+  fetchAPI<any>(`/phishing-patterns/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+export const deletePhishingPattern = (id: string) =>
+  fetchAPI<void>(`/phishing-patterns/${id}`, { method: 'DELETE' });
+export const applyPhishingPattern = (id: string) =>
+  fetchAPI<any>(`/phishing-patterns/${id}/apply`, { method: 'POST' });
+
 // Abuse contacts
 export const getAbuseContacts = (threatId: string) =>
   fetchAPI<{ registrar: string; abuseEmail: string | null; source: string }>(`/threats/${threatId}/abuse-contacts`);

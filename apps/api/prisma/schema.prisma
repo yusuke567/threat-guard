@@ -39,10 +39,11 @@ model Brand {
   smtpPort         Int?
   smtpUser         String?
   smtpPass         String?
-  detectedDomains DetectedDomain[]
-  scanJobs       ScanJob[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  detectedDomains  DetectedDomain[]
+  scanJobs         ScanJob[]
+  phishingPatterns PhishingPattern[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([organizationId])
   @@index([domain])
@@ -134,4 +135,25 @@ model WebProbe {
 
   @@index([detectedDomainId])
   @@index([probeAt])
+}
+
+model PhishingPattern {
+  id          String   @id @default(uuid())
+  brandId     String
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  reportedBy  String?
+  patternType String   @default("domain_spoof")
+  url         String?
+  domain      String?
+  description String
+  tags        String   @default("")
+  severity    String   @default("medium")
+  status      String   @default("new")
+  victimCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([brandId])
+  @@index([status])
+  @@index([domain])
 }
