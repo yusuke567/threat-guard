@@ -7,6 +7,8 @@ import scansRouter from './routes/scans.js';
 import takedownsRouter from './routes/takedowns.js';
 import authRouter from './routes/auth.js';
 import organizationsRouter from './routes/organizations.js';
+import dashboardRouter from './routes/dashboard.js';
+import webProbeRouter from './routes/web-probe.js';
 import { startScheduler } from './services/scheduler.js';
 
 const app = express();
@@ -27,6 +29,8 @@ app.use('/api/brands', brandsRouter);
 app.use('/api/threats', threatsRouter);
 app.use('/api/scans', scansRouter);
 app.use('/api/takedowns', takedownsRouter);
+app.use('/api/dashboard', dashboardRouter);
+app.use('/api/web-probe', webProbeRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
