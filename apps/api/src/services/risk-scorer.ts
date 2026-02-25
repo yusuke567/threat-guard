@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { analyzeContent } from './content-analyzer.js';
 
 interface RiskFactors {
   domainSimilarity: number;   // 0-100, weight: 30%
@@ -99,6 +100,18 @@ function categoryToRisk(category: string | null): number {
 }
 
 /**
+ * Get content analysis score, falling back to 50 if no probe data available.
+ */
+async function getContentScore(detectedDomainId: string): Promise<number> {
+  try {
+    const result = await analyzeContent(detectedDomainId);
+    return result.contentRiskScore;
+  } catch {
+    return 50; // Default when no probe data available
+  }
+}
+
+/**
  * Calculate overall risk score for a detected domain
  */
 export async function calculateRiskScore(detectedDomainId: string): Promise<number> {
@@ -118,7 +131,7 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
     domainAge: calculateDomainAgeRisk(domain.firstSeen),
     sslRisk: calculateSSLRisk(sslData),
     threatCategory: categoryToRisk(latestAnalysis?.category ?? null),
-    contentSimilarity: 50, // Default when no screenshot comparison available
+    contentSimilarity: await getContentScore(detectedDomainId),
   };
 
   const score = Math.round(

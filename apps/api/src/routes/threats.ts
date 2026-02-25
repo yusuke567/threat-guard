@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getAbuseContacts } from '../services/whois-abuse.js';
+import { analyzeContent } from '../services/content-analyzer.js';
 const router = Router();
 
 // List threats with filtering and pagination
@@ -58,10 +59,23 @@ router.get('/:id', async (req, res) => {
       brand: { include: { organization: true } },
       analyses: { orderBy: { analyzedAt: 'desc' } },
       takedowns: { orderBy: { createdAt: 'desc' } },
+      webProbes: { orderBy: { probeAt: 'desc' }, take: 5 },
     },
   });
   if (!threat) return res.status(404).json({ error: 'Threat not found' });
   res.json(threat);
+});
+
+// Get content analysis for a threat
+router.get('/:id/content-analysis', async (req, res) => {
+  try {
+    const result = await analyzeContent(req.params.id);
+    res.json(result);
+  } catch (err: any) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Threat not found' });
+    console.error('Content analysis failed:', err);
+    res.status(500).json({ error: 'Content analysis failed' });
+  }
 });
 
 // Get abuse contacts for a threat
