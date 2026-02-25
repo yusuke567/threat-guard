@@ -10,6 +10,7 @@ import authRouter from './routes/auth.js';
 import organizationsRouter from './routes/organizations.js';
 import dashboardRouter from './routes/dashboard.js';
 import webProbeRouter from './routes/web-probe.js';
+import reportsRouter from './routes/reports.js';
 import { startScheduler } from './services/scheduler.js';
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/scans', scansRouter);
 app.use('/api/takedowns', takedownsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/web-probe', webProbeRouter);
+app.use('/api/reports', reportsRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -74,6 +74,13 @@ export const triggerProbe = (domainId: string) =>
 export const getProbeHistory = (domainId: string) =>
   fetchAPI<any>(`/web-probe/${domainId}/history`);
 
+// Reports
+export const generateReport = (type: string, brandId?: string) => {
+  const params = new URLSearchParams({ type });
+  if (brandId) params.set('brandId', brandId);
+  return fetchAPI<any>(`/reports/generate?${params}`);
+};
+
 // Abuse contacts
 export const getAbuseContacts = (threatId: string) =>
   fetchAPI<{ registrar: string; abuseEmail: string | null; source: string }>(`/threats/${threatId}/abuse-contacts`);

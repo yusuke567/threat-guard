@@ -20,6 +20,7 @@ export default function NavBar() {
           <a href="/" className="text-gray-600 hover:text-gray-900 font-medium text-sm">ダッシュボード</a>
           <a href="/threats" className="text-gray-600 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
           <a href="/brands" className="text-gray-600 hover:text-gray-900 font-medium text-sm">ブランド管理</a>
+          <a href="/reports" className="text-gray-600 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
           {user && (
             <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-200">
               <span className="text-sm text-gray-500">{user.name || user.email}</span>
@@ -52,6 +53,7 @@ export default function NavBar() {
           <a href="/" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">ダッシュボード</a>
           <a href="/threats" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
           <a href="/brands" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">ブランド管理</a>
+          <a href="/reports" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
           {user && (
             <div className="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between">
               <span className="text-sm text-gray-500">{user.name || user.email}</span>
