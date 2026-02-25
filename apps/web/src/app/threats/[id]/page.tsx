@@ -186,61 +186,84 @@ export default function ThreatDetailPage() {
         takedownStep={step}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Domain Info */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-bold mb-4">ドメイン情報</h2>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div>
-                <dt className="text-gray-500">ステータス</dt>
-                <dd className="mt-1">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[threat.status] || 'bg-gray-100'}`}>
-                    {statusLabels[threat.status] || threat.status}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">検知元</dt>
-                <dd className="mt-1 font-medium">{threat.source}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">初回検知</dt>
-                <dd className="mt-1">{new Date(threat.firstSeen).toLocaleString('ja-JP')}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">最終確認</dt>
-                <dd className="mt-1">{new Date(threat.lastSeen).toLocaleString('ja-JP')}</dd>
-              </div>
-            </dl>
-          </div>
+      {/* Domain Info + WHOIS/SSL */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-lg font-bold mb-4">ドメイン情報</h2>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <dt className="text-gray-500">ステータス</dt>
+              <dd className="mt-1">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[threat.status] || 'bg-gray-100'}`}>
+                  {statusLabels[threat.status] || threat.status}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">検知元</dt>
+              <dd className="mt-1 font-medium">{threat.source}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">初回検知</dt>
+              <dd className="mt-1">{new Date(threat.firstSeen).toLocaleString('ja-JP')}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">最終確認</dt>
+              <dd className="mt-1">{new Date(threat.lastSeen).toLocaleString('ja-JP')}</dd>
+            </div>
+          </dl>
+        </div>
 
-          {/* Analysis */}
-          {latestAnalysis && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-bold mb-4">AI分析結果</h2>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{categoryLabels[latestAnalysis.category]?.split(' ')[0]}</span>
-                  <div>
-                    <div className="font-medium">
-                      {categoryLabels[latestAnalysis.category] || latestAnalysis.category}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      信頼度: {Math.round(latestAnalysis.confidence * 100)}%
-                    </div>
+        {/* Analysis */}
+        {latestAnalysis && (
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-bold mb-4">AI分析結果</h2>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{categoryLabels[latestAnalysis.category]?.split(' ')[0]}</span>
+                <div>
+                  <div className="font-medium">
+                    {categoryLabels[latestAnalysis.category] || latestAnalysis.category}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    信頼度: {Math.round(latestAnalysis.confidence * 100)}%
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-4">
-                  {latestAnalysis.reasoning}
-                </p>
               </div>
+              <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-4">
+                {latestAnalysis.reasoning}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* WHOIS / SSL - collapsible */}
+      {(threat.whoisData || threat.sslInfo) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {threat.whoisData && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="text-sm font-bold mb-3"><GlossaryTerm term="WHOIS">WHOIS情報</GlossaryTerm></h3>
+              <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap max-h-60">
+                {typeof threat.whoisData === 'string'
+                  ? (() => { try { return JSON.stringify(JSON.parse(threat.whoisData), null, 2); } catch { return threat.whoisData; } })()
+                  : JSON.stringify(threat.whoisData, null, 2)}
+              </pre>
             </div>
           )}
+          {threat.sslInfo && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="text-sm font-bold mb-3"><GlossaryTerm term="SSL">SSL情報</GlossaryTerm></h3>
+              <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap max-h-60">
+                {JSON.stringify(threat.sslInfo, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
 
-          {/* Takedown Section */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+      {/* Takedown Section */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-lg font-bold"><GlossaryTerm term="テイクダウン">テイクダウン</GlossaryTerm>申請</h2>
               {step === 'idle' && (
@@ -434,30 +457,6 @@ export default function ThreatDetailPage() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {threat.whoisData && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-bold mb-3"><GlossaryTerm term="WHOIS">WHOIS情報</GlossaryTerm></h3>
-              <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap">
-                {typeof threat.whoisData === 'string'
-                  ? (() => { try { return JSON.stringify(JSON.parse(threat.whoisData), null, 2); } catch { return threat.whoisData; } })()
-                  : JSON.stringify(threat.whoisData, null, 2)}
-              </pre>
-            </div>
-          )}
-          {threat.sslInfo && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-bold mb-3"><GlossaryTerm term="SSL">SSL情報</GlossaryTerm></h3>
-              <pre className="text-xs text-gray-600 overflow-x-auto">
-                {JSON.stringify(threat.sslInfo, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
