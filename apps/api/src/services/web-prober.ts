@@ -58,17 +58,24 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     try {
       response = await page.goto(`https://${domain.domain}`, {
         waitUntil: 'networkidle',
-        timeout: 15000,
+        timeout: 30000,
       });
     } catch {
-      // HTTPS failed, try HTTP
+      // HTTPS failed or timed out, try HTTP
       try {
         response = await page.goto(`http://${domain.domain}`, {
           waitUntil: 'networkidle',
-          timeout: 15000,
+          timeout: 30000,
         });
       } catch (e: any) {
         error = `Navigation failed: ${e.message}`;
+        // Capture partial page info even on timeout
+        try {
+          httpStatus = (await page.evaluate(() => document.readyState)) ? null : null;
+          finalUrl = page.url();
+          const html = await page.content();
+          if (html && html.length > 100) htmlSnippet = html.slice(0, 5000);
+        } catch { /* ignore */ }
       }
     }
 
@@ -86,13 +93,13 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
       } catch { /* ignore */ }
     }
 
-    // Screenshot
+    // Screenshot — always attempt, even after timeout (captures partial page)
     await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
     const filename = `probe-${Date.now()}-${domain.domain.replace(/[^a-z0-9]/gi, '_').slice(0, 50)}.png`;
     const filepath = path.join(SCREENSHOTS_DIR, filename);
     try {
       await page.screenshot({ path: filepath, fullPage: false });
-      screenshotPath = filepath;
+      screenshotPath = `/screenshots/${filename}`;
     } catch { /* ignore */ }
 
   } finally {

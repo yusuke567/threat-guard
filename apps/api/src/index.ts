@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import brandsRouter from './routes/brands.js';
 import threatsRouter from './routes/threats.js';
 import scansRouter from './routes/scans.js';
@@ -16,6 +17,9 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Serve screenshots as static files
+app.use('/screenshots', express.static(path.join(process.cwd(), 'screenshots')));
 
 // Health check
 app.get('/api/health', (_req, res) => {

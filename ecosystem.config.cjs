@@ -13,7 +13,7 @@ module.exports = {
       name: 'brandshield-web',
       cwd: './apps/web',
       script: 'npx',
-      args: 'next dev --port 4983 --hostname 0.0.0.0',
+      args: 'next start --port 4983 --hostname 0.0.0.0',
       watch: false,
       autorestart: true,
       max_restarts: 10,

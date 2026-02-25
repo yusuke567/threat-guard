@@ -12,13 +12,8 @@ router.post('/', async (req, res) => {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const template = await generateTakedownTemplate(parsed.data.detectedDomainId);
-  const takedown = await prisma.takedownRequest.findFirst({
-    where: { detectedDomainId: parsed.data.detectedDomainId },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  res.status(201).json(takedown ?? { template });
+  const result = await generateTakedownTemplate(parsed.data.detectedDomainId);
+  res.status(201).json(result);
 });
 
 // Update takedown status
