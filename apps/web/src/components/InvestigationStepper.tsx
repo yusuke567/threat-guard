@@ -157,6 +157,73 @@ export default function InvestigationStepper({ threat, contentAnalysis, probing,
               >
                 {probeStatus === 'running' ? '⏳ 再調査中...' : '🔄 再調査する'}
               </button>
+
+              {/* Collapsible details: threat indicators + screenshot */}
+              <details className="mt-3">
+                <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">📋 調査の詳細を見る</summary>
+                <div className="mt-3 space-y-3">
+                  {/* Threat Indicators */}
+                  {contentAnalysis && (
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <h4 className="text-xs font-bold text-gray-700 mb-2">危険な兆候チェック</h4>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span>{contentAnalysis.hasLoginForm ? '⚠️' : '✅'}</span>
+                          <span className={contentAnalysis.hasLoginForm ? 'text-red-700' : 'text-gray-600'}>
+                            ログイン画面の模倣: {contentAnalysis.hasLoginForm ? '検出されました' : '検出なし'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>{contentAnalysis.hasPasswordField ? '⚠️' : '✅'}</span>
+                          <span className={contentAnalysis.hasPasswordField ? 'text-red-700' : 'text-gray-600'}>
+                            パスワード入力欄: {contentAnalysis.hasPasswordField ? '検出されました' : '検出なし'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>{contentAnalysis.logoDetected ? '⚠️' : '✅'}</span>
+                          <span className={contentAnalysis.logoDetected ? 'text-amber-700' : 'text-gray-600'}>
+                            自社ロゴの無断使用: {contentAnalysis.logoDetected ? '検出の可能性あり' : '検出なし'}
+                          </span>
+                        </div>
+                        {contentAnalysis.imageSimilarity !== null && contentAnalysis.imageSimilarity !== undefined && (
+                          <div className="flex items-center gap-2">
+                            <span>{contentAnalysis.imageSimilarity > 0.7 ? '⚠️' : '✅'}</span>
+                            <span className={contentAnalysis.imageSimilarity > 0.7 ? 'text-red-700' : 'text-gray-600'}>
+                              自社サイトとの類似度: {Math.round(contentAnalysis.imageSimilarity * 100)}%
+                            </span>
+                          </div>
+                        )}
+                        {contentAnalysis.keywordMatches?.length > 0 && (
+                          <div className="flex items-start gap-2">
+                            <span>⚠️</span>
+                            <div>
+                              <span className="text-red-700">不審なキーワード: </span>
+                              {contentAnalysis.keywordMatches.map((kw: string) => (
+                                <span key={kw} className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] mr-1">{kw}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Screenshot */}
+                  {threat.screenshotUrl && (
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <h4 className="text-xs font-bold text-gray-700 mb-2">サイトの画面キャプチャ</h4>
+                      <img
+                        src={threat.screenshotUrl.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || ''}${threat.screenshotUrl}` : threat.screenshotUrl}
+                        alt="サイトの画面キャプチャ"
+                        className="rounded border w-full"
+                      />
+                      {probe?.probeAt && (
+                        <p className="text-[10px] text-gray-400 mt-1">{new Date(probe.probeAt).toLocaleString('ja-JP')} 取得</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </details>
             </>
           ) : (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
