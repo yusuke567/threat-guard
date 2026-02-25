@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { getThreat, generateTakedown, getAbuseContacts, sendTakedownEmail, downloadTakedownPdf, getContentAnalysis, triggerProbe } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 import GlossaryTerm from '@/components/GlossaryTerm';
+import InvestigationStepper from '@/components/InvestigationStepper';
 
 const statusColors: Record<string, string> = {
   new_domain: 'bg-blue-100 text-blue-800',
@@ -174,8 +175,16 @@ export default function ThreatDetailPage() {
         </p>
       </div>
 
-      {/* Risk Score */}
-      <RiskBadgeFull score={threat.riskScore} />
+      {/* Investigation Stepper */}
+      <InvestigationStepper
+        threat={threat}
+        contentAnalysis={contentAnalysis}
+        probing={probing}
+        probeStatus={probeStatus}
+        onProbe={handleProbe}
+        onStartTakedown={handleStartTakedown}
+        takedownStep={step}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main info */}
@@ -430,115 +439,6 @@ export default function ThreatDetailPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Probe & Analysis */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold"><GlossaryTerm term="プローブ">Webプローブ</GlossaryTerm></h3>
-              <button
-                onClick={handleProbe}
-                disabled={probing}
-                className={`px-3 py-1 rounded-lg text-xs font-medium disabled:opacity-50 transition-all ${
-                  probeStatus === 'done' ? 'bg-green-600 text-white' :
-                  probeStatus === 'error' ? 'bg-red-600 text-white' :
-                  'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {probeStatus === 'running' ? '⏳ プローブ実行中...' :
-                 probeStatus === 'done' ? '✅ 完了！' :
-                 probeStatus === 'error' ? '❌ エラー' :
-                 '🔍 プローブ実行'}
-              </button>
-            </div>
-            {(() => {
-              const probe = threat.webProbes?.[0];
-              const analysis = contentAnalysis;
-              // Calculate overall risk level
-              const riskScore = analysis?.contentRiskScore ?? 0;
-              const similarity = analysis?.imageSimilarity ? Math.round(analysis.imageSimilarity * 100) : 0;
-              const isLive = probe?.httpStatus === 200;
-              const overallScore = Math.max(riskScore, isLive && similarity > 70 ? 80 : 0);
-              const riskLevel = overallScore >= 70 ? 'high' : overallScore >= 30 ? 'medium' : 'low';
-              // ドメインリスクスコア（threat.riskScore）が高いのにプローブ結果が低い場合を補正
-              const domainRiskScore = threat.riskScore ?? 0;
-              const isHighDomainRiskButLowProbe = domainRiskScore >= 80 && riskLevel === 'low';
-              const riskConfig = {
-                high: { color: 'red', bg: 'bg-red-50 border-red-200', icon: '🔴', label: '高リスク', desc: 'このサイトはフィッシングの疑いがあります', action: 'テイクダウン申請を推奨します', actionColor: 'bg-red-600 hover:bg-red-700 text-white' },
-                medium: { color: 'amber', bg: 'bg-amber-50 border-amber-200', icon: '🟡', label: '要注意', desc: '不審な兆候があります。経過観察を推奨します', action: '監視を継続してください', actionColor: 'bg-amber-500 hover:bg-amber-600 text-white' },
-                low: { color: 'green', bg: 'bg-green-50 border-green-200', icon: '🟢', label: '低リスク', desc: '現時点で脅威の兆候は確認されていません', action: '現時点で対応不要です', actionColor: '' },
-              };
-              const rc = isHighDomainRiskButLowProbe
-                ? { color: 'amber', bg: 'bg-amber-50 border-amber-200', icon: '⚠️', label: '要警戒', desc: 'ドメインは高リスクですが、現時点でフィッシングコンテンツは未検出です', action: 'フィッシングに利用される前に、テイクダウン申請をおすすめします', actionColor: 'bg-amber-500 hover:bg-amber-600 text-white' }
-                : riskConfig[riskLevel];
-
-              // Site status description
-              const getSiteStatus = () => {
-                if (!probe) return { icon: '⚪', text: 'まだ調査されていません' };
-                if (!probe.dnsResolved) return { icon: '⚪', text: 'ドメインはまだ使用されていません（サーバー未設定）' };
-                if (probe.httpStatus === 200) return { icon: '🔴', text: 'サイトが稼働中です' };
-                if (probe.httpStatus && probe.httpStatus >= 400 && probe.httpStatus < 500) return { icon: '🟡', text: 'ドメインは存在しますが、アクセスがブロックされています' };
-                if (probe.httpStatus === 522 || probe.httpStatus === 523 || probe.httpStatus === 524) return { icon: '🟡', text: 'ドメインは存在しますが、サイトは表示されません' };
-                if (probe.error?.includes('timeout') || probe.error?.includes('Navigation failed')) return { icon: '🟡', text: 'ドメインは存在しますが、応答がありません' };
-                return { icon: '🟡', text: `ドメインは存在しますが、正常に表示されません（コード: ${probe.httpStatus ?? '不明'}）` };
-              };
-              const siteStatus = getSiteStatus();
-
-              return (
-                <>
-                  {/* Overall Risk Assessment */}
-                  {probe && (
-                    <div className={`rounded-xl border-2 p-5 ${rc.bg}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-2xl">{rc.icon}</span>
-                        <span className={`text-lg font-bold text-${rc.color}-700`}>{rc.label}</span>
-                      </div>
-                      <p className={`text-sm text-${rc.color}-700 mb-3`}>{rc.desc}</p>
-                      <div className={`text-xs rounded-lg p-3 ${rc.color === 'red' ? 'bg-red-100' : rc.color === 'amber' ? 'bg-amber-100' : 'bg-green-100'}`}>
-                        <span className="font-medium">💡 推奨アクション:</span> {rc.action}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Site Status - human readable */}
-                  <div className="text-xs space-y-3 mt-2">
-                    <div className="flex items-start gap-2">
-                      <span className="text-base leading-none mt-0.5">{siteStatus.icon}</span>
-                      <div>
-                        <div className="font-medium text-gray-700">サイトの稼働状況</div>
-                        <div className="text-gray-500 mt-0.5">{siteStatus.text}</div>
-                      </div>
-                    </div>
-                    {probe?.finalUrl && probe.finalUrl !== `https://${threat.detectedDomains?.[0]?.domain}/` && probe.finalUrl !== `http://${threat.detectedDomains?.[0]?.domain}/` && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-base leading-none mt-0.5">↗️</span>
-                        <div>
-                          <div className="font-medium text-gray-700">転送先</div>
-                          <div className="text-gray-500 mt-0.5 font-mono text-[10px] break-all">{probe.finalUrl}</div>
-                        </div>
-                      </div>
-                    )}
-                    <div className="text-gray-400 text-[10px]">
-                      最終調査: {probe ? new Date(probe.probeAt).toLocaleString('ja-JP') : '未実施'}
-                    </div>
-
-                    {/* Technical details - collapsible */}
-                    {probe && (
-                      <details className="text-[10px]">
-                        <summary className="text-gray-400 cursor-pointer hover:text-gray-600">技術詳細を表示</summary>
-                        <div className="mt-2 space-y-1 text-gray-500 font-mono pl-2 border-l-2 border-gray-200">
-                          <div>HTTPステータス: {probe.httpStatus ?? 'N/A'}</div>
-                          <div>IP: {probe.ip ?? 'N/A'}</div>
-                          <div>DNS解決: {probe.dnsResolved ? 'はい' : 'いいえ'}</div>
-                          {probe.finalUrl && <div className="break-all">最終URL: {probe.finalUrl}</div>}
-                          {probe.error && <div className="text-red-400">エラー: {probe.error}</div>}
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-
           {/* Threat Indicators - human readable checklist */}
           {(contentAnalysis || threat.webProbes?.[0]) && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
