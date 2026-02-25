@@ -2,14 +2,35 @@
 
 import GlossaryTerm from './GlossaryTerm';
 
+const categoryLabels: Record<string, string> = {
+  phishing: '🎣 フィッシング',
+  brand_abuse: '⚠️ ブランド悪用',
+  parked: '🅿️ パーク',
+  legitimate: '✅ 正規',
+  unknown: '❓ 不明',
+};
+
 interface StepperProps {
   threat: any;
   contentAnalysis: any;
+  latestAnalysis: any;
   probing: boolean;
   probeStatus: 'idle' | 'running' | 'done' | 'error';
   onProbe: () => void;
   onStartTakedown: () => void;
   takedownStep: string;
+  // Takedown flow props
+  takedownError?: string;
+  takedownSuccess?: string;
+  registrar?: string;
+  abuseEmail?: string;
+  onAbuseEmailChange?: (email: string) => void;
+  onGenerate?: () => void;
+  template?: string;
+  onTemplateChange?: (text: string) => void;
+  onSend?: () => void;
+  onResetFlow?: () => void;
+  takedownPdfUrl?: string;
 }
 
 function getDomainRiskConfig(score: number) {
@@ -49,7 +70,7 @@ function getSiteInvestigationResult(contentAnalysis: any, domainRiskScore: numbe
   };
 }
 
-export default function InvestigationStepper({ threat, contentAnalysis, probing, probeStatus, onProbe, onStartTakedown, takedownStep }: StepperProps) {
+export default function InvestigationStepper({ threat, contentAnalysis, latestAnalysis, probing, probeStatus, onProbe, onStartTakedown, takedownStep, takedownError, takedownSuccess, registrar, abuseEmail, onAbuseEmailChange, onGenerate, template, onTemplateChange, onSend, onResetFlow, takedownPdfUrl }: StepperProps) {
   const domainRiskScore = threat.riskScore ?? 0;
   const domainRisk = getDomainRiskConfig(domainRiskScore);
   const probe = threat.webProbes?.[0];
@@ -110,6 +131,24 @@ export default function InvestigationStepper({ threat, contentAnalysis, probing,
             </div>
             <p className={`text-xs ${textColorMap[domainRisk.color]}`}>{domainRisk.desc}</p>
           </div>
+
+          {/* Collapsible: AI analysis details */}
+          {latestAnalysis && (
+            <details className="mt-3">
+              <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">📋 分析の詳細を見る</summary>
+              <div className="mt-3 rounded-lg border border-gray-200 p-3">
+                <h4 className="text-xs font-bold text-gray-700 mb-2">AI分析結果</h4>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{categoryLabels[latestAnalysis.category]?.split(' ')[0]}</span>
+                  <span className="text-sm font-medium">{categoryLabels[latestAnalysis.category] || latestAnalysis.category}</span>
+                  <span className="text-xs text-gray-400">（判定確度: {Math.round(latestAnalysis.confidence * 100)}%）</span>
+                </div>
+                <p className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3">
+                  {latestAnalysis.reasoning}
+                </p>
+              </div>
+            </details>
+          )}
 
           {domainRiskScore >= 40 && !step2Done && (
             <p className="text-xs text-blue-600 font-medium mt-2">👇 STEP 2 でサイトの実態を調査してください</p>
@@ -260,6 +299,14 @@ export default function InvestigationStepper({ threat, contentAnalysis, probing,
             <span className="text-xs text-gray-400 ml-2">ドメインの停止を<GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>に依頼します</span>
           </div>
 
+          {/* Error / Success */}
+          {takedownError && (
+            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">{takedownError}</div>
+          )}
+          {takedownSuccess && (
+            <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs">✅ {takedownSuccess}</div>
+          )}
+
           {step3Done ? (
             <div className="rounded-lg border border-green-300 bg-green-50 p-3">
               <div className="flex items-center gap-2">
@@ -272,9 +319,69 @@ export default function InvestigationStepper({ threat, contentAnalysis, probing,
                  '申請が進行中です'}
               </p>
             </div>
-          ) : takedownStep !== 'idle' ? (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-              <p className="text-xs text-blue-700">テイクダウン申請を作成中です...</p>
+          ) : takedownStep === 'loading_contacts' ? (
+            <div className="flex items-center gap-3 py-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+              <span className="text-xs text-gray-600">WHOIS情報からabuse連絡先を取得中...</span>
+            </div>
+          ) : takedownStep === 'confirm_recipient' ? (
+            <div className="space-y-3 border border-blue-200 rounded-lg p-3 bg-blue-50/50">
+              <div className="text-xs text-gray-600">
+                <GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>: <span className="font-medium text-gray-900">{registrar}</span>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <GlossaryTerm term="abuse連絡先">Abuse連絡先</GlossaryTerm>メールアドレス
+                </label>
+                <input
+                  type="email"
+                  value={abuseEmail || ''}
+                  onChange={(e) => onAbuseEmailChange?.(e.target.value)}
+                  placeholder="abuse@registrar.com"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {!abuseEmail && <p className="mt-1 text-[10px] text-amber-600">⚠️ 自動取得できませんでした。手動で入力してください。</p>}
+                {abuseEmail && <p className="mt-1 text-[10px] text-green-600">✅ WHOISから自動取得しました（変更可能）</p>}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={onGenerate} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium">📝 テイクダウン文面を生成</button>
+                <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">キャンセル</button>
+              </div>
+            </div>
+          ) : takedownStep === 'generating' ? (
+            <div className="flex items-center gap-3 py-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+              <span className="text-xs text-gray-600">AIがテイクダウン文面を生成中...（30秒ほど）</span>
+            </div>
+          ) : takedownStep === 'review' ? (
+            <div className="space-y-3">
+              <div className="border border-amber-200 rounded-lg p-3 bg-amber-50/50">
+                <h4 className="text-xs font-medium mb-2">📋 内容を確認してください</h4>
+                <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-500 mb-2">
+                  <div>送信先: <span className="font-medium text-gray-900">{abuseEmail}</span></div>
+                  <div>レジストラ: <span className="font-medium text-gray-900">{registrar}</span></div>
+                </div>
+                <textarea
+                  value={template || ''}
+                  onChange={(e) => onTemplateChange?.(e.target.value)}
+                  rows={10}
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-[10px] font-mono focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={onSend} className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium">✅ 確認して送信</button>
+                {takedownPdfUrl && <a href={takedownPdfUrl} target="_blank" className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">📄 PDF</a>}
+                <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">キャンセル</button>
+              </div>
+            </div>
+          ) : takedownStep === 'sending' ? (
+            <div className="flex items-center gap-3 py-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+              <span className="text-xs text-gray-600">メールを送信中...</span>
+            </div>
+          ) : takedownStep === 'sent' ? (
+            <div className="space-y-2">
+              <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">新しいテイクダウン申請を作成</button>
             </div>
           ) : (
             <div className={`rounded-lg border p-3 ${shouldRecommendTakedown ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
@@ -292,6 +399,29 @@ export default function InvestigationStepper({ threat, contentAnalysis, probing,
                 <p className="text-xs text-gray-500">STEP 1・2 の結果に基づいて、テイクダウンが必要か判断します</p>
               )}
             </div>
+          )}
+
+          {/* Past takedowns */}
+          {threat.takedowns?.length > 0 && takedownStep === 'idle' && (
+            <details className="mt-3">
+              <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">📋 過去の申請を見る</summary>
+              <div className="mt-2 space-y-2">
+                {threat.takedowns.map((td: any) => (
+                  <div key={td.id} className="border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium">レジストラ: {td.registrar}</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                        td.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                        td.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>{td.status === 'draft' ? '下書き' : td.status === 'sent' ? '送信済' : td.status === 'completed' ? '完了' : td.status}</span>
+                    </div>
+                    <div className="text-[10px] text-gray-400">{new Date(td.createdAt).toLocaleString('ja-JP')}</div>
+                    <pre className="text-[10px] text-gray-600 bg-gray-50 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-32 mt-1">{td.template}</pre>
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
         </div>
       </div>
