@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -63,6 +63,7 @@ model DetectedDomain {
   sslInfo       String?
   analyses      ThreatAnalysis[]
   takedowns     TakedownRequest[]
+  webProbes     WebProbe[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -115,4 +116,22 @@ model ScanJob {
 
   @@index([brandId])
   @@index([status])
+}
+
+model WebProbe {
+  id               String         @id @default(uuid())
+  detectedDomainId String
+  detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  httpStatus       Int?
+  finalUrl         String?
+  ip               String?
+  htmlSnippet      String?
+  headers          String?
+  screenshotPath   String?
+  dnsResolved      Boolean        @default(false)
+  error            String?
+  probeAt          DateTime       @default(now())
+
+  @@index([detectedDomainId])
+  @@index([probeAt])
 }
