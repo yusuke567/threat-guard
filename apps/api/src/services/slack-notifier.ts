@@ -63,6 +63,63 @@ export async function notifyNewThreat(alert: ThreatAlert): Promise<void> {
   }
 }
 
+interface SiteChangeAlert {
+  brandName: string;
+  domain: string;
+  changes: string[];
+}
+
+export async function notifySiteChange(alert: SiteChangeAlert): Promise<void> {
+  if (!SLACK_WEBHOOK_URL) {
+    console.log('[Slack] SLACK_WEBHOOK_URL not set, skipping site change notification');
+    return;
+  }
+
+  const changeList = alert.changes.map((c) => `• ${c}`).join('\n');
+
+  const payload = {
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '🔄 サイト変化検知',
+          emoji: true,
+        },
+      },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*ブランド:*\n${alert.brandName}` },
+          { type: 'mrkdwn', text: `*ドメイン:*\n\`${alert.domain}\`` },
+        ],
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*変更内容:*\n${changeList}`,
+        },
+      },
+    ],
+  };
+
+  try {
+    const res = await fetch(SLACK_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      console.error(`[Slack] Site change webhook failed: ${res.status}`);
+    } else {
+      console.log(`[Slack] Site change alert sent for ${alert.domain}`);
+    }
+  } catch (err) {
+    console.error('[Slack] Site change webhook error:', err);
+  }
+}
+
 export async function notifyScanSummary(
   brandName: string,
   newThreats: number,

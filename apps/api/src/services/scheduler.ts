@@ -4,7 +4,9 @@ import { monitorBrand } from './ct-monitor.js';
 import { scanDomainVariations } from './domain-generator.js';
 import { analyzeThreat } from './threat-analyzer.js';
 import { calculateRiskScore } from './risk-scorer.js';
-import { notifyNewThreat, notifyScanSummary } from './slack-notifier.js';
+import { notifyNewThreat, notifyScanSummary, notifySiteChange } from './slack-notifier.js';
+import { probeDomain } from './web-prober.js';
+import { analyzeContent } from './content-analyzer.js';
 
 async function runFullScan(brandId: string, brandName: string) {
   console.log(`[Scheduler] Starting scan for brand: ${brandName} (${brandId})`);
@@ -86,6 +88,95 @@ async function runScheduledScans() {
   console.log(`[Scheduler] All scans completed for ${brands.length} brands.`);
 }
 
+/**
+ * Run web probes for all detected domains and detect changes from previous probes.
+ */
+async function runWebProbes() {
+  console.log(`[Scheduler] Starting web probe cycle at ${new Date().toISOString()}`);
+
+  const domains = await prisma.detectedDomain.findMany({
+    where: { status: { not: 'resolved' } },
+    include: {
+      brand: { select: { name: true } },
+      webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
+    },
+  });
+
+  if (domains.length === 0) {
+    console.log('[Scheduler] No domains to probe.');
+    return;
+  }
+
+  let probed = 0;
+  let changes = 0;
+
+  for (const domain of domains) {
+    try {
+      const previousProbe = domain.webProbes[0] ?? null;
+      const newProbe = await probeDomain(domain.id);
+      probed++;
+
+      // Detect changes
+      const changeDetails: string[] = [];
+
+      if (previousProbe) {
+        // Status change (e.g. went live, went down)
+        if (previousProbe.httpStatus !== newProbe.httpStatus) {
+          changeDetails.push(`HTTPステータス: ${previousProbe.httpStatus ?? 'N/A'} → ${newProbe.httpStatus ?? 'N/A'}`);
+        }
+
+        // Content change: new login form appeared
+        if (newProbe.htmlSnippet && previousProbe.htmlSnippet) {
+          const prevHasLogin = previousProbe.htmlSnippet.toLowerCase().includes('type="password"');
+          const newHasLogin = newProbe.htmlSnippet.toLowerCase().includes('type="password"');
+          if (!prevHasLogin && newHasLogin) {
+            changeDetails.push('🔴 新規ログインフォーム出現');
+          }
+        }
+
+        // DNS resolution change
+        if (previousProbe.dnsResolved !== newProbe.dnsResolved) {
+          changeDetails.push(`DNS: ${previousProbe.dnsResolved ? '解決済→未解決' : '未解決→解決済'}`);
+        }
+
+        // Final URL change (redirect changed)
+        if (previousProbe.finalUrl !== newProbe.finalUrl && newProbe.finalUrl) {
+          changeDetails.push(`リダイレクト先変更: ${newProbe.finalUrl}`);
+        }
+      } else {
+        // First probe — if site is live, that's noteworthy
+        if (newProbe.httpStatus && newProbe.httpStatus >= 200 && newProbe.httpStatus < 400) {
+          changeDetails.push(`初回プローブ: サイト稼働中 (HTTP ${newProbe.httpStatus})`);
+        }
+      }
+
+      if (changeDetails.length > 0) {
+        changes++;
+        await notifySiteChange({
+          brandName: domain.brand.name,
+          domain: domain.domain,
+          changes: changeDetails,
+        });
+
+        // Re-analyze content and recalculate risk
+        try {
+          await analyzeContent(domain.id);
+          await calculateRiskScore(domain.id);
+        } catch (err) {
+          console.error(`[Scheduler] Re-analysis failed for ${domain.domain}:`, err);
+        }
+      }
+
+      // Throttle: 2s between probes
+      await new Promise((r) => setTimeout(r, 2000));
+    } catch (err) {
+      console.error(`[Scheduler] Probe failed for ${domain.domain}:`, err);
+    }
+  }
+
+  console.log(`[Scheduler] Web probe cycle complete: ${probed} probed, ${changes} changes detected`);
+}
+
 export function startScheduler() {
   const schedule = process.env.SCAN_CRON || '0 */6 * * *'; // Default: every 6 hours
 
@@ -94,6 +185,16 @@ export function startScheduler() {
   cron.schedule(schedule, () => {
     runScheduledScans().catch((err) => {
       console.error('[Scheduler] Scheduled scan error:', err);
+    });
+  });
+
+  // Web probe schedule: offset by 3 hours from main scan
+  const probeSchedule = process.env.PROBE_CRON || '0 3,9,15,21 * * *';
+  console.log(`[Scheduler] Web probe schedule: ${probeSchedule}`);
+
+  cron.schedule(probeSchedule, () => {
+    runWebProbes().catch((err) => {
+      console.error('[Scheduler] Web probe error:', err);
     });
   });
 
