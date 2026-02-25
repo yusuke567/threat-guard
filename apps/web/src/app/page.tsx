@@ -103,6 +103,50 @@ export default function Dashboard() {
         <p className="text-gray-500 mt-1">ブランド保護状況の概要</p>
       </div>
 
+      {/* Action Cards - 今日やるべきこと */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-bold text-gray-900">📌 今日やるべきこと</h2>
+        {rc.danger === 0 && rc.high === 0 && (stats?.takedownStats?.sent || 0) === 0 ? (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="font-bold text-green-800">現在、対応が必要な脅威はありません</p>
+              <p className="text-green-600 text-sm mt-0.5">定期スキャンで自動的に監視されています</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {rc.danger > 0 && (
+              <a href="/threats?minRiskScore=80" className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-center gap-3 hover:bg-red-100 hover:border-red-300 transition-colors group">
+                <span className="text-2xl">🚨</span>
+                <div>
+                  <p className="font-bold text-red-800">即対応が必要: {rc.danger}件</p>
+                  <p className="text-red-600 text-sm mt-0.5 group-hover:underline">テイクダウン申請へ →</p>
+                </div>
+              </a>
+            )}
+            {rc.high > 0 && (
+              <a href="/threats?minRiskScore=60" className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 flex items-center gap-3 hover:bg-orange-100 hover:border-orange-300 transition-colors group">
+                <span className="text-2xl">👁</span>
+                <div>
+                  <p className="font-bold text-orange-800">確認待ち: {rc.high}件</p>
+                  <p className="text-orange-600 text-sm mt-0.5 group-hover:underline">詳細を確認 →</p>
+                </div>
+              </a>
+            )}
+            {(stats?.takedownStats?.sent || 0) > 0 && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                <span className="text-2xl">📋</span>
+                <div>
+                  <p className="font-bold text-blue-800">テイクダウン進行中: {stats.takedownStats.sent}件</p>
+                  <p className="text-blue-600 text-sm mt-0.5">レジストラからの回答を待っています</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Risk Level Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="🔴 危険" value={rc.danger} icon="🚨" color="red" subtitle="即テイクダウン推奨"

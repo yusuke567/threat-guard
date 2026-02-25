@@ -23,20 +23,20 @@ const statusColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  new_domain: '新規',
-  analyzing: '分析中',
-  confirmed_threat: '脅威確認',
+  new_domain: '未確認',
+  analyzing: '調査中',
+  confirmed_threat: '⚠️ 脅威確定',
   false_positive: '誤検知',
-  takedown_sent: 'テイクダウン済',
-  resolved: '解決済',
+  takedown_sent: '停止申請中',
+  resolved: '✅ 対応完了',
 };
 
-const categoryLabels: Record<string, string> = {
-  phishing: '🎣 フィッシング',
-  brand_abuse: '⚠️ ブランド悪用',
-  parked: '🅿️ パーク',
-  legitimate: '✅ 正規',
-  unknown: '❓ 不明',
+const categoryDescriptions: Record<string, string> = {
+  phishing: '御社サイトを模倣した偽サイトです',
+  brand_abuse: '御社ブランドを無断使用しています',
+  parked: 'ドメインが取得済み（現在未使用）',
+  legitimate: '正規サイトと判定されました',
+  unknown: '調査中です',
 };
 
 export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; onSelect?: (id: string) => void }) {
@@ -54,7 +54,7 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
         <thead>
           <tr className="border-b border-gray-200 text-left text-sm text-gray-500">
             <th className="pb-3 font-medium">ドメイン</th>
-            <th className="pb-3 font-medium">カテゴリ</th>
+            <th className="pb-3 font-medium">概要</th>
             <th className="pb-3 font-medium">
               <span className="flex items-center gap-1">
                 リスク
@@ -76,9 +76,9 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
                 <div className="font-mono text-sm font-medium">{threat.domain}</div>
                 <div className="text-xs text-gray-400 mt-0.5">vs {threat.brand.domain}</div>
               </td>
-              <td className="py-3 text-sm">
+              <td className="py-3 text-sm text-gray-600">
                 {threat.analyses[0]
-                  ? categoryLabels[threat.analyses[0].category] || threat.analyses[0].category
+                  ? categoryDescriptions[threat.analyses[0].category] || threat.analyses[0].category
                   : '—'}
               </td>
               <td className="py-3">

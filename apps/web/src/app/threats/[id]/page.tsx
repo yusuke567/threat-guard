@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getThreat, generateTakedown, getAbuseContacts, sendTakedownEmail, downloadTakedownPdf, getContentAnalysis, triggerProbe } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
+import GlossaryTerm from '@/components/GlossaryTerm';
 
 const statusColors: Record<string, string> = {
   new_domain: 'bg-blue-100 text-blue-800',
@@ -232,7 +233,7 @@ export default function ThreatDetailPage() {
           {/* Takedown Section */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <h2 className="text-lg font-bold">テイクダウン申請</h2>
+              <h2 className="text-lg font-bold"><GlossaryTerm term="テイクダウン">テイクダウン</GlossaryTerm>申請</h2>
               {step === 'idle' && (
                 <button
                   onClick={handleStartTakedown}
@@ -274,7 +275,7 @@ export default function ThreatDetailPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Abuse連絡先メールアドレス
+                    <GlossaryTerm term="abuse連絡先">Abuse連絡先</GlossaryTerm>メールアドレス
                   </label>
                   <input
                     type="email"
@@ -432,7 +433,7 @@ export default function ThreatDetailPage() {
           {/* Probe & Analysis */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold">Webプローブ</h3>
+              <h3 className="text-sm font-bold"><GlossaryTerm term="プローブ">Webプローブ</GlossaryTerm></h3>
               <button
                 onClick={handleProbe}
                 disabled={probing}
@@ -608,7 +609,7 @@ export default function ThreatDetailPage() {
           )}
           {threat.whoisData && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-bold mb-3">WHOIS情報</h3>
+              <h3 className="text-sm font-bold mb-3"><GlossaryTerm term="WHOIS">WHOIS情報</GlossaryTerm></h3>
               <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap">
                 {typeof threat.whoisData === 'string'
                   ? (() => { try { return JSON.stringify(JSON.parse(threat.whoisData), null, 2); } catch { return threat.whoisData; } })()
@@ -618,7 +619,7 @@ export default function ThreatDetailPage() {
           )}
           {threat.sslInfo && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-bold mb-3">SSL情報</h3>
+              <h3 className="text-sm font-bold mb-3"><GlossaryTerm term="SSL">SSL情報</GlossaryTerm></h3>
               <pre className="text-xs text-gray-600 overflow-x-auto">
                 {JSON.stringify(threat.sslInfo, null, 2)}
               </pre>
