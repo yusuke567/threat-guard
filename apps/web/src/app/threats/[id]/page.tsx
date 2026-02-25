@@ -448,91 +448,162 @@ export default function ThreatDetailPage() {
                  '🔍 プローブ実行'}
               </button>
             </div>
-            {threat.webProbes?.[0] ? (
-              <dl className="text-xs space-y-2">
-                <div className="flex justify-between">
-                  <dt className="text-gray-500">HTTPステータス</dt>
-                  <dd className={`font-mono font-medium ${threat.webProbes[0].httpStatus === 200 ? 'text-green-600' : threat.webProbes[0].httpStatus ? 'text-amber-600' : 'text-gray-400'}`}>
-                    {threat.webProbes[0].httpStatus ?? 'N/A'}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-500">IP</dt>
-                  <dd className="font-mono">{threat.webProbes[0].ip ?? 'N/A'}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-gray-500">DNS解決</dt>
-                  <dd>{threat.webProbes[0].dnsResolved ? '✅' : '❌'}</dd>
-                </div>
-                {threat.webProbes[0].finalUrl && (
-                  <div>
-                    <dt className="text-gray-500">最終URL</dt>
-                    <dd className="font-mono text-[10px] break-all mt-1">{threat.webProbes[0].finalUrl}</dd>
+            {(() => {
+              const probe = threat.webProbes?.[0];
+              const analysis = contentAnalysis;
+              // Calculate overall risk level
+              const riskScore = analysis?.contentRiskScore ?? 0;
+              const similarity = analysis?.imageSimilarity ? Math.round(analysis.imageSimilarity * 100) : 0;
+              const isLive = probe?.httpStatus === 200;
+              const overallScore = Math.max(riskScore, isLive && similarity > 70 ? 80 : 0);
+              const riskLevel = overallScore >= 70 ? 'high' : overallScore >= 30 ? 'medium' : 'low';
+              const riskConfig = {
+                high: { color: 'red', bg: 'bg-red-50 border-red-200', icon: '🔴', label: '高リスク', desc: 'このサイトはフィッシングの疑いがあります', action: 'テイクダウン申請を推奨します', actionColor: 'bg-red-600 hover:bg-red-700 text-white' },
+                medium: { color: 'amber', bg: 'bg-amber-50 border-amber-200', icon: '🟡', label: '要注意', desc: '不審な兆候があります。経過観察を推奨します', action: '監視を継続してください', actionColor: 'bg-amber-500 hover:bg-amber-600 text-white' },
+                low: { color: 'green', bg: 'bg-green-50 border-green-200', icon: '🟢', label: '低リスク', desc: '現時点で脅威の兆候は確認されていません', action: '現時点で対応不要です', actionColor: '' },
+              };
+              const rc = riskConfig[riskLevel];
+
+              // Site status description
+              const getSiteStatus = () => {
+                if (!probe) return { icon: '⚪', text: 'まだ調査されていません' };
+                if (!probe.dnsResolved) return { icon: '⚪', text: 'ドメインはまだ使用されていません（サーバー未設定）' };
+                if (probe.httpStatus === 200) return { icon: '🔴', text: 'サイトが稼働中です' };
+                if (probe.httpStatus && probe.httpStatus >= 400 && probe.httpStatus < 500) return { icon: '🟡', text: 'ドメインは存在しますが、アクセスがブロックされています' };
+                if (probe.httpStatus === 522 || probe.httpStatus === 523 || probe.httpStatus === 524) return { icon: '🟡', text: 'ドメインは存在しますが、サイトは表示されません' };
+                if (probe.error?.includes('timeout') || probe.error?.includes('Navigation failed')) return { icon: '🟡', text: 'ドメインは存在しますが、応答がありません' };
+                return { icon: '🟡', text: `ドメインは存在しますが、正常に表示されません（コード: ${probe.httpStatus ?? '不明'}）` };
+              };
+              const siteStatus = getSiteStatus();
+
+              return (
+                <>
+                  {/* Overall Risk Assessment */}
+                  {probe && (
+                    <div className={`rounded-xl border-2 p-5 ${rc.bg}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-2xl">{rc.icon}</span>
+                        <span className={`text-lg font-bold text-${rc.color}-700`}>{rc.label}</span>
+                      </div>
+                      <p className={`text-sm text-${rc.color}-700 mb-3`}>{rc.desc}</p>
+                      <div className={`text-xs rounded-lg p-3 ${riskLevel === 'high' ? 'bg-red-100' : riskLevel === 'medium' ? 'bg-amber-100' : 'bg-green-100'}`}>
+                        <span className="font-medium">💡 推奨アクション:</span> {rc.action}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Site Status - human readable */}
+                  <div className="text-xs space-y-3 mt-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base leading-none mt-0.5">{siteStatus.icon}</span>
+                      <div>
+                        <div className="font-medium text-gray-700">サイトの稼働状況</div>
+                        <div className="text-gray-500 mt-0.5">{siteStatus.text}</div>
+                      </div>
+                    </div>
+                    {probe?.finalUrl && probe.finalUrl !== `https://${threat.detectedDomains?.[0]?.domain}/` && probe.finalUrl !== `http://${threat.detectedDomains?.[0]?.domain}/` && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-base leading-none mt-0.5">↗️</span>
+                        <div>
+                          <div className="font-medium text-gray-700">転送先</div>
+                          <div className="text-gray-500 mt-0.5 font-mono text-[10px] break-all">{probe.finalUrl}</div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-gray-400 text-[10px]">
+                      最終調査: {probe ? new Date(probe.probeAt).toLocaleString('ja-JP') : '未実施'}
+                    </div>
+
+                    {/* Technical details - collapsible */}
+                    {probe && (
+                      <details className="text-[10px]">
+                        <summary className="text-gray-400 cursor-pointer hover:text-gray-600">技術詳細を表示</summary>
+                        <div className="mt-2 space-y-1 text-gray-500 font-mono pl-2 border-l-2 border-gray-200">
+                          <div>HTTPステータス: {probe.httpStatus ?? 'N/A'}</div>
+                          <div>IP: {probe.ip ?? 'N/A'}</div>
+                          <div>DNS解決: {probe.dnsResolved ? 'はい' : 'いいえ'}</div>
+                          {probe.finalUrl && <div className="break-all">最終URL: {probe.finalUrl}</div>}
+                          {probe.error && <div className="text-red-400">エラー: {probe.error}</div>}
+                        </div>
+                      </details>
+                    )}
                   </div>
-                )}
-                <div className="text-gray-400 mt-1">
-                  最終プローブ: {new Date(threat.webProbes[0].probeAt).toLocaleString('ja-JP')}
-                </div>
-                {threat.webProbes[0].error && (
-                  <div className="text-red-500 mt-1">⚠️ {threat.webProbes[0].error}</div>
-                )}
-              </dl>
-            ) : (
-              <p className="text-xs text-gray-400">まだプローブされていません</p>
-            )}
+                </>
+              );
+            })()}
           </div>
 
-          {/* Content Analysis */}
-          {contentAnalysis && (
+          {/* Threat Indicators - human readable checklist */}
+          {(contentAnalysis || threat.webProbes?.[0]) && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-bold mb-3">コンテンツ分析</h3>
+              <h3 className="text-sm font-bold mb-4">危険な兆候チェック</h3>
               <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500">コンテンツリスク</span>
-                  <span className={`font-bold text-sm ${contentAnalysis.contentRiskScore >= 70 ? 'text-red-600' : contentAnalysis.contentRiskScore >= 40 ? 'text-amber-600' : 'text-green-600'}`}>
-                    {contentAnalysis.contentRiskScore}/100
-                  </span>
-                </div>
-                {contentAnalysis.imageSimilarity !== null && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-500">画像類似度</span>
-                    <span className={`font-bold ${contentAnalysis.imageSimilarity > 0.7 ? 'text-red-600' : 'text-gray-600'}`}>
-                      {Math.round(contentAnalysis.imageSimilarity * 100)}%
-                    </span>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span>{contentAnalysis.hasLoginForm ? '🔴' : '⚪'}</span>
-                    <span>ログインフォーム</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>{contentAnalysis.hasPasswordField ? '🔴' : '⚪'}</span>
-                    <span>パスワード入力</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>{contentAnalysis.logoDetected ? '🟡' : '⚪'}</span>
-                    <span>ロゴ検出</span>
-                  </div>
-                </div>
-                {contentAnalysis.keywordMatches.length > 0 && (
-                  <div>
-                    <span className="text-gray-500">キーワード一致:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {contentAnalysis.keywordMatches.map((kw: string) => (
-                        <span key={kw} className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px]">{kw}</span>
-                      ))}
+                {contentAnalysis ? (
+                  <>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-base leading-none">{contentAnalysis.hasLoginForm ? '⚠️' : '✅'}</span>
+                      <div>
+                        <div className={`font-medium ${contentAnalysis.hasLoginForm ? 'text-red-700' : 'text-gray-700'}`}>ログイン画面の模倣</div>
+                        <div className="text-gray-400">{contentAnalysis.hasLoginForm ? '偽のログイン画面が検出されました' : '検出されませんでした'}</div>
+                      </div>
                     </div>
-                  </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-base leading-none">{contentAnalysis.hasPasswordField ? '⚠️' : '✅'}</span>
+                      <div>
+                        <div className={`font-medium ${contentAnalysis.hasPasswordField ? 'text-red-700' : 'text-gray-700'}`}>パスワード入力欄</div>
+                        <div className="text-gray-400">{contentAnalysis.hasPasswordField ? 'パスワードを盗む入力欄が検出されました' : '検出されませんでした'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-base leading-none">{contentAnalysis.logoDetected ? '⚠️' : '✅'}</span>
+                      <div>
+                        <div className={`font-medium ${contentAnalysis.logoDetected ? 'text-amber-700' : 'text-gray-700'}`}>自社ロゴの無断使用</div>
+                        <div className="text-gray-400">{contentAnalysis.logoDetected ? '自社ロゴが使用されている可能性があります' : '検出されませんでした'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-base leading-none">{contentAnalysis.imageSimilarity && contentAnalysis.imageSimilarity > 0.7 ? '⚠️' : '✅'}</span>
+                      <div>
+                        <div className={`font-medium ${contentAnalysis.imageSimilarity && contentAnalysis.imageSimilarity > 0.7 ? 'text-red-700' : 'text-gray-700'}`}>自社サイトとの外見類似</div>
+                        <div className="text-gray-400">
+                          {contentAnalysis.imageSimilarity !== null
+                            ? contentAnalysis.imageSimilarity > 0.7 ? `高い（${Math.round(contentAnalysis.imageSimilarity * 100)}%）— 自社サイトに酷似しています`
+                              : contentAnalysis.imageSimilarity > 0.5 ? `中程度（${Math.round(contentAnalysis.imageSimilarity * 100)}%）`
+                              : `低い（${Math.round(contentAnalysis.imageSimilarity * 100)}%）`
+                            : '測定できませんでした'}
+                        </div>
+                      </div>
+                    </div>
+                    {contentAnalysis.keywordMatches?.length > 0 && (
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-base leading-none">⚠️</span>
+                        <div>
+                          <div className="font-medium text-red-700">不審なキーワード</div>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {contentAnalysis.keywordMatches.map((kw: string) => (
+                              <span key={kw} className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-[10px]">{kw}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-gray-400">プローブ実行後にコンテンツを分析します</p>
                 )}
               </div>
             </div>
           )}
 
+          {/* Screenshot with annotation */}
           {threat.screenshotUrl && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-bold mb-3">スクリーンショット</h3>
-              <img src={threat.screenshotUrl.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || ''}${threat.screenshotUrl}` : threat.screenshotUrl} alt="Screenshot" className="rounded-lg border" />
+              <h3 className="text-sm font-bold mb-2">サイトの画面キャプチャ</h3>
+              <p className="text-[10px] text-gray-400 mb-3">
+                このサイトにアクセスした際の実際の画面です
+                {threat.webProbes?.[0]?.probeAt && `（${new Date(threat.webProbes[0].probeAt).toLocaleString('ja-JP')} 取得）`}
+              </p>
+              <img src={threat.screenshotUrl.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || ''}${threat.screenshotUrl}` : threat.screenshotUrl} alt="サイトの画面キャプチャ" className="rounded-lg border" />
             </div>
           )}
           {threat.whoisData && (
