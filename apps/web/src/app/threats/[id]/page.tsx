@@ -39,6 +39,7 @@ export default function ThreatDetailPage() {
   const [loading, setLoading] = useState(true);
   const [contentAnalysis, setContentAnalysis] = useState<any>(null);
   const [probing, setProbing] = useState(false);
+  const [probeStatus, setProbeStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
 
   // Takedown flow state
   const [step, setStep] = useState<TakedownStep>('idle');
@@ -64,14 +65,19 @@ export default function ThreatDetailPage() {
   const handleProbe = async () => {
     if (!threat) return;
     setProbing(true);
+    setProbeStatus('running');
     try {
       await triggerProbe(threat.id);
       const updated = await getThreat(threat.id);
       setThreat(updated);
       const ca = await getContentAnalysis(threat.id);
       setContentAnalysis(ca);
+      setProbeStatus('done');
+      setTimeout(() => setProbeStatus('idle'), 3000);
     } catch (e) {
       console.error('Probe failed', e);
+      setProbeStatus('error');
+      setTimeout(() => setProbeStatus('idle'), 3000);
     } finally {
       setProbing(false);
     }
@@ -430,9 +436,16 @@ export default function ThreatDetailPage() {
               <button
                 onClick={handleProbe}
                 disabled={probing}
-                className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium disabled:opacity-50"
+                className={`px-3 py-1 rounded-lg text-xs font-medium disabled:opacity-50 transition-all ${
+                  probeStatus === 'done' ? 'bg-green-600 text-white' :
+                  probeStatus === 'error' ? 'bg-red-600 text-white' :
+                  'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
-                {probing ? '実行中...' : '🔍 プローブ実行'}
+                {probeStatus === 'running' ? '⏳ プローブ実行中...' :
+                 probeStatus === 'done' ? '✅ 完了！' :
+                 probeStatus === 'error' ? '❌ エラー' :
+                 '🔍 プローブ実行'}
               </button>
             </div>
             {threat.webProbes?.[0] ? (
@@ -519,7 +532,7 @@ export default function ThreatDetailPage() {
           {threat.screenshotUrl && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-sm font-bold mb-3">スクリーンショット</h3>
-              <img src={threat.screenshotUrl} alt="Screenshot" className="rounded-lg border" />
+              <img src={threat.screenshotUrl.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || ''}${threat.screenshotUrl}` : threat.screenshotUrl} alt="Screenshot" className="rounded-lg border" />
             </div>
           )}
           {threat.whoisData && (

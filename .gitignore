@@ -5,3 +5,5 @@ dist/
 *.db
 *.db-journal
 screenshots/
+.vercel
+.git-credentials
