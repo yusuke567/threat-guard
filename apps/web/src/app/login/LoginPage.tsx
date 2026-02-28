@@ -28,7 +28,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <span className="text-5xl">🛡️</span>
-          <h1 className="text-2xl font-bold text-gray-900 mt-4">BrandShield</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mt-4">ThreatGuard</h1>
           <p className="text-gray-500 mt-1">ブランド保護ダッシュボードにログイン</p>
         </div>
 
@@ -47,7 +47,7 @@ export default function LoginPage() {
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@brandshield.com"
+              placeholder="admin@threatguard.com"
             />
           </div>
 
@@ -73,7 +73,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          BrandShield v0.1.0 - Brand Protection Dashboard
+          ThreatGuard v0.1.0 - Brand Protection Dashboard
         </p>
       </div>
     </div>

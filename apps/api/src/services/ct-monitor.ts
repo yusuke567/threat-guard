@@ -19,7 +19,7 @@ export async function fetchCTLogs(query: string): Promise<CTLogEntry[]> {
   const url = `https://crt.sh/?q=${encodeURIComponent(`%${query}%`)}&output=json`;
 
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'BrandShield/0.1' },
+    headers: { 'User-Agent': 'ThreatGuard/0.1' },
     signal: AbortSignal.timeout(30000),
   });
 

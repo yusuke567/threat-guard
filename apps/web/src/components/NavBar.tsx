@@ -12,7 +12,7 @@ export default function NavBar() {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
           <span className="text-2xl">🛡️</span>
-          <span className="text-xl font-bold text-gray-900">BrandShield</span>
+          <span className="text-xl font-bold text-gray-900">ThreatGuard</span>
         </a>
 
         {/* Desktop nav */}

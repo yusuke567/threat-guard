@@ -77,7 +77,7 @@ export default function Dashboard() {
       {showGuide && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 relative">
           <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-blue-400 hover:text-blue-600 text-lg">✕</button>
-          <h2 className="font-bold text-blue-900 text-lg">🛡️ BrandShieldへようこそ</h2>
+          <h2 className="font-bold text-blue-900 text-lg">🛡️ ThreatGuardへようこそ</h2>
           <p className="text-blue-700 text-sm mt-2 leading-relaxed">
             このダッシュボードでブランドのなりすまし脅威を監視・管理できます。
           </p>

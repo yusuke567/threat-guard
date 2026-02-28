@@ -5,7 +5,7 @@ import AuthGuard from '@/components/AuthGuard';
 import NavBar from '@/components/NavBar';
 
 export const metadata: Metadata = {
-  title: 'BrandShield - Brand Protection Dashboard',
+  title: 'ThreatGuard - Brand Protection Dashboard',
   description: 'Detect and take down brand impersonation threats',
 };
 

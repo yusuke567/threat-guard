@@ -1,10 +1,10 @@
 {
-  "name": "brand-shield",
+  "name": "threat-guard",
   "version": "0.1.0",
   "private": true,
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {
-    "dev:api": "npm run dev -w @brand-shield/api",
-    "build": "npm run build -w @brand-shield/shared && npm run build -w @brand-shield/api"
+    "dev:api": "npm run dev -w @threat-guard/api",
+    "build": "npm run build -w @threat-guard/shared && npm run build -w @threat-guard/api"
   }
 }

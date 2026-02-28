@@ -1,4 +1,4 @@
-# BrandShield 🛡️
+# ThreatGuard 🛡️
 
 ブランドなりすまし検知・テイクダウン支援SaaS
 
@@ -21,10 +21,10 @@ cp .env.example .env
 # .env を編集してDB接続情報、APIキーを設定
 
 # 3. DB セットアップ
-npm run db:push -w @brand-shield/api
+npm run db:push -w @threat-guard/api
 
 # 4. shared パッケージビルド
-npm run build -w @brand-shield/shared
+npm run build -w @threat-guard/shared
 
 # 5. API起動
 npm run dev:api
@@ -47,7 +47,7 @@ npm run dev:api
 ## プロジェクト構成
 
 ```
-brand-shield/
+threat-guard/
 ├── packages/shared/     # 共通型定義
 ├── apps/
 │   └── api/             # Express backend

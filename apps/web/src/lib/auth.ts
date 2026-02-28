@@ -23,7 +23,7 @@ export function useAuthState(): AuthContextType {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('brandshield_user');
+    const stored = localStorage.getItem('threatguard_user');
     if (stored) {
       try { setUser(JSON.parse(stored)); } catch {}
     }
@@ -41,12 +41,12 @@ export function useAuthState(): AuthContextType {
       throw new Error(err.error || 'Login failed');
     }
     const userData = await res.json();
-    localStorage.setItem('brandshield_user', JSON.stringify(userData));
+    localStorage.setItem('threatguard_user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('brandshield_user');
+    localStorage.removeItem('threatguard_user');
     setUser(null);
   };
 
