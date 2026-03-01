@@ -41,6 +41,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 }
 
 export function requireOrg(req: Request, res: Response, next: NextFunction) {
+  // superadmin bypasses org check
+  if (req.user?.role === 'superadmin') return next();
   if (!req.user?.organizationId) {
     return res.status(403).json({ error: 'No organization assigned' });
   }
