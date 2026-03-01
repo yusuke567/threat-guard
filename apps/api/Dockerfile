@@ -19,7 +19,7 @@ COPY apps/api ./apps/api
 RUN cd apps/api && npx prisma generate
 
 # Build shared package
-RUN npm run build -w @brand-shield/shared 2>/dev/null || true
+RUN npm run build -w @threat-guard/shared 2>/dev/null || true
 
 WORKDIR /app/apps/api
 
