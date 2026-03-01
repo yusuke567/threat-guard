@@ -3,10 +3,20 @@ import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 
-router.get('/stats', async (_req, res) => {
+router.get('/stats', async (req, res) => {
   try {
-    // Threat counts by risk level
+    const orgId = req.user!.organizationId!;
+
+    // Get org's brand IDs
+    const orgBrands = await prisma.brand.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, name: true },
+    });
+    const brandIds = orgBrands.map((b) => b.id);
+
+    // Threat counts by risk level - filtered by org
     const threats = await prisma.detectedDomain.findMany({
+      where: { brandId: { in: brandIds } },
       select: { riskScore: true, brandId: true, status: true, firstSeen: true },
     });
 
@@ -19,26 +29,23 @@ router.get('/stats', async (_req, res) => {
       else riskCounts.low++;
     }
 
-    // Brand breakdown
+    // Brand breakdown - org only
     const brands = await prisma.brand.findMany({
+      where: { organizationId: orgId },
       select: { id: true, name: true, _count: { select: { detectedDomains: true } } },
     });
-    const brandBreakdown = brands.map((b) => ({
-      name: b.name,
-      count: b._count.detectedDomains,
-    }));
+    const brandBreakdown = brands.map((b) => ({ name: b.name, count: b._count.detectedDomains }));
 
-    // Takedown stats
+    // Takedown stats - org only
     const takedowns = await prisma.takedownRequest.groupBy({
       by: ['status'],
+      where: { detectedDomain: { brandId: { in: brandIds } } },
       _count: true,
     });
     const takedownStats: Record<string, number> = {};
-    for (const t of takedowns) {
-      takedownStats[t.status] = t._count;
-    }
+    for (const t of takedowns) takedownStats[t.status] = t._count;
 
-    // Threat timeline (group by date)
+    // Timeline
     const timeline: Record<string, number> = {};
     for (const t of threats) {
       const date = t.firstSeen.toISOString().split('T')[0];
@@ -48,30 +55,23 @@ router.get('/stats', async (_req, res) => {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, count]) => ({ date, count }));
 
-    // Category breakdown
+    // Category breakdown - org only
     const analyses = await prisma.threatAnalysis.groupBy({
       by: ['category'],
+      where: { detectedDomain: { brandId: { in: brandIds } } },
       _count: true,
     });
-    const categoryBreakdown = analyses.map((a) => ({
-      category: a.category,
-      count: a._count,
-    }));
+    const categoryBreakdown = analyses.map((a) => ({ category: a.category, count: a._count }));
 
-    // Recent site changes (probes with status/content changes in last 48h)
+    // Recent changes - org only
     const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const recentProbes = await prisma.webProbe.findMany({
-      where: { probeAt: { gte: since } },
+      where: { probeAt: { gte: since }, detectedDomain: { brandId: { in: brandIds } } },
       orderBy: { probeAt: 'desc' },
       take: 50,
-      include: {
-        detectedDomain: {
-          select: { domain: true, brand: { select: { name: true } } },
-        },
-      },
+      include: { detectedDomain: { select: { domain: true, brand: { select: { name: true } } } } },
     });
 
-    // Group by domain and detect changes between consecutive probes
     const domainProbes = new Map<string, typeof recentProbes>();
     for (const p of recentProbes) {
       const key = p.detectedDomainId;
@@ -79,30 +79,20 @@ router.get('/stats', async (_req, res) => {
       domainProbes.get(key)!.push(p);
     }
 
-    const recentChanges: Array<{
-      domain: string;
-      brandName: string;
-      change: string;
-      detectedAt: string;
-    }> = [];
-
+    const recentChanges: Array<{ domain: string; brandName: string; change: string; detectedAt: string }> = [];
     for (const [, probes] of domainProbes) {
       if (probes.length < 2) continue;
       const [latest, previous] = probes;
       const changes: string[] = [];
-
-      if (latest.httpStatus !== previous.httpStatus) {
+      if (latest.httpStatus !== previous.httpStatus)
         changes.push(`HTTP ${previous.httpStatus ?? 'N/A'} → ${latest.httpStatus ?? 'N/A'}`);
-      }
-      if (latest.dnsResolved !== previous.dnsResolved) {
+      if (latest.dnsResolved !== previous.dnsResolved)
         changes.push(latest.dnsResolved ? 'DNS復旧' : 'DNS消失');
-      }
       if (latest.htmlSnippet && previous.htmlSnippet) {
         const prevLogin = previous.htmlSnippet.toLowerCase().includes('type="password"');
         const newLogin = latest.htmlSnippet.toLowerCase().includes('type="password"');
         if (!prevLogin && newLogin) changes.push('ログインフォーム出現');
       }
-
       for (const c of changes) {
         recentChanges.push({
           domain: latest.detectedDomain.domain,

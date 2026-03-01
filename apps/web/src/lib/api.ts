@@ -1,10 +1,29 @@
+import { getToken } from './auth';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> || {}),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (res.status === 401) {
+    // Token expired or invalid - clear and redirect
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('threatguard_token');
+      localStorage.removeItem('threatguard_user');
+      window.location.href = '/login';
+    }
+    throw new Error('Authentication required');
+  }
+
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(error.error || 'API error');
@@ -36,10 +55,7 @@ export const getThreat = (id: string) => fetchAPI<any>(`/threats/${id}`);
 
 // Scans
 export const triggerScan = (brandId: string, type: string) =>
-  fetchAPI<any>('/scans/trigger', {
-    method: 'POST',
-    body: JSON.stringify({ brandId, type }),
-  });
+  fetchAPI<any>('/scans/trigger', { method: 'POST', body: JSON.stringify({ brandId, type }) });
 export const getScans = (brandId?: string) => {
   const query = brandId ? `?brandId=${brandId}` : '';
   return fetchAPI<any[]>(`/scans${query}`);
@@ -47,17 +63,9 @@ export const getScans = (brandId?: string) => {
 
 // Takedowns
 export const generateTakedown = (detectedDomainId: string) =>
-  fetchAPI<any>('/takedowns', {
-    method: 'POST',
-    body: JSON.stringify({ detectedDomainId }),
-  });
-
+  fetchAPI<any>('/takedowns', { method: 'POST', body: JSON.stringify({ detectedDomainId }) });
 export const sendTakedownEmail = (takedownId: string, email: string) =>
-  fetchAPI<any>(`/takedowns/${takedownId}/send`, {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  });
-
+  fetchAPI<any>(`/takedowns/${takedownId}/send`, { method: 'POST', body: JSON.stringify({ email }) });
 export const downloadTakedownPdf = (takedownId: string) =>
   `${process.env.NEXT_PUBLIC_API_URL || '/api'}/takedowns/${takedownId}/pdf`;
 

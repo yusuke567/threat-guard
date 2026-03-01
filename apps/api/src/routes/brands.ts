@@ -5,7 +5,6 @@ import { z } from 'zod';
 const router = Router();
 
 const createBrandSchema = z.object({
-  organizationId: z.string().uuid(),
   name: z.string().min(1),
   domain: z.string().min(1),
   logoUrl: z.string().url().optional(),
@@ -18,23 +17,24 @@ const createBrandSchema = z.object({
   smtpPass: z.string().optional().nullable(),
 });
 
-const updateBrandSchema = createBrandSchema.partial().omit({ organizationId: true });
+const updateBrandSchema = createBrandSchema.partial();
 
-// List brands
+// List brands - filtered by user's organization
 router.get('/', async (req, res) => {
-  const { organizationId } = req.query;
+  const orgId = req.user!.organizationId!;
   const brands = await prisma.brand.findMany({
-    where: organizationId ? { organizationId: String(organizationId) } : undefined,
+    where: { organizationId: orgId },
     include: { _count: { select: { detectedDomains: true } } },
     orderBy: { createdAt: 'desc' },
   });
   res.json(brands);
 });
 
-// Get brand by ID
+// Get brand by ID - verify ownership
 router.get('/:id', async (req, res) => {
-  const brand = await prisma.brand.findUnique({
-    where: { id: req.params.id },
+  const orgId = req.user!.organizationId!;
+  const brand = await prisma.brand.findFirst({
+    where: { id: req.params.id, organizationId: orgId },
     include: {
       organization: true,
       _count: { select: { detectedDomains: true, scanJobs: true } },
@@ -44,12 +44,15 @@ router.get('/:id', async (req, res) => {
   res.json(brand);
 });
 
-// Create brand
+// Create brand - auto-assign to user's org
 router.post('/', async (req, res) => {
   const parsed = createBrandSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const brand = await prisma.brand.create({ data: parsed.data });
+  const orgId = req.user!.organizationId!;
+  const brand = await prisma.brand.create({
+    data: { ...parsed.data, organizationId: orgId },
+  });
   res.status(201).json(brand);
 });
 
@@ -57,6 +60,10 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const parsed = updateBrandSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const orgId = req.user!.organizationId!;
+  const existing = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+  if (!existing) return res.status(404).json({ error: 'Brand not found' });
 
   const brand = await prisma.brand.update({
     where: { id: req.params.id },
@@ -67,23 +74,20 @@ router.put('/:id', async (req, res) => {
 
 // Import whitelist domains from CSV
 router.post('/:id/whitelist/import', async (req, res) => {
-  const schema = z.object({
-    csv: z.string().min(1, 'CSV data is required'),
-  });
+  const schema = z.object({ csv: z.string().min(1, 'CSV data is required') });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const brand = await prisma.brand.findUnique({ where: { id: req.params.id } });
+  const orgId = req.user!.organizationId!;
+  const brand = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
   if (!brand) return res.status(404).json({ error: 'Brand not found' });
 
-  // Parse CSV: support comma, newline, semicolon separators
   const raw = parsed.data.csv;
   const domains = raw
     .split(/[,;\n\r]+/)
     .map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
     .filter((d) => d.length > 0 && d.includes('.'));
 
-  // Deduplicate with existing whitelist
   const existing = brand.whitelistDomains
     ? brand.whitelistDomains.split(',').map((d: string) => d.trim().toLowerCase()).filter(Boolean)
     : [];
@@ -97,7 +101,6 @@ router.post('/:id/whitelist/import', async (req, res) => {
     data: { whitelistDomains: merged.join(',') },
   });
 
-  // Mark any currently detected domains that match whitelist as false_positive
   let reclassified = 0;
   if (newDomains.length > 0) {
     const result = await prisma.detectedDomain.updateMany({
@@ -121,6 +124,10 @@ router.post('/:id/whitelist/import', async (req, res) => {
 
 // Delete brand
 router.delete('/:id', async (req, res) => {
+  const orgId = req.user!.organizationId!;
+  const existing = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+  if (!existing) return res.status(404).json({ error: 'Brand not found' });
+
   await prisma.brand.delete({ where: { id: req.params.id } });
   res.status(204).send();
 });

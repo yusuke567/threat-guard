@@ -4,13 +4,18 @@ import { probeDomain } from '../services/web-prober.js';
 
 const router = Router();
 
+// Helper: verify detectedDomain belongs to user's org
+async function verifyDomainOrg(domainId: string, organizationId: string) {
+  return prisma.detectedDomain.findFirst({
+    where: { id: domainId, brand: { organizationId } },
+  });
+}
+
 // Trigger a probe for a detected domain
 router.post('/:domainId', async (req, res) => {
   try {
-    // Verify domain exists
-    const domain = await prisma.detectedDomain.findUnique({
-      where: { id: req.params.domainId },
-    });
+    const orgId = req.user!.organizationId!;
+    const domain = await verifyDomainOrg(req.params.domainId, orgId);
     if (!domain) return res.status(404).json({ error: 'Domain not found' });
 
     const result = await probeDomain(req.params.domainId);
@@ -23,13 +28,12 @@ router.post('/:domainId', async (req, res) => {
 
 // Get probe history for a domain
 router.get('/:domainId/history', async (req, res) => {
+  const orgId = req.user!.organizationId!;
   const { limit = '20', page = '1' } = req.query;
   const take = Number(limit);
   const skip = (Number(page) - 1) * take;
 
-  const domain = await prisma.detectedDomain.findUnique({
-    where: { id: req.params.domainId },
-  });
+  const domain = await verifyDomainOrg(req.params.domainId, orgId);
   if (!domain) return res.status(404).json({ error: 'Domain not found' });
 
   const [data, total] = await Promise.all([

@@ -24,6 +24,9 @@ export default function NavBar() {
           <a href="/reports" className="text-gray-600 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
           {user && (
             <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-200">
+              {user.organizationName && (
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{user.organizationName}</span>
+              )}
               <span className="text-sm text-gray-500">{user.name || user.email}</span>
               <button onClick={logout} className="text-sm text-red-600 hover:text-red-700 font-medium">
                 ログアウト
@@ -57,11 +60,16 @@ export default function NavBar() {
           <a href="/phishing-patterns" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">📋 ユーザー報告</a>
           <a href="/reports" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
           {user && (
-            <div className="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-sm text-gray-500">{user.name || user.email}</span>
-              <button onClick={logout} className="text-sm text-red-600 hover:text-red-700 font-medium">
-                ログアウト
-              </button>
+            <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
+              {user.organizationName && (
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{user.organizationName}</span>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{user.name || user.email}</span>
+                <button onClick={logout} className="text-sm text-red-600 hover:text-red-700 font-medium">
+                  ログアウト
+                </button>
+              </div>
             </div>
           )}
         </div>

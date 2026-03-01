@@ -4,8 +4,20 @@ import { getAbuseContacts } from '../services/whois-abuse.js';
 import { analyzeContent } from '../services/content-analyzer.js';
 const router = Router();
 
-// List threats with filtering and pagination
+// Helper: get brand IDs belonging to user's org
+async function orgBrandIds(organizationId: string): Promise<string[]> {
+  const brands = await prisma.brand.findMany({
+    where: { organizationId },
+    select: { id: true },
+  });
+  return brands.map((b) => b.id);
+}
+
+// List threats - filtered by organization
 router.get('/', async (req, res) => {
+  const orgId = req.user!.organizationId!;
+  const brandIds = await orgBrandIds(orgId);
+
   const {
     status,
     category,
@@ -17,9 +29,11 @@ router.get('/', async (req, res) => {
     pageSize = '20',
   } = req.query;
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { brandId: { in: brandIds } };
   if (status) where.status = String(status);
-  if (brandId) where.brandId = String(brandId);
+  if (brandId && brandIds.includes(String(brandId))) {
+    where.brandId = String(brandId);
+  }
   if (minRiskScore) where.riskScore = { gte: Number(minRiskScore) };
   if (category) {
     where.analyses = { some: { category: String(category) } };
@@ -42,17 +56,12 @@ router.get('/', async (req, res) => {
     prisma.detectedDomain.count({ where }),
   ]);
 
-  res.json({
-    data,
-    total,
-    page: Number(page),
-    pageSize: take,
-    totalPages: Math.ceil(total / take),
-  });
+  res.json({ data, total, page: Number(page), pageSize: take, totalPages: Math.ceil(total / take) });
 });
 
-// Get threat detail
+// Get threat detail - verify org ownership
 router.get('/:id', async (req, res) => {
+  const orgId = req.user!.organizationId!;
   const threat = await prisma.detectedDomain.findUnique({
     where: { id: req.params.id },
     include: {
@@ -62,13 +71,23 @@ router.get('/:id', async (req, res) => {
       webProbes: { orderBy: { probeAt: 'desc' }, take: 5 },
     },
   });
-  if (!threat) return res.status(404).json({ error: 'Threat not found' });
+  if (!threat || threat.brand.organizationId !== orgId) {
+    return res.status(404).json({ error: 'Threat not found' });
+  }
   res.json(threat);
 });
 
-// Get content analysis for a threat
+// Content analysis - verify org
 router.get('/:id/content-analysis', async (req, res) => {
   try {
+    const orgId = req.user!.organizationId!;
+    const domain = await prisma.detectedDomain.findUnique({
+      where: { id: req.params.id },
+      include: { brand: { select: { organizationId: true } } },
+    });
+    if (!domain || domain.brand.organizationId !== orgId) {
+      return res.status(404).json({ error: 'Threat not found' });
+    }
     const result = await analyzeContent(req.params.id);
     res.json(result);
   } catch (err: any) {
@@ -78,9 +97,17 @@ router.get('/:id/content-analysis', async (req, res) => {
   }
 });
 
-// Get abuse contacts for a threat
+// Abuse contacts - verify org
 router.get('/:id/abuse-contacts', async (req, res) => {
   try {
+    const orgId = req.user!.organizationId!;
+    const domain = await prisma.detectedDomain.findUnique({
+      where: { id: req.params.id },
+      include: { brand: { select: { organizationId: true } } },
+    });
+    if (!domain || domain.brand.organizationId !== orgId) {
+      return res.status(404).json({ error: 'Threat not found' });
+    }
     const contacts = await getAbuseContacts(req.params.id);
     res.json(contacts);
   } catch (err: any) {

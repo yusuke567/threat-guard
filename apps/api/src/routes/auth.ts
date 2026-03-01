@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { signToken } from '../lib/auth-middleware.js';
 
 const router = Router();
 
@@ -10,26 +11,41 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-// Login
+// Login - returns JWT
 router.post('/login', async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid credentials' });
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const user = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+    include: { organization: true },
+  });
   if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
   const valid = await bcrypt.compare(parsed.data.password, user.hashedPassword);
   if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
-  res.json({
-    id: user.id,
+  const token = signToken({
+    userId: user.id,
     email: user.email,
-    name: user.name,
     organizationId: user.organizationId,
+    role: user.role,
+  });
+
+  res.json({
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      organizationId: user.organizationId,
+      organizationName: user.organization?.name ?? null,
+    },
   });
 });
 
-// Register (for initial setup)
+// Register
 router.post('/register', async (req, res) => {
   const schema = z.object({
     email: z.string().email(),

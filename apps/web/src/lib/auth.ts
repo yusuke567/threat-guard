@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect } from 'react';
 
 interface User {
   id: string;
   email: string;
   name: string | null;
+  role: string;
   organizationId: string | null;
+  organizationName: string | null;
 }
 
 interface AuthContextType {
@@ -40,17 +42,25 @@ export function useAuthState(): AuthContextType {
       const err = await res.json();
       throw new Error(err.error || 'Login failed');
     }
-    const userData = await res.json();
-    localStorage.setItem('threatguard_user', JSON.stringify(userData));
-    setUser(userData);
+    const data = await res.json();
+    // Store token separately
+    localStorage.setItem('threatguard_token', data.token);
+    localStorage.setItem('threatguard_user', JSON.stringify(data.user));
+    setUser(data.user);
   };
 
   const logout = () => {
+    localStorage.removeItem('threatguard_token');
     localStorage.removeItem('threatguard_user');
     setUser(null);
   };
 
   return { user, loading, login, logout };
+}
+
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('threatguard_token');
 }
 
 export { type User, type AuthContextType };

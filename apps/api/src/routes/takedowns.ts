@@ -6,11 +6,29 @@ import { generateTakedownPdf, sendTakedownEmail } from '../services/takedown-exp
 
 const router = Router();
 
+// Helper: verify detectedDomain belongs to user's org
+async function verifyDomainOrg(domainId: string, organizationId: string) {
+  return prisma.detectedDomain.findFirst({
+    where: { id: domainId, brand: { organizationId } },
+  });
+}
+
+// Helper: verify takedown belongs to user's org
+async function verifyTakedownOrg(takedownId: string, organizationId: string) {
+  return prisma.takedownRequest.findFirst({
+    where: { id: takedownId, detectedDomain: { brand: { organizationId } } },
+  });
+}
+
 // Generate takedown request
 router.post('/', async (req, res) => {
+  const orgId = req.user!.organizationId!;
   const schema = z.object({ detectedDomainId: z.string().uuid() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const domain = await verifyDomainOrg(parsed.data.detectedDomainId, orgId);
+  if (!domain) return res.status(404).json({ error: 'Domain not found' });
 
   const result = await generateTakedownTemplate(parsed.data.detectedDomainId);
   res.status(201).json(result);
@@ -18,11 +36,15 @@ router.post('/', async (req, res) => {
 
 // Update takedown status
 router.put('/:id', async (req, res) => {
+  const orgId = req.user!.organizationId!;
   const schema = z.object({
     status: z.enum(['draft', 'sent', 'acknowledged', 'completed', 'rejected']),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const existing = await verifyTakedownOrg(req.params.id, orgId);
+  if (!existing) return res.status(404).json({ error: 'Takedown not found' });
 
   const takedown = await prisma.takedownRequest.update({
     where: { id: req.params.id },
@@ -39,6 +61,10 @@ router.put('/:id', async (req, res) => {
 
 // Download takedown as PDF
 router.get('/:id/pdf', async (req, res) => {
+  const orgId = req.user!.organizationId!;
+  const existing = await verifyTakedownOrg(req.params.id, orgId);
+  if (!existing) return res.status(404).json({ error: 'Takedown not found' });
+
   try {
     const pdf = await generateTakedownPdf(req.params.id);
     res.setHeader('Content-Type', 'application/pdf');
@@ -52,12 +78,15 @@ router.get('/:id/pdf', async (req, res) => {
 
 // Send takedown via email
 router.post('/:id/send', async (req, res) => {
+  const orgId = req.user!.organizationId!;
   const schema = z.object({ email: z.string().email() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
+  const existing = await verifyTakedownOrg(req.params.id, orgId);
+  if (!existing) return res.status(404).json({ error: 'Takedown not found' });
+
   try {
-    // Save the abuse email to the takedown record
     await prisma.takedownRequest.update({
       where: { id: req.params.id },
       data: { abuseEmail: parsed.data.email },
@@ -65,7 +94,6 @@ router.post('/:id/send', async (req, res) => {
 
     await sendTakedownEmail(req.params.id, parsed.data.email);
 
-    // Update status to sent
     await prisma.takedownRequest.update({
       where: { id: req.params.id },
       data: { status: 'sent', sentAt: new Date() },

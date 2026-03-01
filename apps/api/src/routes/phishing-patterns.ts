@@ -3,11 +3,29 @@ import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 
+// Helper: verify brand belongs to user's org
+async function verifyBrandOrg(brandId: string, organizationId: string) {
+  return prisma.brand.findFirst({
+    where: { id: brandId, organizationId },
+  });
+}
+
+// Helper: verify pattern belongs to user's org
+async function verifyPatternOrg(patternId: string, organizationId: string) {
+  return prisma.phishingPattern.findFirst({
+    where: { id: patternId, brand: { organizationId } },
+  });
+}
+
 // List patterns for a brand
 router.get('/brands/:brandId/phishing-patterns', async (req, res) => {
   try {
+    const orgId = req.user!.organizationId!;
     const { brandId } = req.params;
     const { status } = req.query;
+
+    const brand = await verifyBrandOrg(brandId, orgId);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
 
     const where: any = { brandId };
     if (status) where.status = status as string;
@@ -26,7 +44,12 @@ router.get('/brands/:brandId/phishing-patterns', async (req, res) => {
 // Create pattern
 router.post('/brands/:brandId/phishing-patterns', async (req, res) => {
   try {
+    const orgId = req.user!.organizationId!;
     const { brandId } = req.params;
+
+    const brand = await verifyBrandOrg(brandId, orgId);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+
     const { reportedBy, patternType, url, domain, description, tags, severity, victimCount } = req.body;
 
     if (!description) {
@@ -56,7 +79,12 @@ router.post('/brands/:brandId/phishing-patterns', async (req, res) => {
 // Update pattern
 router.patch('/phishing-patterns/:id', async (req, res) => {
   try {
+    const orgId = req.user!.organizationId!;
     const { id } = req.params;
+
+    const existing = await verifyPatternOrg(id, orgId);
+    if (!existing) return res.status(404).json({ error: 'Pattern not found' });
+
     const { status, severity, victimCount, tags } = req.body;
 
     const data: any = {};
@@ -76,6 +104,11 @@ router.patch('/phishing-patterns/:id', async (req, res) => {
 // Delete pattern
 router.delete('/phishing-patterns/:id', async (req, res) => {
   try {
+    const orgId = req.user!.organizationId!;
+
+    const existing = await verifyPatternOrg(req.params.id, orgId);
+    if (!existing) return res.status(404).json({ error: 'Pattern not found' });
+
     await prisma.phishingPattern.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   } catch (err) {
@@ -84,24 +117,23 @@ router.delete('/phishing-patterns/:id', async (req, res) => {
   }
 });
 
-// Apply pattern to detection — creates a DetectedDomain from a reported pattern
+// Apply pattern to detection
 router.post('/phishing-patterns/:id/apply', async (req, res) => {
   try {
-    const pattern = await prisma.phishingPattern.findUniqueOrThrow({
-      where: { id: req.params.id },
-    });
+    const orgId = req.user!.organizationId!;
+
+    const pattern = await verifyPatternOrg(req.params.id, orgId);
+    if (!pattern) return res.status(404).json({ error: 'Pattern not found' });
 
     if (!pattern.domain) {
       return res.status(400).json({ error: 'Pattern has no domain to apply' });
     }
 
-    // Check if already detected
     const existing = await prisma.detectedDomain.findFirst({
       where: { brandId: pattern.brandId, domain: pattern.domain },
     });
 
     if (existing) {
-      // Update status of pattern
       await prisma.phishingPattern.update({
         where: { id: pattern.id },
         data: { status: 'rule_created' },
@@ -109,7 +141,6 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
       return res.json({ detectedDomain: existing, alreadyExisted: true });
     }
 
-    // Create new DetectedDomain from user report
     const detectedDomain = await prisma.detectedDomain.create({
       data: {
         brandId: pattern.brandId,
@@ -119,7 +150,6 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
       },
     });
 
-    // Mark pattern as applied
     await prisma.phishingPattern.update({
       where: { id: pattern.id },
       data: { status: 'rule_created' },

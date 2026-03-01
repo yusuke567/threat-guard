@@ -3,29 +3,42 @@ import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 
+// Helper: get brand IDs belonging to user's org
+async function orgBrandIds(organizationId: string): Promise<string[]> {
+  const brands = await prisma.brand.findMany({
+    where: { organizationId },
+    select: { id: true },
+  });
+  return brands.map((b) => b.id);
+}
+
 // GET /api/reports/generate?type=regulatory|board|clo&brandId=xxx
 router.get('/generate', async (req, res) => {
   try {
+    const orgId = req.user!.organizationId!;
     const { type, brandId } = req.query;
 
     if (!type || !['regulatory', 'board', 'clo'].includes(String(type))) {
       return res.status(400).json({ error: 'type must be regulatory, board, or clo' });
     }
 
-    const where: Record<string, unknown> = {};
-    if (brandId) where.brandId = String(brandId);
+    const brandIds = await orgBrandIds(orgId);
+
+    // If brandId specified, verify it belongs to this org
+    if (brandId && !brandIds.includes(String(brandId))) {
+      return res.status(404).json({ error: 'Brand not found' });
+    }
+
+    const where: Record<string, unknown> = {
+      brandId: brandId ? String(brandId) : { in: brandIds },
+    };
 
     const reportType = String(type);
 
-    // Common: brands for filter
-    const brands = await prisma.brand.findMany({
-      select: { id: true, name: true, domain: true },
-    });
-
     if (reportType === 'regulatory') {
-      return res.json(await generateRegulatoryReport(where));
+      return res.json(await generateRegulatoryReport(where, brandIds));
     } else if (reportType === 'board') {
-      return res.json(await generateBoardReport(where));
+      return res.json(await generateBoardReport(where, brandIds));
     } else {
       return res.json(await generateCloReport(where));
     }
@@ -35,7 +48,7 @@ router.get('/generate', async (req, res) => {
   }
 });
 
-async function generateRegulatoryReport(where: Record<string, unknown>) {
+async function generateRegulatoryReport(where: Record<string, unknown>, brandIds: string[]) {
   const threats = await prisma.detectedDomain.findMany({
     where,
     include: {
@@ -48,7 +61,7 @@ async function generateRegulatoryReport(where: Record<string, unknown>) {
   });
 
   const takedowns = await prisma.takedownRequest.findMany({
-    where: where.brandId ? { detectedDomain: { brandId: String(where.brandId) } } : {},
+    where: { detectedDomain: { brandId: where.brandId as any } },
     include: { detectedDomain: { select: { domain: true } } },
     orderBy: { createdAt: 'desc' },
   });
@@ -98,7 +111,7 @@ async function generateRegulatoryReport(where: Record<string, unknown>) {
   };
 }
 
-async function generateBoardReport(where: Record<string, unknown>) {
+async function generateBoardReport(where: Record<string, unknown>, brandIds: string[]) {
   const threats = await prisma.detectedDomain.findMany({
     where,
     select: { riskScore: true, brandId: true, status: true, firstSeen: true },
@@ -114,28 +127,31 @@ async function generateBoardReport(where: Record<string, unknown>) {
   }
 
   const brands = await prisma.brand.findMany({
-    where: where.brandId ? { id: String(where.brandId) } : {},
+    where: { id: { in: brandIds } },
     select: { id: true, name: true, _count: { select: { detectedDomains: true } } },
   });
 
-  const takedowns = await prisma.takedownRequest.groupBy({
-    by: ['status'],
-    _count: true,
+  const takedowns = await prisma.takedownRequest.findMany({
+    where: { detectedDomain: { brandId: { in: brandIds } } },
+    select: { status: true },
   });
   const takedownStats: Record<string, number> = {};
   for (const t of takedowns) {
-    takedownStats[t.status] = t._count;
+    takedownStats[t.status] = (takedownStats[t.status] || 0) + 1;
   }
-  const totalTakedowns = Object.values(takedownStats).reduce((a, b) => a + b, 0);
+  const totalTakedowns = takedowns.length;
   const completedTakedowns = takedownStats['completed'] || 0;
 
   const timeline = buildTimeline(threats);
 
-  // Category breakdown
-  const analyses = await prisma.threatAnalysis.groupBy({
-    by: ['category'],
-    _count: true,
+  const analyses = await prisma.threatAnalysis.findMany({
+    where: { detectedDomain: { brandId: { in: brandIds } } },
+    select: { category: true },
   });
+  const categoryCounts: Record<string, number> = {};
+  for (const a of analyses) {
+    categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1;
+  }
 
   return {
     type: 'board',
@@ -151,16 +167,15 @@ async function generateBoardReport(where: Record<string, unknown>) {
       name: b.name,
       count: b._count.detectedDomains,
     })),
-    categoryBreakdown: analyses.map((a) => ({
-      category: a.category,
-      count: a._count,
+    categoryBreakdown: Object.entries(categoryCounts).map(([category, count]) => ({
+      category,
+      count,
     })),
     timeline,
   };
 }
 
 async function generateCloReport(where: Record<string, unknown>) {
-  // High-risk threats only (score >= 60)
   const highRiskWhere = { ...where, riskScore: { gte: 60 } };
 
   const threats = await prisma.detectedDomain.findMany({
@@ -173,7 +188,6 @@ async function generateCloReport(where: Record<string, unknown>) {
     orderBy: { riskScore: 'desc' },
   });
 
-  // Registrar breakdown
   const registrarMap = new Map<string, number>();
   for (const t of threats) {
     for (const td of t.takedowns) {
