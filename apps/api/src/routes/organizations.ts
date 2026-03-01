@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
-import { requireAdmin } from '../lib/auth-middleware.js';
+import { requireSuperAdmin } from '../lib/auth-middleware.js';
 
 const router = Router();
 
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 // ── Admin-only routes ──────────────────────────────────────────
 
 // GET /api/organizations/all — list all organizations (admin)
-router.get('/all', requireAdmin, async (_req, res) => {
+router.get('/all', requireSuperAdmin, async (_req, res) => {
   const orgs = await prisma.organization.findMany({
     include: { _count: { select: { brands: true, users: true } } },
     orderBy: { createdAt: 'desc' },
@@ -30,7 +30,7 @@ router.get('/all', requireAdmin, async (_req, res) => {
 });
 
 // POST /api/organizations — create organization (admin)
-router.post('/', requireAdmin, async (req, res) => {
+router.post('/', requireSuperAdmin, async (req, res) => {
   const { name } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: 'Organization name is required' });
@@ -40,7 +40,7 @@ router.post('/', requireAdmin, async (req, res) => {
 });
 
 // PUT /api/organizations/:id — update organization (admin)
-router.put('/:id', requireAdmin, async (req, res) => {
+router.put('/:id', requireSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -54,7 +54,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
 });
 
 // GET /api/organizations/:id/users — list users in org (admin)
-router.get('/:id/users', requireAdmin, async (req, res) => {
+router.get('/:id/users', requireSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const users = await prisma.user.findMany({
     where: { organizationId: id },
@@ -65,7 +65,7 @@ router.get('/:id/users', requireAdmin, async (req, res) => {
 });
 
 // POST /api/organizations/:id/users — invite (create) user in org (admin)
-router.post('/:id/users', requireAdmin, async (req, res) => {
+router.post('/:id/users', requireSuperAdmin, async (req, res) => {
   const { id: organizationId } = req.params;
   const { email, name, password, role } = req.body;
 
@@ -101,7 +101,7 @@ router.post('/:id/users', requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/organizations/:id/users/:userId — remove user (admin)
-router.delete('/:id/users/:userId', requireAdmin, async (req, res) => {
+router.delete('/:id/users/:userId', requireSuperAdmin, async (req, res) => {
   const { id: organizationId, userId } = req.params;
 
   const user = await prisma.user.findFirst({
@@ -121,7 +121,7 @@ router.delete('/:id/users/:userId', requireAdmin, async (req, res) => {
 });
 
 // GET /api/organizations/:id — single org detail (admin)
-router.get('/:id', requireAdmin, async (req, res) => {
+router.get('/:id', requireSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const org = await prisma.organization.findUnique({
     where: { id },
