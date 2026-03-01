@@ -8,12 +8,11 @@ COPY package.json package-lock.json tsconfig.json ./
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
 
-RUN npm ci --workspace=@brand-shield/shared --workspace=@brand-shield/web --include-workspace-root
+RUN npm ci --workspace=@threat-guard/shared --workspace=@threat-guard/web --include-workspace-root
 
-RUN npm run build -w @brand-shield/shared
+RUN npm run build -w @threat-guard/shared
 
-ENV NEXT_PUBLIC_API_URL=https://api-production-7376b.up.railway.app/api
-RUN npm run build -w @brand-shield/web
+RUN npm run build -w @threat-guard/web
 
 WORKDIR /app/apps/web
 
