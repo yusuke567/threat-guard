@@ -46,3 +46,10 @@ export function requireOrg(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}

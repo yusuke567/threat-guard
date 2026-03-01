@@ -108,3 +108,16 @@ export const applyPhishingPattern = (id: string) =>
 // Abuse contacts
 export const getAbuseContacts = (threatId: string) =>
   fetchAPI<{ registrar: string; abuseEmail: string | null; source: string }>(`/threats/${threatId}/abuse-contacts`);
+
+// Admin: Organizations
+export const getAllOrganizations = () => fetchAPI<any[]>('/organizations/all');
+export const getOrganization = (id: string) => fetchAPI<any>(`/organizations/${id}`);
+export const updateOrganization = (id: string, name: string) =>
+  fetchAPI<any>(`/organizations/${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+
+// Admin: Organization Users
+export const getOrgUsers = (orgId: string) => fetchAPI<any[]>(`/organizations/${orgId}/users`);
+export const createOrgUser = (orgId: string, data: { email: string; name?: string; password: string; role: string }) =>
+  fetchAPI<any>(`/organizations/${orgId}/users`, { method: 'POST', body: JSON.stringify(data) });
+export const deleteOrgUser = (orgId: string, userId: string) =>
+  fetchAPI<void>(`/organizations/${orgId}/users/${userId}`, { method: 'DELETE' });

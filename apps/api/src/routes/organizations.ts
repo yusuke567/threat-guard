@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
+import { requireAdmin } from '../lib/auth-middleware.js';
 
 const router = Router();
 
-// Get current user's organization
+// Get current user's organization (any authenticated user)
 router.get('/', async (req, res) => {
   const orgId = req.user!.organizationId;
   if (!orgId) return res.json([]);
@@ -14,6 +16,122 @@ router.get('/', async (req, res) => {
   });
 
   res.json(org ? [org] : []);
+});
+
+// ── Admin-only routes ──────────────────────────────────────────
+
+// GET /api/organizations/all — list all organizations (admin)
+router.get('/all', requireAdmin, async (_req, res) => {
+  const orgs = await prisma.organization.findMany({
+    include: { _count: { select: { brands: true, users: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(orgs);
+});
+
+// POST /api/organizations — create organization (admin)
+router.post('/', requireAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    return res.status(400).json({ error: 'Organization name is required' });
+  }
+  const org = await prisma.organization.create({ data: { name: name.trim() } });
+  res.status(201).json(org);
+});
+
+// PUT /api/organizations/:id — update organization (admin)
+router.put('/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+  if (!name || typeof name !== 'string' || name.trim().length === 0) {
+    return res.status(400).json({ error: 'Organization name is required' });
+  }
+  const org = await prisma.organization.update({
+    where: { id },
+    data: { name: name.trim() },
+  });
+  res.json(org);
+});
+
+// GET /api/organizations/:id/users — list users in org (admin)
+router.get('/:id/users', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const users = await prisma.user.findMany({
+    where: { organizationId: id },
+    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(users);
+});
+
+// POST /api/organizations/:id/users — invite (create) user in org (admin)
+router.post('/:id/users', requireAdmin, async (req, res) => {
+  const { id: organizationId } = req.params;
+  const { email, name, password, role } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return res.status(409).json({ error: 'Email already in use' });
+  }
+
+  const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+  if (!org) {
+    return res.status(404).json({ error: 'Organization not found' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: {
+      email,
+      name: name || null,
+      hashedPassword,
+      role: role === 'admin' ? 'admin' : 'member',
+      organizationId,
+    },
+    select: { id: true, email: true, name: true, role: true, createdAt: true },
+  });
+  res.status(201).json(user);
+});
+
+// DELETE /api/organizations/:id/users/:userId — remove user (admin)
+router.delete('/:id/users/:userId', requireAdmin, async (req, res) => {
+  const { id: organizationId, userId } = req.params;
+
+  const user = await prisma.user.findFirst({
+    where: { id: userId, organizationId },
+  });
+  if (!user) {
+    return res.status(404).json({ error: 'User not found in this organization' });
+  }
+
+  // Prevent deleting yourself
+  if (userId === req.user!.userId) {
+    return res.status(400).json({ error: 'Cannot delete yourself' });
+  }
+
+  await prisma.user.delete({ where: { id: userId } });
+  res.json({ success: true });
+});
+
+// GET /api/organizations/:id — single org detail (admin)
+router.get('/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const org = await prisma.organization.findUnique({
+    where: { id },
+    include: {
+      _count: { select: { brands: true, users: true } },
+      brands: { select: { id: true, name: true, domain: true } },
+    },
+  });
+  if (!org) return res.status(404).json({ error: 'Organization not found' });
+  res.json(org);
 });
 
 export default router;

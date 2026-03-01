@@ -1,0 +1,292 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import AdminGuard from '@/components/AdminGuard';
+import { getOrganization, updateOrganization, getOrgUsers, createOrgUser, deleteOrgUser } from '@/lib/api';
+
+interface OrgDetail {
+  id: string;
+  name: string;
+  brands: { id: string; name: string; domain: string }[];
+  _count: { brands: number; users: number };
+}
+
+interface OrgUser {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string;
+  createdAt: string;
+}
+
+export default function AdminOrgDetailPage() {
+  const params = useParams();
+  const orgId = params.id as string;
+
+  const [org, setOrg] = useState<OrgDetail | null>(null);
+  const [users, setUsers] = useState<OrgUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Edit name
+  const [editName, setEditName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Invite form
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [invitePassword, setInvitePassword] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [inviting, setInviting] = useState(false);
+
+  const load = async () => {
+    try {
+      const [orgData, usersData] = await Promise.all([
+        getOrganization(orgId),
+        getOrgUsers(orgId),
+      ]);
+      setOrg(orgData);
+      setEditName(orgData.name);
+      setUsers(usersData);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [orgId]);
+
+  const handleUpdateName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) return;
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const updated = await updateOrganization(orgId, editName.trim());
+      setOrg(prev => prev ? { ...prev, name: updated.name } : prev);
+      setSuccess('Organization名を更新しました');
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail || !invitePassword) return;
+    setInviting(true);
+    setError('');
+    setSuccess('');
+    try {
+      await createOrgUser(orgId, {
+        email: inviteEmail,
+        name: inviteName || undefined,
+        password: invitePassword,
+        role: inviteRole,
+      });
+      setInviteEmail('');
+      setInviteName('');
+      setInvitePassword('');
+      setInviteRole('member');
+      setSuccess('ユーザーを追加しました');
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, email: string) => {
+    if (!confirm(`${email} を削除しますか？`)) return;
+    setError('');
+    setSuccess('');
+    try {
+      await deleteOrgUser(orgId, userId);
+      setSuccess('ユーザーを削除しました');
+      setUsers(prev => prev.filter(u => u.id !== userId));
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AdminGuard>
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      </AdminGuard>
+    );
+  }
+
+  if (!org) {
+    return (
+      <AdminGuard>
+        <div className="text-center py-20 text-gray-500">Organization が見つかりません</div>
+      </AdminGuard>
+    );
+  }
+
+  return (
+    <AdminGuard>
+      <div>
+        <div className="mb-6">
+          <a href="/admin/organizations" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            &larr; Organization 一覧に戻る
+          </a>
+        </div>
+
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">{org.name}</h1>
+
+        {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</div>}
+        {success && <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg text-sm">{success}</div>}
+
+        {/* Edit Name */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Organization 情報</h2>
+          <form onSubmit={handleUpdateName} className="flex gap-3">
+            <input
+              type="text"
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={saving || !editName.trim() || editName.trim() === org.name}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving ? '保存中...' : '名前を更新'}
+            </button>
+          </form>
+        </div>
+
+        {/* Brands */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            所属ブランド ({org.brands.length})
+          </h2>
+          {org.brands.length > 0 ? (
+            <div className="space-y-2">
+              {org.brands.map(brand => (
+                <div key={brand.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 rounded-lg">
+                  <span className="font-medium text-gray-900 text-sm">{brand.name}</span>
+                  <span className="text-gray-400 text-xs">{brand.domain}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">ブランドがありません</p>
+          )}
+        </div>
+
+        {/* Users */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            所属ユーザー ({users.length})
+          </h2>
+          {users.length > 0 ? (
+            <table className="w-full text-sm">
+              <thead className="border-b border-gray-200">
+                <tr>
+                  <th className="text-left py-2 font-medium text-gray-600">メール</th>
+                  <th className="text-left py-2 font-medium text-gray-600">名前</th>
+                  <th className="text-left py-2 font-medium text-gray-600">ロール</th>
+                  <th className="text-left py-2 font-medium text-gray-600">作成日</th>
+                  <th className="py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map(u => (
+                  <tr key={u.id} className="hover:bg-gray-50">
+                    <td className="py-2 text-gray-900">{u.email}</td>
+                    <td className="py-2 text-gray-600">{u.name || '—'}</td>
+                    <td className="py-2">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="py-2 text-gray-500">{new Date(u.createdAt).toLocaleDateString('ja-JP')}</td>
+                    <td className="py-2 text-right">
+                      <button
+                        onClick={() => handleDeleteUser(u.id, u.email)}
+                        className="text-red-500 hover:text-red-700 text-xs font-medium"
+                      >
+                        削除
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-gray-400">ユーザーがいません</p>
+          )}
+        </div>
+
+        {/* Invite User */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">ユーザー招待</h2>
+          <form onSubmit={handleInvite} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">メールアドレス *</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">名前</label>
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={e => setInviteName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">パスワード * (8文字以上)</label>
+                <input
+                  type="password"
+                  value={invitePassword}
+                  onChange={e => setInvitePassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">ロール</label>
+                <select
+                  value={inviteRole}
+                  onChange={e => setInviteRole(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="member">member</option>
+                  <option value="admin">admin</option>
+                </select>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={inviting || !inviteEmail || !invitePassword}
+              className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
+            >
+              {inviting ? '追加中...' : 'ユーザーを追加'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </AdminGuard>
+  );
+}
