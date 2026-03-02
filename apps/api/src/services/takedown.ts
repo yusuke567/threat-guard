@@ -19,14 +19,14 @@ export async function generateTakedownTemplate(
   const whois = domain.whoisData ? JSON.parse(domain.whoisData) : {};
   const registrar = whois?.registrar || 'Unknown Registrar';
 
-  let template: string;
+  let template = '';
 
   if (process.env.ANTHROPIC_API_KEY) {
-    // Use Claude API
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const anthropic = new Anthropic();
+    try {
+      const { default: Anthropic } = await import('@anthropic-ai/sdk');
+      const anthropic = new Anthropic();
 
-    const prompt = `You are a brand protection legal specialist. Generate a professional takedown request letter for the following case.
+      const prompt = `You are a brand protection legal specialist. Generate a professional takedown request letter for the following case.
 
 **Brand Owner:**
 - Organization: ${domain.brand.organization.name}
@@ -40,7 +40,6 @@ export async function generateTakedownTemplate(
 - Threat Category: ${analysis?.category || 'suspected brand abuse'}
 - Analysis: ${analysis?.reasoning || 'Domain closely resembles the legitimate brand domain'}
 
-**Instructions:**
 Generate a formal takedown request letter in English that:
 1. Identifies the brand owner and their rights
 2. Describes the infringing domain and the nature of infringement
@@ -51,14 +50,19 @@ Generate a formal takedown request letter in English that:
 
 Format it as a ready-to-send email.`;
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    });
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      });
 
-    template = response.content[0].type === 'text' ? response.content[0].text : '';
-  } else {
+      template = response.content[0].type === 'text' ? response.content[0].text : '';
+    } catch (err) {
+      console.error('Anthropic API failed, using fallback template:', err);
+    }
+  }
+
+  if (!template) {
     // Rule-based fallback template
     const categoryDesc = analysis?.category === 'phishing'
       ? 'phishing activity targeting our customers'

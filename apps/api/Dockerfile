@@ -11,6 +11,9 @@ COPY apps/api/package.json ./apps/api/
 
 RUN npm ci
 
+# Install Playwright Chromium with dependencies
+RUN npx playwright install --with-deps chromium
+
 # Copy source
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
