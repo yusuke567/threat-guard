@@ -18,8 +18,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return <LoginPage />;
   }
 
-  // superadmin without org → redirect to admin panel
-  if (user.role === 'superadmin' && !user.organizationId && typeof window !== 'undefined' && !window.location.pathname.startsWith('/admin')) {
+  // superadmin without org → redirect to admin panel (except alerts page)
+  if (user.role === 'superadmin' && !user.organizationId && typeof window !== 'undefined' 
+    && !window.location.pathname.startsWith('/admin') 
+    && !window.location.pathname.startsWith('/alerts')) {
     window.location.href = '/admin/organizations';
     return null;
   }
