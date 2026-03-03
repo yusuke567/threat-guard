@@ -5,6 +5,7 @@ import { scanDomainVariations } from './domain-generator.js';
 import { analyzeThreat } from './threat-analyzer.js';
 import { calculateRiskScore } from './risk-scorer.js';
 import { notifyNewThreat, notifyScanSummary, notifySiteChange } from './slack-notifier.js';
+import { emailNotifyNewThreat, emailNotifyScanSummary, emailNotifySiteChange } from './email-notifier.js';
 import { probeDomain } from './web-prober.js';
 import { analyzeContent } from './content-analyzer.js';
 
@@ -45,6 +46,20 @@ async function runFullScan(brandId: string, brandName: string) {
               category: analysis.category,
               source: domain.source,
             });
+
+            try {
+              await emailNotifyNewThreat({
+                brandId,
+                brandName,
+                domain: domain.domain,
+                detectedDomainId: domain.id,
+                riskScore: score,
+                category: analysis.category,
+                source: domain.source,
+              });
+            } catch (emailErr) {
+              console.error(`[Scheduler] Email notification failed for ${domain.domain}:`, emailErr);
+            }
           }
           if (score >= 80) highRiskCount++;
         } catch (err) {
@@ -54,6 +69,12 @@ async function runFullScan(brandId: string, brandName: string) {
 
       // Send scan summary
       await notifyScanSummary(brandName, newDomains.length, highRiskCount);
+
+      try {
+        await emailNotifyScanSummary(brandId, brandName, newDomains.length, highRiskCount);
+      } catch (emailErr) {
+        console.error(`[Scheduler] Email scan summary failed for ${brandName}:`, emailErr);
+      }
 
       await prisma.scanJob.update({
         where: { id: scanJob.id },
@@ -157,6 +178,19 @@ async function runWebProbes() {
           domain: domain.domain,
           changes: changeDetails,
         });
+
+        try {
+          await emailNotifySiteChange({
+            brandId: domain.brandId,
+            brandName: domain.brand.name,
+            domain: domain.domain,
+            detectedDomainId: domain.id,
+            riskScore: domain.riskScore ?? 0,
+            changes: changeDetails,
+          });
+        } catch (emailErr) {
+          console.error(`[Scheduler] Email site change notification failed for ${domain.domain}:`, emailErr);
+        }
 
         // Re-analyze content and recalculate risk
         try {

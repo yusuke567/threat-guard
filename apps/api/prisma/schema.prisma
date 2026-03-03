@@ -15,6 +15,9 @@ model User {
   role           String        @default("member")
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  alertEnabled   Boolean       @default(true)
+  alertThreshold Int           @default(60)
+  alertLogs      AlertLog[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -70,6 +73,7 @@ model DetectedDomain {
   analyses      ThreatAnalysis[]
   takedowns     TakedownRequest[]
   webProbes     WebProbe[]
+  alertLogs     AlertLog[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -161,4 +165,21 @@ model PhishingPattern {
   @@index([brandId])
   @@index([status])
   @@index([domain])
+}
+
+model AlertLog {
+  id               String         @id @default(uuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  detectedDomainId String
+  detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  type             String
+  subject          String
+  sentAt           DateTime       @default(now())
+  status           String         @default("sent")
+  error            String?
+
+  @@index([userId])
+  @@index([detectedDomainId])
+  @@index([sentAt])
 }

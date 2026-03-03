@@ -12,6 +12,7 @@ import dashboardRouter from './routes/dashboard.js';
 import webProbeRouter from './routes/web-probe.js';
 import reportsRouter from './routes/reports.js';
 import phishingPatternsRouter from './routes/phishing-patterns.js';
+import alertsRouter from './routes/alerts.js';
 import { startScheduler } from './services/scheduler.js';
 import { authMiddleware, requireOrg } from './lib/auth-middleware.js';
 
@@ -42,6 +43,7 @@ app.use('/api/dashboard', authMiddleware, requireOrg, dashboardRouter);
 app.use('/api/web-probe', authMiddleware, requireOrg, webProbeRouter);
 app.use('/api/reports', authMiddleware, requireOrg, reportsRouter);
 app.use('/api', authMiddleware, requireOrg, phishingPatternsRouter);
+app.use('/api/alerts', authMiddleware, alertsRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
