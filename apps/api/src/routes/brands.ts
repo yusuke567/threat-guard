@@ -10,6 +10,7 @@ const createBrandSchema = z.object({
   logoUrl: z.string().url().optional(),
   keywords: z.string().default(''),
   whitelistDomains: z.string().default(''),
+  organizationId: z.string().optional(),
   senderEmail: z.string().email().optional().nullable(),
   smtpHost: z.string().optional().nullable(),
   smtpPort: z.number().int().optional().nullable(),
@@ -19,22 +20,26 @@ const createBrandSchema = z.object({
 
 const updateBrandSchema = createBrandSchema.partial();
 
-// List brands - filtered by user's organization
+// List brands - filtered by user's organization (superadmin sees all)
 router.get('/', async (req, res) => {
-  const orgId = req.user!.organizationId!;
+  const where = req.user!.role === 'superadmin' && !req.user!.organizationId
+    ? {}
+    : { organizationId: req.user!.organizationId! };
   const brands = await prisma.brand.findMany({
-    where: { organizationId: orgId },
-    include: { _count: { select: { detectedDomains: true } } },
+    where,
+    include: { organization: true, _count: { select: { detectedDomains: true } } },
     orderBy: { createdAt: 'desc' },
   });
   res.json(brands);
 });
 
-// Get brand by ID - verify ownership
+// Get brand by ID - verify ownership (superadmin can access all)
 router.get('/:id', async (req, res) => {
-  const orgId = req.user!.organizationId!;
+  const where = req.user!.role === 'superadmin' && !req.user!.organizationId
+    ? { id: req.params.id }
+    : { id: req.params.id, organizationId: req.user!.organizationId! };
   const brand = await prisma.brand.findFirst({
-    where: { id: req.params.id, organizationId: orgId },
+    where,
     include: {
       organization: true,
       _count: { select: { detectedDomains: true, scanJobs: true } },
@@ -44,12 +49,17 @@ router.get('/:id', async (req, res) => {
   res.json(brand);
 });
 
-// Create brand - auto-assign to user's org
+// Create brand - auto-assign to user's org (superadmin can specify organizationId)
 router.post('/', async (req, res) => {
   const parsed = createBrandSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const orgId = req.user!.organizationId!;
+  const orgId = req.user!.role === 'superadmin'
+    ? (req.body.organizationId || req.user!.organizationId)
+    : req.user!.organizationId;
+
+  if (!orgId) return res.status(400).json({ error: 'Organization is required' });
+
   const brand = await prisma.brand.create({
     data: { ...parsed.data, organizationId: orgId },
   });
