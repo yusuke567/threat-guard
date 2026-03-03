@@ -11,6 +11,7 @@ export default function BrandsPage() {
   const [scanning, setScanning] = useState<string | null>(null);
   const [editingBrand, setEditingBrand] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '', managedDomains: '', senderEmail: '', smtpHost: '', smtpPort: '', smtpUser: '', smtpPass: '' });
+  const [smtpOpen, setSmtpOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
     domain: '',
@@ -81,6 +82,7 @@ export default function BrandsPage() {
 
   const startEdit = (brand: any) => {
     setEditingBrand(brand);
+    setSmtpOpen(false);
     const wl = brand.whitelistDomains
       ? brand.whitelistDomains.split(',').filter((d: string) => d.trim() !== brand.domain).join('\n')
       : '';
@@ -292,10 +294,24 @@ export default function BrandsPage() {
                       onChange={(e) => setEditForm({ ...editForm, managedDomains: e.target.value })}
                     />
                   </div>
-                  {/* SMTP Settings */}
+                  {/* SMTP Settings - Collapsible */}
                   <div className="border-t border-gray-200 pt-4 mt-2">
-                    <h4 className="text-sm font-bold text-gray-700 mb-3">📧 メール送信設定（テイクダウン申請用）</h4>
-                    <p className="text-xs text-gray-400 mb-3">自社ドメインのメールアドレスから送信するとレジストラの信頼度が上がります</p>
+                    <button
+                      type="button"
+                      onClick={() => setSmtpOpen(!smtpOpen)}
+                      className="flex items-center gap-2 text-sm font-bold text-gray-700 hover:text-gray-900 w-full text-left"
+                    >
+                      <svg
+                        className={`w-4 h-4 transition-transform ${smtpOpen ? 'rotate-90' : ''}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      📧 メール送信設定（テイクダウン申請用）
+                    </button>
+                    {smtpOpen && (
+                    <>
+                    <p className="text-xs text-gray-400 mb-3 mt-2">未設定の場合、システムデフォルトのSMTP設定が使用されます</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">送信元メールアドレス</label>
@@ -348,6 +364,8 @@ export default function BrandsPage() {
                         />
                       </div>
                     </div>
+                    </>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">

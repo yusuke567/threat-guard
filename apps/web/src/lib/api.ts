@@ -115,6 +115,18 @@ export const getOrganization = (id: string) => fetchAPI<any>(`/organizations/${i
 export const updateOrganization = (id: string, name: string) =>
   fetchAPI<any>(`/organizations/${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
 
+// Alerts
+export const getAlerts = (page?: number, limit?: number) => {
+  const params = new URLSearchParams();
+  if (page) params.set("page", String(page));
+  if (limit) params.set("limit", String(limit));
+  const query = params.toString() ? `?${params}` : "";
+  return fetchAPI<any>(`/alerts${query}`);
+};
+export const getAlertSettings = () => fetchAPI<any>("/alerts/settings");
+export const updateAlertSettings = (data: { alertEnabled?: boolean; alertThreshold?: number }) =>
+  fetchAPI<any>("/alerts/settings", { method: "PUT", body: JSON.stringify(data) });
+
 // Admin: Organization Users
 export const getOrgUsers = (orgId: string) => fetchAPI<any[]>(`/organizations/${orgId}/users`);
 export const createOrgUser = (orgId: string, data: { email: string; name?: string; password: string; role: string }) =>
