@@ -77,7 +77,7 @@ function wrapHtml(title: string, body: string): string {
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
 <tr><td style="background:#1e293b;padding:20px 24px;">
-  <h1 style="margin:0;color:#ffffff;font-size:18px;">🛡️ Brand Shield Alert</h1>
+  <h1 style="margin:0;color:#ffffff;font-size:18px;">🛡️ ThreatGuard Alert</h1>
 </td></tr>
 <tr><td style="padding:24px;">
 ${body}
@@ -236,7 +236,7 @@ export async function emailNotifyNewThreat(alert: EmailThreatAlert): Promise<voi
   const users = await getEligibleUsers(alert.brandId, alert.riskScore);
   if (users.length === 0) return;
 
-  const subject = `[Brand Shield] ${riskEmoji(alert.riskScore)} New Threat: ${alert.domain} (Score: ${alert.riskScore})`;
+  const subject = `[ThreatGuard] ${riskEmoji(alert.riskScore)} New Threat: ${alert.domain} (Score: ${alert.riskScore})`;
   const html = wrapHtml(subject, buildNewThreatHtml(alert));
 
   for (const user of users) {
@@ -290,7 +290,7 @@ export async function emailNotifySiteChange(alert: EmailSiteChangeAlert): Promis
   const users = await getEligibleUsers(alert.brandId, alert.riskScore);
   if (users.length === 0) return;
 
-  const subject = `[Brand Shield] 🔄 Site Change: ${alert.domain}`;
+  const subject = `[ThreatGuard] 🔄 Site Change: ${alert.domain}`;
   const html = wrapHtml(subject, buildSiteChangeHtml(alert));
 
   for (const user of users) {
@@ -370,7 +370,7 @@ export async function emailNotifyScanSummary(
   });
   if (!latestDomain) return;
 
-  const subject = `[Brand Shield] 📊 Scan Summary: ${brandName} — ${newThreats} new threats`;
+  const subject = `[ThreatGuard] 📊 Scan Summary: ${brandName} — ${newThreats} new threats`;
   const html = wrapHtml(subject, buildScanSummaryHtml(brandName, newThreats, highRiskCount));
 
   for (const user of users) {

@@ -66,4 +66,44 @@ router.put('/settings', async (req, res) => {
   res.json(user);
 });
 
+// POST /api/alerts/test-email — send a test alert email to the current user
+router.post('/test-email', async (req, res) => {
+  const userId = req.user!.userId;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { organization: { include: { brands: { take: 1 } } } },
+  });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const brand = user.organization?.brands?.[0];
+  if (!brand) return res.status(400).json({ error: 'No brand configured' });
+
+  // Find a detected domain for this brand (or create a dummy context)
+  const detectedDomain = await prisma.detectedDomain.findFirst({
+    where: { brandId: brand.id },
+    orderBy: { riskScore: 'desc' },
+  });
+
+  if (!detectedDomain) return res.status(400).json({ error: 'No detected domains found' });
+
+  try {
+    const { emailNotifyNewThreat } = await import('../services/email-notifier.js');
+    await emailNotifyNewThreat({
+      brandId: brand.id,
+      brandName: brand.name,
+      domain: detectedDomain.domain,
+      detectedDomainId: detectedDomain.id,
+      riskScore: detectedDomain.riskScore,
+      category: 'test',
+      source: 'test_email',
+    });
+
+    res.json({ success: true, message: `Test email sent to ${user.email}` });
+  } catch (err) {
+    console.error('[Test Email] Error:', err);
+    res.status(500).json({ error: 'Failed to send test email', detail: String(err) });
+  }
+});
+
 export default router;
