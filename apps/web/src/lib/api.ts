@@ -1,6 +1,7 @@
 import { getToken } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+// Always use relative /api path — Vercel rewrites proxy to Railway backend
+const API_BASE = '/api';
 
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
@@ -67,7 +68,7 @@ export const generateTakedown = (detectedDomainId: string) =>
 export const sendTakedownEmail = (takedownId: string, email: string) =>
   fetchAPI<any>(`/takedowns/${takedownId}/send`, { method: 'POST', body: JSON.stringify({ email }) });
 export const downloadTakedownPdf = (takedownId: string) =>
-  `${process.env.NEXT_PUBLIC_API_URL || '/api'}/takedowns/${takedownId}/pdf`;
+  `/api/takedowns/${takedownId}/pdf`;
 
 // Dashboard
 export const getDashboardStats = () => fetchAPI<any>('/dashboard/stats');

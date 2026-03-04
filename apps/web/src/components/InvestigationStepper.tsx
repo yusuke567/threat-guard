@@ -252,7 +252,7 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
                     <div className="rounded-lg border border-gray-200 p-3">
                       <h4 className="text-xs font-bold text-gray-700 mb-2">サイトの画面キャプチャ</h4>
                       <img
-                        src={threat.screenshotUrl.startsWith('/') ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || ''}${threat.screenshotUrl}` : threat.screenshotUrl}
+                        src={threat.screenshotUrl.startsWith('/') ? threat.screenshotUrl : threat.screenshotUrl}
                         alt="サイトの画面キャプチャ"
                         className="rounded border w-full"
                       />

@@ -2,7 +2,7 @@
 const nextConfig = {
   transpilePackages: ['@threat-guard/shared'],
   async rewrites() {
-    const apiUrl = process.env.API_INTERNAL_URL || 'http://localhost:3001';
+    const apiUrl = process.env.API_INTERNAL_URL || 'https://threat-guard-production.up.railway.app';
     return [
       {
         source: '/api/:path*',

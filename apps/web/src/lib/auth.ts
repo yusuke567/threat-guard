@@ -18,7 +18,8 @@ interface AuthContextType {
   logout: () => void;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api';
+// Always use relative /api path — Vercel rewrites proxy to Railway backend
+const API_BASE = '/api';
 
 export function useAuthState(): AuthContextType {
   const [user, setUser] = useState<User | null>(null);
