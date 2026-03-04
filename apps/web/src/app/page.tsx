@@ -1,64 +1,100 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import StatCard from '@/components/StatCard';
 import ThreatTable from '@/components/ThreatTable';
 import Tooltip from '@/components/Tooltip';
-import { getThreats, getDashboardStats } from '@/lib/api';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, Tooltip as RTooltip,
-} from 'recharts';
+import { getThreats, getDashboardStats, getBrands } from '@/lib/api';
 
-const RISK_COLORS = ['#dc2626', '#f59e0b', '#3b82f6', '#22c55e'];
-const CATEGORY_COLORS: Record<string, string> = {
-  phishing: '#dc2626',
-  brand_abuse: '#f59e0b',
-  parked: '#6b7280',
-  legitimate: '#22c55e',
-  unknown: '#a855f7',
+type FilterState = {
+  brandId: string;
+  period: string;
+  status: string;
+  minRiskScore: string;
+  sortBy: string;
+  order: string;
+  page: string;
+  pageSize: string;
 };
-const CATEGORY_LABELS: Record<string, string> = {
-  phishing: 'フィッシング',
-  brand_abuse: 'ブランド悪用',
-  parked: 'パーク',
-  legitimate: '正規',
-  unknown: '不明',
-};
-const TAKEDOWN_LABELS: Record<string, string> = {
-  draft: '下書き',
-  sent: '申請済',
-  acknowledged: '受領確認',
-  completed: '削除完了',
-  rejected: '申請却下',
-};
+
+type SummaryFilter = 'all' | 'action_needed' | 'monitoring' | 'resolved';
 
 export default function Dashboard() {
   const [threats, setThreats] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
+  const [brands, setBrands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(true);
+  const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>('all');
+  const [filters, setFilters] = useState<FilterState>({
+    brandId: '',
+    period: '',
+    status: '',
+    minRiskScore: '',
+    sortBy: 'riskScore',
+    order: 'desc',
+    page: '1',
+    pageSize: '20',
+  });
 
+  // Fetch brands on mount
   useEffect(() => {
+    getBrands().then(setBrands).catch(console.error);
+  }, []);
+
+  // Fetch threats when filters change
+  useEffect(() => {
+    setLoading(true);
+    const params: Record<string, string> = {};
+
+    // Apply filters
+    if (filters.brandId) params.brandId = filters.brandId;
+    if (filters.status) params.status = filters.status;
+    if (filters.minRiskScore) params.minRiskScore = filters.minRiskScore;
+    if (filters.sortBy) params.sortBy = filters.sortBy;
+    if (filters.order) params.order = filters.order;
+    if (filters.page) params.page = filters.page;
+    if (filters.pageSize) params.pageSize = filters.pageSize;
+
+    // Apply summary filter overrides
+    if (summaryFilter === 'action_needed') {
+      params.minRiskScore = '60';
+      delete params.status;
+    } else if (summaryFilter === 'monitoring') {
+      params.minRiskScore = '40';
+      // Exclude high risk
+      if (!params.status) params.status = 'new_domain';
+    } else if (summaryFilter === 'resolved') {
+      params.status = 'resolved';
+      delete params.minRiskScore;
+    }
+
+    // Period filter
+    if (filters.period) {
+      const now = new Date();
+      let from: Date | null = null;
+      if (filters.period === 'today') {
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (filters.period === '7d') {
+        from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else if (filters.period === '30d') {
+        from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      }
+      if (from) {
+        params.fromDate = from.toISOString();
+      }
+    }
+
     Promise.all([
-      getThreats({ sortBy: 'riskScore', order: 'desc', pageSize: '100' }),
+      getThreats(params),
       getDashboardStats(),
     ])
       .then(([t, s]) => { setThreats(t); setStats(s); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [filters, summaryFilter]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
-  }
-
-  if (error) {
+  if (error && !threats) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
         <p className="font-medium">エラーが発生しました</p>
@@ -67,12 +103,24 @@ export default function Dashboard() {
     );
   }
 
-  const data = threats?.data || [];
   const rc = stats?.riskCounts || { danger: 0, high: 0, medium: 0, low: 0 };
-  const totalTakedowns = Object.values(stats?.takedownStats || {}).reduce((a: number, b: any) => a + b, 0) as number;
+  const resolvedCount = threats?.data?.filter((t: any) => t.status === 'resolved').length || 0;
+  const actionNeeded = rc.danger + rc.high;
+  const monitoring = rc.medium;
+  const resolved = rc.low + resolvedCount;
+
+  const handleSummaryClick = (filter: SummaryFilter) => {
+    setSummaryFilter(summaryFilter === filter ? 'all' : filter);
+    setFilters(prev => ({ ...prev, page: '1' }));
+  };
+
+  const updateFilter = (key: keyof FilterState, value: string) => {
+    setSummaryFilter('all');
+    setFilters(prev => ({ ...prev, [key]: value, page: '1' }));
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Welcome Guide */}
       {showGuide && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 relative">
@@ -99,218 +147,178 @@ export default function Dashboard() {
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
-        <p className="text-gray-500 mt-1">ブランド保護状況の概要</p>
+        <h1 className="text-2xl font-bold text-gray-900">脅威一覧</h1>
+        <p className="text-gray-500 mt-1">検知されたなりすまし脅威の監視・管理</p>
       </div>
 
-      {/* Action Cards - 今日やるべきこと */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-gray-900">📌 今日やるべきこと</h2>
-        {rc.danger === 0 && rc.high === 0 && (stats?.takedownStats?.sent || 0) === 0 ? (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-            <span className="text-2xl">✅</span>
+      {/* Summary Cards - clickable filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <button
+          onClick={() => handleSummaryClick('action_needed')}
+          className={`text-left rounded-xl border-2 p-4 transition-all ${
+            summaryFilter === 'action_needed'
+              ? 'border-red-400 bg-red-50 ring-2 ring-red-200'
+              : 'border-gray-200 bg-white hover:border-red-200 hover:bg-red-50/50'
+          }`}
+        >
+          <div className="flex items-center justify-between">
             <div>
-              <p className="font-bold text-green-800">現在、対応が必要な脅威はありません</p>
-              <p className="text-green-600 text-sm mt-0.5">定期スキャンで自動的に監視されています</p>
+              <p className="text-sm text-gray-500">🔴 対応が必要</p>
+              <p className="text-3xl font-bold text-red-600 mt-1">{actionNeeded}<span className="text-base font-normal text-gray-400 ml-1">件</span></p>
             </div>
+            <div className="text-4xl opacity-20">🚨</div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {rc.danger > 0 && (
-              <a href="/threats?minRiskScore=80" className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-center gap-3 hover:bg-red-100 hover:border-red-300 transition-colors group">
-                <span className="text-2xl">🚨</span>
-                <div>
-                  <p className="font-bold text-red-800">即対応が必要: {rc.danger}件</p>
-                  <p className="text-red-600 text-sm mt-0.5 group-hover:underline">削除申請へ →</p>
-                </div>
-              </a>
-            )}
-            {rc.high > 0 && (
-              <a href="/threats?minRiskScore=60" className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 flex items-center gap-3 hover:bg-orange-100 hover:border-orange-300 transition-colors group">
-                <span className="text-2xl">👁</span>
-                <div>
-                  <p className="font-bold text-orange-800">確認待ち: {rc.high}件</p>
-                  <p className="text-orange-600 text-sm mt-0.5 group-hover:underline">詳細を確認 →</p>
-                </div>
-              </a>
-            )}
-            {(stats?.takedownStats?.sent || 0) > 0 && (
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-center gap-3">
-                <span className="text-2xl">📋</span>
-                <div>
-                  <p className="font-bold text-blue-800">削除申請中: {stats.takedownStats.sent}件</p>
-                  <p className="text-blue-600 text-sm mt-0.5">レジストラからの回答を待っています</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          <p className="text-xs text-gray-400 mt-2">リスクスコア60以上 — 削除申請を検討</p>
+        </button>
 
-      {/* Risk Level Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="🔴 危険" value={rc.danger} icon="🚨" color="red" subtitle="即削除申請推奨"
-          tooltip="リスクスコア80以上。即座に削除申請が必要です。" />
-        <StatCard title="🟠 高" value={rc.high} icon="⚠️" color="yellow" subtitle="要確認・削除申請検討"
-          tooltip="リスクスコア60〜79。削除申請が必要か判断してください。" />
-        <StatCard title="🟡 中" value={rc.medium} icon="👁" color="blue" subtitle="監視継続"
-          tooltip="リスクスコア40〜59。監視を継続してください。" />
-        <StatCard title="🟢 低" value={rc.low} icon="✅" color="green" subtitle="対応不要"
-          tooltip="リスクスコア39以下。対応は不要です。" />
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Threat Timeline */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📈 脅威検知トレンド</h2>
-          {stats?.timelineData?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={stats.timelineData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(v: string) => v.slice(5)} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <RTooltip formatter={(v: any) => [`${v}件`, '検知数']} labelFormatter={(l: any) => l} />
-                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-400 text-sm py-10 text-center">データがありません</p>
-          )}
-        </div>
-
-        {/* Category Breakdown */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">🏷️ 脅威カテゴリ</h2>
-          {stats?.categoryBreakdown?.length > 0 ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
-                <Pie
-                  data={stats.categoryBreakdown.map((c: any) => ({
-                    name: CATEGORY_LABELS[c.category] || c.category,
-                    value: c.count,
-                    fill: CATEGORY_COLORS[c.category] || '#6b7280',
-                  }))}
-                  cx="50%" cy="50%"
-                  innerRadius={50} outerRadius={80}
-                  dataKey="value"
-                  label={({ name, value }: any) => `${name}: ${value}`}
-                  labelLine={false}
-                >
-                  {stats.categoryBreakdown.map((c: any, i: number) => (
-                    <Cell key={i} fill={CATEGORY_COLORS[c.category] || '#6b7280'} />
-                  ))}
-                </Pie>
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-gray-400 text-sm py-10 text-center">データがありません</p>
-          )}
-        </div>
-      </div>
-
-      {/* Brand Breakdown + Takedown Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Brand Breakdown */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">🏢 ブランド別脅威</h2>
-          <div className="space-y-3">
-            {(stats?.brandBreakdown || []).map((b: any) => {
-              const maxCount = Math.max(...(stats?.brandBreakdown || []).map((x: any) => x.count), 1);
-              return (
-                <div key={b.name}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">{b.name}</span>
-                    <span className="text-gray-500">{b.count}件</span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full transition-all"
-                      style={{ width: `${(b.count / maxCount) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            {!(stats?.brandBreakdown?.length) && (
-              <p className="text-gray-400 text-sm text-center py-4">ブランド未登録</p>
-            )}
-          </div>
-        </div>
-
-        {/* Takedown Progress */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📋 削除申請の進捗</h2>
-          {totalTakedowns > 0 ? (
-            <div className="space-y-3">
-              {Object.entries(stats.takedownStats).map(([status, count]: [string, any]) => (
-                <div key={status} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${
-                      status === 'completed' ? 'bg-green-500' :
-                      status === 'sent' ? 'bg-blue-500' :
-                      status === 'draft' ? 'bg-gray-400' :
-                      status === 'rejected' ? 'bg-red-500' :
-                      'bg-yellow-500'
-                    }`} />
-                    <span className="text-sm text-gray-700">{TAKEDOWN_LABELS[status] || status}</span>
-                  </div>
-                  <span className="text-sm font-bold text-gray-900">{count}件</span>
-                </div>
-              ))}
-              <div className="border-t pt-3 mt-3 flex justify-between">
-                <span className="text-sm font-medium text-gray-600">合計</span>
-                <span className="text-sm font-bold text-gray-900">{totalTakedowns}件</span>
-              </div>
+        <button
+          onClick={() => handleSummaryClick('monitoring')}
+          className={`text-left rounded-xl border-2 p-4 transition-all ${
+            summaryFilter === 'monitoring'
+              ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
+              : 'border-gray-200 bg-white hover:border-yellow-200 hover:bg-yellow-50/50'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">🟡 確認待ち</p>
+              <p className="text-3xl font-bold text-yellow-600 mt-1">{monitoring}<span className="text-base font-normal text-gray-400 ml-1">件</span></p>
             </div>
-          ) : (
-            <div className="text-center py-6">
-              <p className="text-gray-400 text-sm">削除申請はまだありません</p>
-              <p className="text-gray-300 text-xs mt-1">脅威詳細から申請を作成できます</p>
+            <div className="text-4xl opacity-20">👁</div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">リスクスコア40〜59 — 監視継続</p>
+        </button>
+
+        <button
+          onClick={() => handleSummaryClick('resolved')}
+          className={`text-left rounded-xl border-2 p-4 transition-all ${
+            summaryFilter === 'resolved'
+              ? 'border-green-400 bg-green-50 ring-2 ring-green-200'
+              : 'border-gray-200 bg-white hover:border-green-200 hover:bg-green-50/50'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">🟢 対応済み</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">{resolved}<span className="text-base font-normal text-gray-400 ml-1">件</span></p>
             </div>
-          )}
-        </div>
+            <div className="text-4xl opacity-20">✅</div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">対応不要 or 削除完了</p>
+        </button>
       </div>
 
-      {/* Recent Site Changes */}
-      {stats?.recentChanges?.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">🔄 直近のサイト変化</h2>
-          <div className="space-y-3">
-            {stats.recentChanges.map((c: any, i: number) => (
-              <div key={i} className="flex items-start gap-3 text-sm border-b border-gray-100 pb-3 last:border-0">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-medium text-gray-900">{c.domain}</span>
-                    <span className="text-xs text-gray-400">{c.brandName}</span>
-                  </div>
-                  <p className="text-gray-600 mt-0.5">{c.change}</p>
-                </div>
-                <span className="text-xs text-gray-400 whitespace-nowrap">
-                  {new Date(c.detectedAt).toLocaleString('ja-JP', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
+      {/* Filter Bar */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <select
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            value={filters.brandId}
+            onChange={(e) => updateFilter('brandId', e.target.value)}
+          >
+            <option value="">全ブランド</option>
+            {brands.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
             ))}
-          </div>
+          </select>
+
+          <select
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            value={filters.period}
+            onChange={(e) => updateFilter('period', e.target.value)}
+          >
+            <option value="">全期間</option>
+            <option value="today">今日</option>
+            <option value="7d">直近7日</option>
+            <option value="30d">直近30日</option>
+          </select>
+
+          <select
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            value={filters.status}
+            onChange={(e) => updateFilter('status', e.target.value)}
+          >
+            <option value="">全ステータス</option>
+            <option value="new_domain">未対応</option>
+            <option value="analyzing">確認中</option>
+            <option value="confirmed_threat">脅威確認</option>
+            <option value="takedown_sent">削除申請中</option>
+            <option value="resolved">削除完了</option>
+            <option value="false_positive">誤検知</option>
+          </select>
+
+          <select
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            value={filters.minRiskScore}
+            onChange={(e) => updateFilter('minRiskScore', e.target.value)}
+          >
+            <option value="">全リスクレベル</option>
+            <option value="80">🔴 危険 (80+)</option>
+            <option value="60">🟠 高 (60+)</option>
+            <option value="40">🟡 中 (40+)</option>
+          </select>
+
+          {(filters.brandId || filters.period || filters.status || filters.minRiskScore || summaryFilter !== 'all') && (
+            <button
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              onClick={() => {
+                setSummaryFilter('all');
+                setFilters(prev => ({
+                  ...prev,
+                  brandId: '',
+                  period: '',
+                  status: '',
+                  minRiskScore: '',
+                  page: '1',
+                }));
+              }}
+            >
+              ✕ フィルターをクリア
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Threat Table */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-gray-900">検知された脅威</h2>
-            <Tooltip content="リスクスコアが高い順に表示。🔴危険 = 即削除申請、🟠高 = 要確認、🟡中 = 監視継続、🟢低 = 対応不要。" />
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
-          <a href="/threats" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-            すべて表示 →
-          </a>
-        </div>
-        <ThreatTable
-          threats={data.slice(0, 10)}
-          onSelect={(id) => window.location.href = `/threats/${id}`}
-        />
+        ) : (
+          <>
+            <ThreatTable
+              threats={threats?.data || []}
+              onSelect={(id) => window.location.href = `/threats/${id}`}
+              expandable
+            />
+            {/* Pagination */}
+            {threats && threats.totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                <p className="text-sm text-gray-500">
+                  {threats.total}件中 {(threats.page - 1) * threats.pageSize + 1}〜
+                  {Math.min(threats.page * threats.pageSize, threats.total)}件
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                    disabled={threats.page <= 1}
+                    onClick={() => setFilters(prev => ({ ...prev, page: String(threats.page - 1) }))}
+                  >
+                    前へ
+                  </button>
+                  <button
+                    className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                    disabled={threats.page >= threats.totalPages}
+                    onClick={() => setFilters(prev => ({ ...prev, page: String(threats.page + 1) }))}
+                  >
+                    次へ
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

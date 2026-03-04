@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Tooltip from './Tooltip';
 import { RiskBadgeCompact } from './RiskBadge';
 
@@ -9,6 +10,9 @@ interface Threat {
   status: string;
   riskScore: number | null;
   firstSeen: string;
+  screenshotUrl?: string | null;
+  whoisData?: string | null;
+  sslInfo?: string | null;
   brand: { name: string; domain: string };
   analyses: Array<{ category: string; confidence: number }>;
 }
@@ -23,12 +27,20 @@ const statusColors: Record<string, string> = {
 };
 
 const statusLabels: Record<string, string> = {
-  new_domain: '未確認',
-  analyzing: '調査中',
-  confirmed_threat: '⚠️ 脅威確定',
+  new_domain: '未対応',
+  analyzing: '確認中',
+  confirmed_threat: '⚠️ 脅威確認',
   false_positive: '誤検知',
   takedown_sent: '削除申請中',
   resolved: '✅ 対応完了',
+};
+
+const categoryLabels: Record<string, string> = {
+  phishing: 'フィッシング',
+  brand_abuse: 'ブランド悪用',
+  parked: 'パーク',
+  legitimate: '正規',
+  unknown: '不明',
 };
 
 const categoryDescriptions: Record<string, string> = {
@@ -39,7 +51,15 @@ const categoryDescriptions: Record<string, string> = {
   unknown: '調査中です',
 };
 
-export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; onSelect?: (id: string) => void }) {
+interface ThreatTableProps {
+  threats: Threat[];
+  onSelect?: (id: string) => void;
+  expandable?: boolean;
+}
+
+export default function ThreatTable({ threats, onSelect, expandable = false }: ThreatTableProps) {
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
   if (threats.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -47,6 +67,46 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
       </div>
     );
   }
+
+  const handleRowClick = (threat: Threat) => {
+    if (expandable) {
+      setExpandedRowId(expandedRowId === threat.id ? null : threat.id);
+    } else {
+      onSelect?.(threat.id);
+    }
+  };
+
+  const parseWhoisSummary = (whoisData: string | null | undefined): string | null => {
+    if (!whoisData) return null;
+    try {
+      const data = JSON.parse(whoisData);
+      const parts: string[] = [];
+      if (data.registrar) parts.push(`登録先: ${data.registrar}`);
+      if (data.creationDate) parts.push(`登録日: ${new Date(data.creationDate).toLocaleDateString('ja-JP')}`);
+      if (data.registrantOrganization) parts.push(`登録者: ${data.registrantOrganization}`);
+      else parts.push('登録者情報が隠されています（WHOIS匿名化）');
+      return parts.join(' / ');
+    } catch {
+      return whoisData.slice(0, 100);
+    }
+  };
+
+  const parseSslSummary = (sslInfo: string | null | undefined): string | null => {
+    if (!sslInfo) return null;
+    try {
+      const data = JSON.parse(sslInfo);
+      const parts: string[] = [];
+      if (data.issuer) parts.push(`発行者: ${data.issuer}`);
+      if (data.validFrom) {
+        const from = new Date(data.validFrom);
+        const daysAgo = Math.floor((Date.now() - from.getTime()) / (1000 * 60 * 60 * 24));
+        parts.push(`発行${daysAgo}日前のSSL証明書`);
+      }
+      return parts.join(' / ');
+    } catch {
+      return sslInfo.slice(0, 100);
+    }
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -63,36 +123,155 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
             </th>
             <th className="pb-3 font-medium">ステータス</th>
             <th className="pb-3 font-medium">検知日</th>
+            {expandable && <th className="pb-3 font-medium w-8"></th>}
           </tr>
         </thead>
         <tbody>
           {threats.map((threat) => (
-            <tr
-              key={threat.id}
-              className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-              onClick={() => onSelect?.(threat.id)}
-            >
-              <td className="py-3">
-                <div className="font-mono text-sm font-medium">{threat.domain}</div>
-                <div className="text-xs text-gray-400 mt-0.5">vs {threat.brand.domain}</div>
-              </td>
-              <td className="py-3 text-sm text-gray-600">
-                {threat.analyses[0]
-                  ? categoryDescriptions[threat.analyses[0].category] || threat.analyses[0].category
-                  : '—'}
-              </td>
-              <td className="py-3">
-                <RiskBadgeCompact score={threat.riskScore} threatId={threat.id} />
-              </td>
-              <td className="py-3">
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[threat.status] || 'bg-gray-100'}`}>
-                  {statusLabels[threat.status] || threat.status}
-                </span>
-              </td>
-              <td className="py-3 text-sm text-gray-500">
-                {new Date(threat.firstSeen).toLocaleDateString('ja-JP')}
-              </td>
-            </tr>
+            <>
+              <tr
+                key={threat.id}
+                className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                  expandedRowId === threat.id ? 'bg-gray-50' : ''
+                }`}
+                onClick={() => handleRowClick(threat)}
+              >
+                <td className="py-3">
+                  <div className="font-mono text-sm font-medium">{threat.domain}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">vs {threat.brand.domain}</div>
+                </td>
+                <td className="py-3 text-sm text-gray-600">
+                  {threat.analyses[0]
+                    ? categoryDescriptions[threat.analyses[0].category] || threat.analyses[0].category
+                    : '—'}
+                </td>
+                <td className="py-3">
+                  <RiskBadgeCompact score={threat.riskScore} threatId={threat.id} />
+                </td>
+                <td className="py-3">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[threat.status] || 'bg-gray-100'}`}>
+                    {statusLabels[threat.status] || threat.status}
+                  </span>
+                </td>
+                <td className="py-3 text-sm text-gray-500">
+                  {new Date(threat.firstSeen).toLocaleDateString('ja-JP')}
+                </td>
+                {expandable && (
+                  <td className="py-3 text-gray-400">
+                    <span className={`inline-block transition-transform ${expandedRowId === threat.id ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </td>
+                )}
+              </tr>
+
+              {/* Layer 2: Expanded Detail Panel */}
+              {expandable && expandedRowId === threat.id && (
+                <tr key={`${threat.id}-detail`}>
+                  <td colSpan={6} className="bg-gray-50 border-b border-gray-200">
+                    <div className="p-5 space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* Screenshot */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-4">
+                          <h4 className="text-sm font-bold text-gray-700 mb-2">📸 スクリーンショット</h4>
+                          {threat.screenshotUrl ? (
+                            <img
+                              src={threat.screenshotUrl}
+                              alt={`${threat.domain} のスクリーンショット`}
+                              className="w-full rounded border border-gray-200"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-32 bg-gray-100 rounded text-gray-400 text-sm">
+                              スクリーンショット未取得
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Analysis Details */}
+                        <div className="space-y-3">
+                          {/* Threat Category & Confidence */}
+                          <div className="bg-white rounded-lg border border-gray-200 p-4">
+                            <h4 className="text-sm font-bold text-gray-700 mb-2">🔍 判定根拠</h4>
+                            {threat.analyses.length > 0 ? (
+                              <div className="space-y-2">
+                                {threat.analyses.map((a, i) => (
+                                  <div key={i} className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-600">
+                                      {categoryLabels[a.category] || a.category}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                                        <div
+                                          className={`h-2 rounded-full ${
+                                            a.confidence >= 0.8 ? 'bg-red-500' :
+                                            a.confidence >= 0.6 ? 'bg-orange-500' :
+                                            'bg-yellow-500'
+                                          }`}
+                                          style={{ width: `${a.confidence * 100}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-xs text-gray-500 w-10 text-right">
+                                        {Math.round(a.confidence * 100)}%
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400">分析データなし</p>
+                            )}
+                          </div>
+
+                          {/* WHOIS Summary */}
+                          <div className="bg-white rounded-lg border border-gray-200 p-4">
+                            <h4 className="text-sm font-bold text-gray-700 mb-1">🌐 ドメイン情報</h4>
+                            <p className="text-sm text-gray-600">
+                              {parseWhoisSummary(threat.whoisData) || '情報未取得'}
+                            </p>
+                          </div>
+
+                          {/* SSL Summary */}
+                          <div className="bg-white rounded-lg border border-gray-200 p-4">
+                            <h4 className="text-sm font-bold text-gray-700 mb-1">🔒 SSL証明書</h4>
+                            <p className="text-sm text-gray-600">
+                              {parseSslSummary(threat.sslInfo) || '情報未取得'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3 pt-2">
+                        <a
+                          href={`/threats/${threat.id}`}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          🚨 削除申請
+                        </a>
+                        <button
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // TODO: Implement false positive marking
+                            alert('誤検知マーク機能は実装予定です');
+                          }}
+                        >
+                          誤検知にする
+                        </button>
+                        <a
+                          href={`/threats/${threat.id}`}
+                          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          技術詳細 →
+                        </a>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </>
           ))}
         </tbody>
       </table>
