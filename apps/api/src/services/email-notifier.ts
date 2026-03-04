@@ -35,10 +35,10 @@ function riskEmoji(score: number): string {
 }
 
 function riskLabel(score: number): string {
-  if (score >= 80) return 'Critical';
-  if (score >= 60) return 'High';
-  if (score >= 40) return 'Medium';
-  return 'Low';
+  if (score >= 80) return '危険';
+  if (score >= 60) return '高';
+  if (score >= 40) return '中';
+  return '低';
 }
 
 async function getTransporter(brandId: string) {
@@ -77,15 +77,15 @@ function wrapHtml(title: string, body: string): string {
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
 <tr><td style="background:#1e293b;padding:20px 24px;">
-  <h1 style="margin:0;color:#ffffff;font-size:18px;">🛡️ ThreatGuard Alert</h1>
+  <h1 style="margin:0;color:#ffffff;font-size:18px;">🛡️ ThreatGuard アラート</h1>
 </td></tr>
 <tr><td style="padding:24px;">
 ${body}
 </td></tr>
 <tr><td style="background:#f8fafc;padding:16px 24px;border-top:1px solid #e2e8f0;">
   <p style="margin:0;font-size:12px;color:#94a3b8;text-align:center;">
-    You are receiving this because alerts are enabled for your account.<br>
-    <a href="#unsubscribe" style="color:#64748b;">Unsubscribe from alerts</a>
+    アカウントのアラート設定が有効のため、このメールが送信されました。<br>
+    <a href="#unsubscribe" style="color:#64748b;">アラート配信を停止する</a>
   </p>
 </td></tr>
 </table>
@@ -101,36 +101,36 @@ function buildNewThreatHtml(alert: EmailThreatAlert): string {
   const label = riskLabel(alert.riskScore);
 
   const body = `
-<h2 style="margin:0 0 16px;font-size:16px;color:#1e293b;">${emoji} New Threat Detected</h2>
+<h2 style="margin:0 0 16px;font-size:16px;color:#1e293b;">${emoji} 新しい脅威を検知しました</h2>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
 <tr>
   <td style="padding:12px;background:#f8fafc;border-radius:6px;">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Brand:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">ブランド:</strong></td>
         <td style="padding:4px 0;color:#1e293b;">${alert.brandName}</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Domain:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">検知ドメイン:</strong></td>
         <td style="padding:4px 0;"><code style="background:#e2e8f0;padding:2px 6px;border-radius:3px;font-size:14px;">${alert.domain}</code></td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Risk Score:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">リスクスコア:</strong></td>
         <td style="padding:4px 0;"><span style="display:inline-block;background:${color};color:#fff;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;">${alert.riskScore}/100 ${label}</span></td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Category:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">カテゴリ:</strong></td>
         <td style="padding:4px 0;color:#1e293b;">${alert.category}</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Source:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">検知元:</strong></td>
         <td style="padding:4px 0;color:#1e293b;">${alert.source}</td>
       </tr>
     </table>
   </td>
 </tr>
 </table>
-<p style="margin:0;font-size:13px;color:#64748b;">This domain was detected and may pose a threat to your brand. Please review and take appropriate action.</p>`;
+<p style="margin:0;font-size:13px;color:#64748b;">お客様のブランドに対する脅威の可能性があるドメインが検知されました。内容をご確認のうえ、適切な対応をお願いいたします。</p>`;
 
   return body;
 }
@@ -141,58 +141,58 @@ function buildSiteChangeHtml(alert: EmailSiteChangeAlert): string {
   const changeList = alert.changes.map((c) => `<li style="padding:4px 0;color:#334155;">${c}</li>`).join('');
 
   const body = `
-<h2 style="margin:0 0 16px;font-size:16px;color:#1e293b;">🔄 Site Change Detected</h2>
+<h2 style="margin:0 0 16px;font-size:16px;color:#1e293b;">🔄 監視対象サイトの変更を検知しました</h2>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
 <tr>
   <td style="padding:12px;background:#f8fafc;border-radius:6px;">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Brand:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">ブランド:</strong></td>
         <td style="padding:4px 0;color:#1e293b;">${alert.brandName}</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Domain:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">対象ドメイン:</strong></td>
         <td style="padding:4px 0;"><code style="background:#e2e8f0;padding:2px 6px;border-radius:3px;font-size:14px;">${alert.domain}</code></td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Risk Score:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">リスクスコア:</strong></td>
         <td style="padding:4px 0;"><span style="display:inline-block;background:${color};color:#fff;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;">${emoji} ${alert.riskScore}/100</span></td>
       </tr>
     </table>
   </td>
 </tr>
 </table>
-<h3 style="margin:0 0 8px;font-size:14px;color:#475569;">Changes Detected:</h3>
+<h3 style="margin:0 0 8px;font-size:14px;color:#475569;">検知された変更:</h3>
 <ul style="margin:0 0 16px;padding-left:20px;">${changeList}</ul>
-<p style="margin:0;font-size:13px;color:#64748b;">The monitored domain has changed. Please review the changes above.</p>`;
+<p style="margin:0;font-size:13px;color:#64748b;">監視中のドメインに変更がありました。上記の内容をご確認ください。</p>`;
 
   return body;
 }
 
 function buildScanSummaryHtml(brandName: string, newThreats: number, highRiskCount: number): string {
   const body = `
-<h2 style="margin:0 0 16px;font-size:16px;color:#1e293b;">📊 Scan Summary</h2>
+<h2 style="margin:0 0 16px;font-size:16px;color:#1e293b;">📊 スキャン結果サマリー</h2>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
 <tr>
   <td style="padding:12px;background:#f8fafc;border-radius:6px;">
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">Brand:</strong></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">ブランド:</strong></td>
         <td style="padding:4px 0;color:#1e293b;">${brandName}</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">New Threats:</strong></td>
-        <td style="padding:4px 0;color:#1e293b;font-weight:600;">${newThreats}</td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">新規脅威:</strong></td>
+        <td style="padding:4px 0;color:#1e293b;font-weight:600;">${newThreats}件</td>
       </tr>
       <tr>
-        <td style="padding:4px 0;"><strong style="color:#475569;">High Risk (≥80):</strong></td>
-        <td style="padding:4px 0;"><span style="display:inline-block;background:${highRiskCount > 0 ? '#dc2626' : '#16a34a'};color:#fff;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;">${highRiskCount}</span></td>
+        <td style="padding:4px 0;"><strong style="color:#475569;">高リスク（80以上）:</strong></td>
+        <td style="padding:4px 0;"><span style="display:inline-block;background:${highRiskCount > 0 ? '#dc2626' : '#16a34a'};color:#fff;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:600;">${highRiskCount}件</span></td>
       </tr>
     </table>
   </td>
 </tr>
 </table>
-<p style="margin:0;font-size:13px;color:#64748b;">This is an automated scan summary for your brand monitoring.</p>`;
+<p style="margin:0;font-size:13px;color:#64748b;">ブランド監視の自動スキャン結果です。</p>`;
 
   return body;
 }
@@ -236,7 +236,7 @@ export async function emailNotifyNewThreat(alert: EmailThreatAlert): Promise<voi
   const users = await getEligibleUsers(alert.brandId, alert.riskScore);
   if (users.length === 0) return;
 
-  const subject = `[ThreatGuard] ${riskEmoji(alert.riskScore)} New Threat: ${alert.domain} (Score: ${alert.riskScore})`;
+  const subject = `[ThreatGuard] ${riskEmoji(alert.riskScore)} 新しい脅威を検知: ${alert.domain}（スコア: ${alert.riskScore}）`;
   const html = wrapHtml(subject, buildNewThreatHtml(alert));
 
   for (const user of users) {
@@ -290,7 +290,7 @@ export async function emailNotifySiteChange(alert: EmailSiteChangeAlert): Promis
   const users = await getEligibleUsers(alert.brandId, alert.riskScore);
   if (users.length === 0) return;
 
-  const subject = `[ThreatGuard] 🔄 Site Change: ${alert.domain}`;
+  const subject = `[ThreatGuard] 🔄 サイト変更を検知: ${alert.domain}`;
   const html = wrapHtml(subject, buildSiteChangeHtml(alert));
 
   for (const user of users) {
@@ -370,7 +370,7 @@ export async function emailNotifyScanSummary(
   });
   if (!latestDomain) return;
 
-  const subject = `[ThreatGuard] 📊 Scan Summary: ${brandName} — ${newThreats} new threats`;
+  const subject = `[ThreatGuard] 📊 スキャン結果: ${brandName} — 新規脅威 ${newThreats}件`;
   const html = wrapHtml(subject, buildScanSummaryHtml(brandName, newThreats, highRiskCount));
 
   for (const user of users) {

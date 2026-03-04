@@ -1,8 +1,37 @@
 import { prisma } from '../lib/prisma.js';
 
+/** Known Japanese registrars for language auto-detection */
+const JAPANESE_REGISTRARS = [
+  'gmo',
+  'onamae',
+  'お名前',
+  'pepabo',
+  'muumuu',
+  'ムームー',
+  'value-domain',
+  'value domain',
+  'xserver',
+  'エックスサーバー',
+  'sakura',
+  'さくらインターネット',
+  'jprs',
+  'japan registry',
+  'interlink',
+  'gehirn',
+  'conoha',
+  'z.com',
+  'fc2',
+];
+
+function isJapaneseRegistrar(registrar: string): boolean {
+  const lower = registrar.toLowerCase();
+  return JAPANESE_REGISTRARS.some((keyword) => lower.includes(keyword));
+}
+
 /**
  * Generate a takedown request template
  * Uses Claude API if ANTHROPIC_API_KEY is set, otherwise uses a rule-based template
+ * Language is auto-detected from registrar (Japanese registrar → Japanese, otherwise → English)
  */
 export async function generateTakedownTemplate(
   detectedDomainId: string
@@ -20,11 +49,16 @@ export async function generateTakedownTemplate(
   const registrar = whois?.registrar || 'Unknown Registrar';
 
   let template = '';
+  const useJapanese = isJapaneseRegistrar(registrar);
 
   if (process.env.ANTHROPIC_API_KEY) {
     try {
       const { default: Anthropic } = await import('@anthropic-ai/sdk');
       const anthropic = new Anthropic();
+
+      const languageInstruction = useJapanese
+        ? `Generate the letter entirely in Japanese. Use formal business Japanese (敬語). Address it to "不正利用対応窓口 御中".`
+        : `Generate the letter entirely in English. Address it to the registrar's abuse department.`;
 
       const prompt = `You are a brand protection legal specialist. Generate a professional takedown request letter for the following case.
 
@@ -40,13 +74,14 @@ export async function generateTakedownTemplate(
 - Threat Category: ${analysis?.category || 'suspected brand abuse'}
 - Analysis: ${analysis?.reasoning || 'Domain closely resembles the legitimate brand domain'}
 
-Generate a formal takedown request letter in English that:
-1. Identifies the brand owner and their rights
-2. Describes the infringing domain and the nature of infringement
-3. Cites relevant policies (UDRP, registrar AUP, ICANN policies)
-4. Requests immediate suspension/transfer of the domain
-5. Includes a deadline for response (typically 48-72 hours)
-6. Is addressed to the registrar's abuse department
+${languageInstruction}
+
+The letter should:
+1. Identify the brand owner and their rights
+2. Describe the infringing domain and the nature of infringement
+3. Cite relevant policies (UDRP, registrar AUP, ICANN policies)
+4. Request immediate suspension/transfer of the domain
+5. Include a deadline for response (typically 48-72 hours)
 
 Format it as a ready-to-send email.`;
 
@@ -63,16 +98,65 @@ Format it as a ready-to-send email.`;
   }
 
   if (!template) {
-    // Rule-based fallback template
-    const categoryDesc = analysis?.category === 'phishing'
-      ? 'phishing activity targeting our customers'
-      : analysis?.category === 'brand_abuse'
-        ? 'unauthorized use of our brand identity'
-        : 'suspected brand impersonation';
     const date = new Date().toISOString().split('T')[0];
     const deadline = new Date(Date.now() + 72 * 3600 * 1000).toISOString().split('T')[0];
 
-    template = `Subject: Abuse Report / Takedown Request — ${domain.domain}
+    if (useJapanese) {
+      // Japanese fallback template
+      const categoryDescJa = analysis?.category === 'phishing'
+        ? 'お客様を標的としたフィッシング行為'
+        : analysis?.category === 'brand_abuse'
+          ? '弊社ブランドの不正使用'
+          : 'ブランドなりすましの疑い';
+      const analysisJa = analysis?.reasoning || 'このドメインは弊社の正規ドメインに酷似しており、消費者を誤認させる形で使用されています。';
+
+      template = `件名: 不正利用報告 / ドメイン停止要請 — ${domain.domain}
+
+不正利用対応窓口 御中
+
+${domain.brand.organization.name}（ブランド名「${domain.brand.name}」）を代表し、貴社サービスを通じて登録されたドメイン ${domain.domain} に関する${categoryDescJa}についてご報告いたします。
+
+1. ブランド情報
+   - ブランド名: ${domain.brand.name}
+   - 正規ドメイン: ${domain.brand.domain}
+   - 組織名: ${domain.brand.organization.name}
+
+2. 不正ドメイン
+   - ドメイン: ${domain.domain}
+   - 初回検知日: ${domain.firstSeen.toISOString().split('T')[0]}
+   - 脅威カテゴリ: ${analysis?.category || 'ブランドなりすまし'}
+   - 分析結果: ${analysisJa}
+
+3. 申立根拠
+   当該ドメインは弊社の登録商標を侵害し、${categoryDescJa}に使用されています。これは以下に違反します:
+   - ICANN レジストラ認定契約（第3.18条）
+   - 統一ドメイン名紛争処理方針（UDRP）
+   - 貴社の利用規約（AUP）
+   - APWGのベストプラクティス
+
+4. 要請事項
+   以下の対応を速やかにお願いいたします:
+   a) ドメイン ${domain.domain} の停止
+   b) 関連する登録・ホスティング情報の保全
+   c) 利用可能な登録者情報の提供
+
+5. 回答期限
+   ${deadline}（72時間以内）までにご対応をお願いいたします。
+
+迅速なご対応をお願い申し上げます。追加の証拠や情報が必要な場合はお知らせください。
+
+${domain.brand.organization.name}
+ブランドプロテクションチーム
+日付: ${date}`;
+    } else {
+      // English fallback template
+      const categoryDesc = analysis?.category === 'phishing'
+        ? 'phishing activity targeting our customers'
+        : analysis?.category === 'brand_abuse'
+          ? 'unauthorized use of our brand identity'
+          : 'suspected brand impersonation';
+
+      template = `Subject: Abuse Report / Takedown Request — ${domain.domain}
 
 Dear Abuse Department,
 
@@ -111,6 +195,7 @@ Sincerely,
 ${domain.brand.organization.name}
 Brand Protection Team
 Date: ${date}`;
+    }
   }
 
   // Save the takedown request
