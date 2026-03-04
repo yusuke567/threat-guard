@@ -21,7 +21,7 @@ const REPORT_TYPES = [
     title: '取締役会',
     icon: '📊',
     description: 'KPIサマリー・グラフ中心',
-    detail: 'リスク件数・テイクダウン成功率・トレンドをビジュアルで報告。経営レベルの意思決定に。',
+    detail: 'リスク件数・削除申請成功率・トレンドをビジュアルで報告。経営レベルの意思決定に。',
     color: 'purple',
   },
   {
@@ -42,7 +42,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   phishing: 'フィッシング', brand_abuse: 'ブランド悪用', parked: 'パーク', legitimate: '正規', unknown: '不明',
 };
 const STATUS_LABELS: Record<string, string> = {
-  new_domain: '新規', monitoring: '監視中', takedown_requested: 'テイクダウン申請中', resolved: '解決済',
+  new_domain: '新規', monitoring: '監視中', takedown_requested: '削除申請中', resolved: '解決済',
 };
 const PRIORITY_COLORS: Record<string, string> = {
   '最優先': 'bg-red-100 text-red-800',
@@ -174,8 +174,8 @@ function RegulatoryReport({ data }: { data: any }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <SummaryCard label="検知脅威総数" value={s.totalThreats} />
         <SummaryCard label="危険（即対応）" value={s.dangerCount} color="red" />
-        <SummaryCard label="テイクダウン送信済" value={s.takedownsSent} color="blue" />
-        <SummaryCard label="テイクダウン完了" value={s.takedownsCompleted} color="green" />
+        <SummaryCard label="削除申請済" value={s.takedownsSent} color="blue" />
+        <SummaryCard label="削除完了" value={s.takedownsCompleted} color="green" />
       </div>
 
       {/* Timeline */}
@@ -207,7 +207,7 @@ function RegulatoryReport({ data }: { data: any }) {
                 <th className="py-2 pr-3 font-medium text-gray-600">カテゴリ</th>
                 <th className="py-2 pr-3 font-medium text-gray-600">ステータス</th>
                 <th className="py-2 pr-3 font-medium text-gray-600">初検知</th>
-                <th className="py-2 font-medium text-gray-600">テイクダウン</th>
+                <th className="py-2 font-medium text-gray-600">削除申請</th>
               </tr>
             </thead>
             <tbody>
@@ -255,7 +255,7 @@ function BoardReport({ data }: { data: any }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <SummaryCard label="検知脅威総数" value={k.totalThreats} />
         <SummaryCard label="危険レベル" value={rc.danger} color="red" />
-        <SummaryCard label="テイクダウン成功率" value={`${k.takedownSuccessRate}%`} color="green" />
+        <SummaryCard label="削除申請成功率" value={`${k.takedownSuccessRate}%`} color="green" />
         <SummaryCard label="高リスク" value={rc.high} color="yellow" />
       </div>
 

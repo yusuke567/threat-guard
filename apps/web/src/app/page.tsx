@@ -27,10 +27,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 const TAKEDOWN_LABELS: Record<string, string> = {
   draft: '下書き',
-  sent: '送信済',
+  sent: '申請済',
   acknowledged: '受領確認',
-  completed: '完了',
-  rejected: '却下',
+  completed: '削除完了',
+  rejected: '申請却下',
 };
 
 export default function Dashboard() {
@@ -92,7 +92,7 @@ export default function Dashboard() {
             </div>
             <div className="bg-white/60 rounded-lg p-3">
               <p className="font-bold text-blue-900 text-sm">③ 脅威に対応</p>
-              <p className="text-blue-700 text-xs mt-1">リスクレベルに応じてテイクダウン申請を生成・送信</p>
+              <p className="text-blue-700 text-xs mt-1">リスクレベルに応じて削除申請を生成・送信</p>
             </div>
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function Dashboard() {
                 <span className="text-2xl">🚨</span>
                 <div>
                   <p className="font-bold text-red-800">即対応が必要: {rc.danger}件</p>
-                  <p className="text-red-600 text-sm mt-0.5 group-hover:underline">テイクダウン申請へ →</p>
+                  <p className="text-red-600 text-sm mt-0.5 group-hover:underline">削除申請へ →</p>
                 </div>
               </a>
             )}
@@ -138,7 +138,7 @@ export default function Dashboard() {
               <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 flex items-center gap-3">
                 <span className="text-2xl">📋</span>
                 <div>
-                  <p className="font-bold text-blue-800">テイクダウン進行中: {stats.takedownStats.sent}件</p>
+                  <p className="font-bold text-blue-800">削除申請中: {stats.takedownStats.sent}件</p>
                   <p className="text-blue-600 text-sm mt-0.5">レジストラからの回答を待っています</p>
                 </div>
               </div>
@@ -149,10 +149,10 @@ export default function Dashboard() {
 
       {/* Risk Level Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="🔴 危険" value={rc.danger} icon="🚨" color="red" subtitle="即テイクダウン推奨"
-          tooltip="リスクスコア80以上。即座にテイクダウン申請が必要です。" />
-        <StatCard title="🟠 高" value={rc.high} icon="⚠️" color="yellow" subtitle="要確認・テイクダウン検討"
-          tooltip="リスクスコア60〜79。テイクダウンが必要か判断してください。" />
+        <StatCard title="🔴 危険" value={rc.danger} icon="🚨" color="red" subtitle="即削除申請推奨"
+          tooltip="リスクスコア80以上。即座に削除申請が必要です。" />
+        <StatCard title="🟠 高" value={rc.high} icon="⚠️" color="yellow" subtitle="要確認・削除申請検討"
+          tooltip="リスクスコア60〜79。削除申請が必要か判断してください。" />
         <StatCard title="🟡 中" value={rc.medium} icon="👁" color="blue" subtitle="監視継続"
           tooltip="リスクスコア40〜59。監視を継続してください。" />
         <StatCard title="🟢 低" value={rc.low} icon="✅" color="green" subtitle="対応不要"
@@ -241,7 +241,7 @@ export default function Dashboard() {
 
         {/* Takedown Progress */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📋 テイクダウン進捗</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">📋 削除申請の進捗</h2>
           {totalTakedowns > 0 ? (
             <div className="space-y-3">
               {Object.entries(stats.takedownStats).map(([status, count]: [string, any]) => (
@@ -266,7 +266,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="text-center py-6">
-              <p className="text-gray-400 text-sm">テイクダウン申請はまだありません</p>
+              <p className="text-gray-400 text-sm">削除申請はまだありません</p>
               <p className="text-gray-300 text-xs mt-1">脅威詳細から申請を作成できます</p>
             </div>
           )}
@@ -301,7 +301,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-gray-900">検知された脅威</h2>
-            <Tooltip content="リスクスコアが高い順に表示。🔴危険 = 即テイクダウン、🟠高 = 要確認、🟡中 = 監視継続、🟢低 = 対応不要。" />
+            <Tooltip content="リスクスコアが高い順に表示。🔴危険 = 即削除申請、🟠高 = 要確認、🟡中 = 監視継続、🟢低 = 対応不要。" />
           </div>
           <a href="/threats" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
             すべて表示 →

@@ -44,7 +44,7 @@ router.put('/:id', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const existing = await verifyTakedownOrg(req.params.id, orgId);
-  if (!existing) return res.status(404).json({ error: '指定されたテイクダウン依頼が見つかりません。' });
+  if (!existing) return res.status(404).json({ error: '指定された削除申請が見つかりません。' });
 
   const takedown = await prisma.takedownRequest.update({
     where: { id: req.params.id },
@@ -63,7 +63,7 @@ router.put('/:id', async (req, res) => {
 router.get('/:id/pdf', async (req, res) => {
   const orgId = req.user!.organizationId!;
   const existing = await verifyTakedownOrg(req.params.id, orgId);
-  if (!existing) return res.status(404).json({ error: '指定されたテイクダウン依頼が見つかりません。' });
+  if (!existing) return res.status(404).json({ error: '指定された削除申請が見つかりません。' });
 
   try {
     const pdf = await generateTakedownPdf(req.params.id);
@@ -84,7 +84,7 @@ router.post('/:id/send', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const existing = await verifyTakedownOrg(req.params.id, orgId);
-  if (!existing) return res.status(404).json({ error: '指定されたテイクダウン依頼が見つかりません。' });
+  if (!existing) return res.status(404).json({ error: '指定された削除申請が見つかりません。' });
 
   try {
     await prisma.takedownRequest.update({

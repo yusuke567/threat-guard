@@ -18,15 +18,15 @@ function getRiskLevel(score: number): RiskLevel {
     color: 'text-red-700',
     bgColor: 'bg-red-50 border-red-200',
     barColor: 'bg-red-500',
-    action: '即座にテイクダウン申請を送信してください。フィッシング被害が発生する前に、ドメインの停止が必要です。',
-    actionLabel: '🚨 テイクダウン申請',
+    action: '即座に削除申請を送信してください。フィッシング被害が発生する前に、ドメインの停止が必要です。',
+    actionLabel: '🚨 削除申請',
   };
   if (score >= 60) return {
     label: '高',
     color: 'text-orange-700',
     bgColor: 'bg-orange-50 border-orange-200',
     barColor: 'bg-orange-500',
-    action: '脅威の詳細を確認し、テイクダウンが必要か判断してください。偽サイトが稼働中の可能性があります。',
+    action: '脅威の詳細を確認し、削除申請が必要か判断してください。偽サイトが稼働中の可能性があります。',
     actionLabel: '🔍 詳細を確認',
   };
   if (score >= 40) return {
@@ -69,7 +69,7 @@ export function RiskBadgeCompact({ score, threatId }: { score: number | null; th
           className="px-2 py-0.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700 whitespace-nowrap"
           onClick={(e) => e.stopPropagation()}
         >
-          テイクダウン
+          削除申請
         </a>
       )}
     </div>

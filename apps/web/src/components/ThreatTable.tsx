@@ -27,7 +27,7 @@ const statusLabels: Record<string, string> = {
   analyzing: '調査中',
   confirmed_threat: '⚠️ 脅威確定',
   false_positive: '誤検知',
-  takedown_sent: '停止申請中',
+  takedown_sent: '削除申請中',
   resolved: '✅ 対応完了',
 };
 
@@ -58,7 +58,7 @@ export default function ThreatTable({ threats, onSelect }: { threats: Threat[]; 
             <th className="pb-3 font-medium">
               <span className="flex items-center gap-1">
                 リスク
-                <Tooltip content="リスクスコア（0〜100）と推奨アクション。🔴危険（80+）= 即テイクダウン、🟠高（60-79）= 要確認、🟡中（40-59）= 監視継続、🟢低（0-39）= 対応不要。" />
+                <Tooltip content="リスクスコア（0〜100）と推奨アクション。🔴危険（80+）= 即削除申請、🟠高（60-79）= 要確認、🟡中（40-59）= 監視継続、🟢低（0-39）= 対応不要。" />
               </span>
             </th>
             <th className="pb-3 font-medium">ステータス</th>

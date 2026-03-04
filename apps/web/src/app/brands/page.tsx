@@ -307,7 +307,7 @@ export default function BrandsPage() {
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                      📧 メール送信設定（通知・テイクダウン共通）
+                      📧 メール送信設定（通知・削除申請共通）
                     </button>
                     {smtpOpen && (
                     <>

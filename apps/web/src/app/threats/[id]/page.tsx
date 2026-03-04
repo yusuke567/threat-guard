@@ -21,7 +21,7 @@ const statusLabels: Record<string, string> = {
   analyzing: '分析中',
   confirmed_threat: '脅威確認',
   false_positive: '誤検知',
-  takedown_sent: 'テイクダウン済',
+  takedown_sent: '削除申請中',
   resolved: '解決済',
 };
 
@@ -117,7 +117,7 @@ export default function ThreatDetailPage() {
       const updated = await getThreat(threat.id);
       setThreat(updated);
     } catch (e: any) {
-      setError('テイクダウン文面の生成に失敗しました');
+      setError('削除申請文面の生成に失敗しました');
       setStep('confirm_recipient');
     }
   };
@@ -130,7 +130,7 @@ export default function ThreatDetailPage() {
     try {
       await sendTakedownEmail(currentTakedownId, abuseEmail);
       setStep('sent');
-      setSuccessMsg(`テイクダウン申請を ${abuseEmail} に送信しました`);
+      setSuccessMsg(`削除申請を ${abuseEmail} に送信しました`);
       // Reload threat
       const updated = await getThreat(threat.id);
       setThreat(updated);

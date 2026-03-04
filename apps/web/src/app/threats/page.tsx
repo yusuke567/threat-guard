@@ -46,7 +46,7 @@ export default function ThreatsPage() {
             <option value="new_domain">新規</option>
             <option value="analyzing">分析中</option>
             <option value="confirmed_threat">脅威確認</option>
-            <option value="takedown_sent">テイクダウン済</option>
+            <option value="takedown_sent">削除申請中</option>
             <option value="resolved">解決済</option>
             <option value="false_positive">誤検知</option>
           </select>

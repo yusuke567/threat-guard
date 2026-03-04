@@ -51,7 +51,7 @@ function getSiteInvestigationResult(contentAnalysis: any, domainRiskScore: numbe
   if (overallScore >= 70) return {
     label: '危険なサイト', color: 'red', icon: '🔴',
     desc: '偽のログイン画面や御社ロゴの無断使用が検出されました',
-    action: '→ STEP 3へ進み、テイクダウン申請してください',
+    action: '→ STEP 3へ進み、削除申請してください',
   };
   if (overallScore >= 30) return {
     label: '不審な兆候あり', color: 'amber', icon: '🟡',
@@ -61,7 +61,7 @@ function getSiteInvestigationResult(contentAnalysis: any, domainRiskScore: numbe
   if (domainRiskScore >= 80) return {
     label: '要警戒', color: 'amber', icon: '⚠️',
     desc: '現時点でフィッシングコンテンツは未検出ですが、ドメイン自体は危険です',
-    action: 'フィッシングに利用される前に、テイクダウン申請をおすすめします',
+    action: 'フィッシングに利用される前に、削除申請をおすすめします',
   };
   return {
     label: '問題なし', color: 'green', icon: '🟢',
@@ -285,7 +285,7 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
           )}
         </div>
 
-        {/* STEP 3: テイクダウン申請 */}
+        {/* STEP 3: 削除申請 */}
         <div className="relative pl-8">
           {/* Step icon */}
           <div className={`absolute left-0 top-0.5 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
@@ -295,7 +295,7 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
           </div>
 
           <div className="mb-2">
-            <span className="text-sm font-bold text-gray-900">STEP 3: <GlossaryTerm term="テイクダウン">テイクダウン</GlossaryTerm>申請</span>
+            <span className="text-sm font-bold text-gray-900">STEP 3: 削除申請</span>
             <span className="text-xs text-gray-400 ml-2">ドメインの停止を<GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>に依頼します</span>
           </div>
 
@@ -311,7 +311,7 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
             <div className="rounded-lg border border-green-300 bg-green-50 p-3">
               <div className="flex items-center gap-2">
                 <span>✅</span>
-                <span className="font-bold text-sm text-green-700">テイクダウン申請済み</span>
+                <span className="font-bold text-sm text-green-700">削除申請済み</span>
               </div>
               <p className="text-xs text-green-600 mt-1">
                 {threat.takedowns?.[0]?.status === 'sent' ? 'レジストラからの回答を待っています' :
@@ -344,14 +344,14 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
                 {abuseEmail && <p className="mt-1 text-[10px] text-green-600">✅ WHOISから自動取得しました（変更可能）</p>}
               </div>
               <div className="flex gap-2">
-                <button onClick={onGenerate} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium">📝 テイクダウン文面を生成</button>
+                <button onClick={onGenerate} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium">📝 削除申請文面を生成</button>
                 <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">キャンセル</button>
               </div>
             </div>
           ) : takedownStep === 'generating' ? (
             <div className="flex items-center gap-3 py-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-              <span className="text-xs text-gray-600">AIがテイクダウン文面を生成中...（30秒ほど）</span>
+              <span className="text-xs text-gray-600">AIが削除申請文面を生成中...（30秒ほど）</span>
             </div>
           ) : takedownStep === 'review' ? (
             <div className="space-y-3">
@@ -381,22 +381,22 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
             </div>
           ) : takedownStep === 'sent' ? (
             <div className="space-y-2">
-              <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">新しいテイクダウン申請を作成</button>
+              <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">新しい削除申請を作成</button>
             </div>
           ) : (
             <div className={`rounded-lg border p-3 ${shouldRecommendTakedown ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
               {shouldRecommendTakedown ? (
                 <>
-                  <p className="text-xs text-red-700 mb-2 font-medium">⚡ テイクダウン申請が推奨されています</p>
+                  <p className="text-xs text-red-700 mb-2 font-medium">⚡ 削除申請が推奨されています</p>
                   <button
                     onClick={onStartTakedown}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
                   >
-                    🚨 テイクダウン申請を開始
+                    🚨 削除申請を開始
                   </button>
                 </>
               ) : (
-                <p className="text-xs text-gray-500">STEP 1・2 の結果に基づいて、テイクダウンが必要か判断します</p>
+                <p className="text-xs text-gray-500">STEP 1・2 の結果に基づいて、削除申請が必要か判断します</p>
               )}
             </div>
           )}
