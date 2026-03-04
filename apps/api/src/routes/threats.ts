@@ -69,7 +69,8 @@ router.get('/', async (req, res) => {
 
 // Get threat detail - verify org ownership
 router.get('/:id', async (req, res) => {
-  const orgId = req.user!.organizationId!;
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
   const threat = await prisma.detectedDomain.findUnique({
     where: { id: req.params.id },
     include: {
@@ -79,7 +80,7 @@ router.get('/:id', async (req, res) => {
       webProbes: { orderBy: { probeAt: 'desc' }, take: 5 },
     },
   });
-  if (!threat || threat.brand.organizationId !== orgId) {
+  if (!threat || (!isSuperadmin && threat.brand.organizationId !== orgId)) {
     return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
   }
   res.json(threat);
@@ -88,12 +89,13 @@ router.get('/:id', async (req, res) => {
 // Content analysis - verify org
 router.get('/:id/content-analysis', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
     const domain = await prisma.detectedDomain.findUnique({
       where: { id: req.params.id },
       include: { brand: { select: { organizationId: true } } },
     });
-    if (!domain || domain.brand.organizationId !== orgId) {
+    if (!domain || (!isSuperadmin && domain.brand.organizationId !== orgId)) {
       return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     }
     const result = await analyzeContent(req.params.id);
@@ -108,12 +110,13 @@ router.get('/:id/content-analysis', async (req, res) => {
 // Abuse contacts - verify org
 router.get('/:id/abuse-contacts', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
     const domain = await prisma.detectedDomain.findUnique({
       where: { id: req.params.id },
       include: { brand: { select: { organizationId: true } } },
     });
-    if (!domain || domain.brand.organizationId !== orgId) {
+    if (!domain || (!isSuperadmin && domain.brand.organizationId !== orgId)) {
       return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     }
     const contacts = await getAbuseContacts(req.params.id);
@@ -128,7 +131,8 @@ router.get('/:id/abuse-contacts', async (req, res) => {
 // Update threat status
 router.patch('/:id/status', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
     const { status } = req.body;
     const validStatuses = ['new_domain', 'analyzing', 'confirmed_threat', 'false_positive', 'takedown_sent', 'resolved'];
     if (!status || !validStatuses.includes(status)) {
@@ -139,7 +143,7 @@ router.patch('/:id/status', async (req, res) => {
       where: { id: req.params.id },
       include: { brand: { select: { organizationId: true } } },
     });
-    if (!domain || domain.brand.organizationId !== orgId) {
+    if (!domain || (!isSuperadmin && domain.brand.organizationId !== orgId)) {
       return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     }
 
