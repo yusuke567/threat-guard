@@ -53,6 +53,8 @@ export const getThreats = (params?: Record<string, string>) => {
   return fetchAPI<any>(`/threats${query}`);
 };
 export const getThreat = (id: string) => fetchAPI<any>(`/threats/${id}`);
+export const updateThreatStatus = (id: string, status: string) =>
+  fetchAPI<any>(`/threats/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 
 // Scans
 export const triggerScan = (brandId: string, type: string) =>

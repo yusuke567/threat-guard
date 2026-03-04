@@ -125,4 +125,33 @@ router.get('/:id/abuse-contacts', async (req, res) => {
   }
 });
 
+// Update threat status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const orgId = req.user!.organizationId!;
+    const { status } = req.body;
+    const validStatuses = ['new_domain', 'analyzing', 'confirmed_threat', 'false_positive', 'takedown_sent', 'resolved'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ error: '無効なステータスです。' });
+    }
+
+    const domain = await prisma.detectedDomain.findUnique({
+      where: { id: req.params.id },
+      include: { brand: { select: { organizationId: true } } },
+    });
+    if (!domain || domain.brand.organizationId !== orgId) {
+      return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
+    }
+
+    const updated = await prisma.detectedDomain.update({
+      where: { id: req.params.id },
+      data: { status },
+    });
+    res.json(updated);
+  } catch (err: any) {
+    console.error('Status update failed:', err);
+    res.status(500).json({ error: 'ステータスの更新に失敗しました。' });
+  }
+});
+
 export default router;
