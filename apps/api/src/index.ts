@@ -16,6 +16,11 @@ import alertsRouter from './routes/alerts.js';
 import { startScheduler } from './services/scheduler.js';
 import { authMiddleware, requireOrg } from './lib/auth-middleware.js';
 
+// Prevent unhandled rejections from crashing the process
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const app = express();
 const port = process.env.PORT || 3001;
 

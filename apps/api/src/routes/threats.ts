@@ -4,10 +4,14 @@ import { getAbuseContacts } from '../services/whois-abuse.js';
 import { analyzeContent } from '../services/content-analyzer.js';
 const router = Router();
 
-// Helper: get brand IDs belonging to user's org
-async function orgBrandIds(organizationId: string): Promise<string[]> {
+// Helper: get brand IDs belonging to user's org (superadmin gets all)
+async function orgBrandIds(req: any): Promise<string[]> {
+  if (req.user?.role === 'superadmin' && !req.user?.organizationId) {
+    const brands = await prisma.brand.findMany({ select: { id: true } });
+    return brands.map((b) => b.id);
+  }
   const brands = await prisma.brand.findMany({
-    where: { organizationId },
+    where: { organizationId: req.user!.organizationId! },
     select: { id: true },
   });
   return brands.map((b) => b.id);
@@ -15,8 +19,8 @@ async function orgBrandIds(organizationId: string): Promise<string[]> {
 
 // List threats - filtered by organization
 router.get('/', async (req, res) => {
-  const orgId = req.user!.organizationId!;
-  const brandIds = await orgBrandIds(orgId);
+  try {
+  const brandIds = await orgBrandIds(req);
 
   const {
     status,
@@ -57,6 +61,10 @@ router.get('/', async (req, res) => {
   ]);
 
   res.json({ data, total, page: Number(page), pageSize: take, totalPages: Math.ceil(total / take) });
+  } catch (err) {
+    console.error('Threats list error:', err);
+    res.status(500).json({ error: '脅威一覧の取得に失敗しました。しばらくしてからもう一度お試しください。' });
+  }
 });
 
 // Get threat detail - verify org ownership

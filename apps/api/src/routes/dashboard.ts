@@ -5,11 +5,11 @@ const router = Router();
 
 router.get('/stats', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperAdmin = req.user!.role === 'superadmin' && !req.user!.organizationId;
 
-    // Get org's brand IDs
+    // Get org's brand IDs (superadmin sees all)
     const orgBrands = await prisma.brand.findMany({
-      where: { organizationId: orgId },
+      where: isSuperAdmin ? {} : { organizationId: req.user!.organizationId! },
       select: { id: true, name: true },
     });
     const brandIds = orgBrands.map((b) => b.id);
@@ -29,9 +29,9 @@ router.get('/stats', async (req, res) => {
       else riskCounts.low++;
     }
 
-    // Brand breakdown - org only
+    // Brand breakdown
     const brands = await prisma.brand.findMany({
-      where: { organizationId: orgId },
+      where: isSuperAdmin ? {} : { organizationId: req.user!.organizationId! },
       select: { id: true, name: true, _count: { select: { detectedDomains: true } } },
     });
     const brandBreakdown = brands.map((b) => ({ name: b.name, count: b._count.detectedDomains }));
