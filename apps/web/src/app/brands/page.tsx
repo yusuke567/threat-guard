@@ -207,7 +207,7 @@ export default function BrandsPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 value={form.keywords}
                 onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-                placeholder="例: コインチェック, coinchk, coin-check"
+                placeholder="例: マイブランド, mybrand, my-brand"
               />
               <p className="text-xs text-gray-400 mt-1">
                 ブランドの別名・略称・日本語名など。なりすましドメインの検知精度が上がります。
@@ -221,7 +221,7 @@ export default function BrandsPage() {
               rows={3}
               value={form.managedDomains}
               onChange={(e) => setForm({ ...form, managedDomains: e.target.value })}
-              placeholder={"例:\ncoincheck.jp\ncoincheck.co.jp\ncoincheck.net"}
+              placeholder={"例:\nmybrand.jp\nmybrand.co.jp\nmybrand.net"}
             />
             <p className="text-xs text-gray-400 mt-1">
               自社で管理しているドメインを入力（カンマ・改行区切り）。ホワイトリストに自動登録され、誤検知を防ぎます。
