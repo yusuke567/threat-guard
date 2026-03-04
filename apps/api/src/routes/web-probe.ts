@@ -4,18 +4,22 @@ import { probeDomain } from '../services/web-prober.js';
 
 const router = Router();
 
-// Helper: verify detectedDomain belongs to user's org
-async function verifyDomainOrg(domainId: string, organizationId: string) {
+// Helper: verify detectedDomain belongs to user's org (superadmin bypasses)
+async function verifyDomainOrg(domainId: string, organizationId: string | null, isSuperadmin: boolean) {
+  if (isSuperadmin) {
+    return prisma.detectedDomain.findFirst({ where: { id: domainId } });
+  }
   return prisma.detectedDomain.findFirst({
-    where: { id: domainId, brand: { organizationId } },
+    where: { id: domainId, brand: { organizationId: organizationId! } },
   });
 }
 
 // Trigger a probe for a detected domain
 router.post('/:domainId', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
-    const domain = await verifyDomainOrg(req.params.domainId, orgId);
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
+    const domain = await verifyDomainOrg(req.params.domainId, orgId, isSuperadmin);
     if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
     const result = await probeDomain(req.params.domainId);
@@ -28,12 +32,13 @@ router.post('/:domainId', async (req, res) => {
 
 // Get probe history for a domain
 router.get('/:domainId/history', async (req, res) => {
-  const orgId = req.user!.organizationId!;
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
   const { limit = '20', page = '1' } = req.query;
   const take = Number(limit);
   const skip = (Number(page) - 1) * take;
 
-  const domain = await verifyDomainOrg(req.params.domainId, orgId);
+  const domain = await verifyDomainOrg(req.params.domainId, orgId, isSuperadmin);
   if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
   const [data, total] = await Promise.all([

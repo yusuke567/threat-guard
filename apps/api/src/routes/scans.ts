@@ -19,10 +19,11 @@ router.post('/trigger', async (req, res) => {
   const parsed = triggerScanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const orgId = req.user!.organizationId!;
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
   const { brandId, type } = parsed.data;
 
-  const brand = await prisma.brand.findFirst({ where: { id: brandId, organizationId: orgId } });
+  const brand = await prisma.brand.findFirst({ where: isSuperadmin ? { id: brandId } : { id: brandId, organizationId: orgId! } });
   if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   const scanJob = await prisma.scanJob.create({ data: { brandId, type, status: 'running' } });
@@ -59,8 +60,11 @@ router.post('/trigger', async (req, res) => {
 
 // List scan jobs - org filtered
 router.get('/', async (req, res) => {
-  const orgId = req.user!.organizationId!;
-  const brandIds = (await prisma.brand.findMany({ where: { organizationId: orgId }, select: { id: true } })).map((b) => b.id);
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
+  const brandIds = isSuperadmin
+    ? (await prisma.brand.findMany({ select: { id: true } })).map((b) => b.id)
+    : (await prisma.brand.findMany({ where: { organizationId: orgId! }, select: { id: true } })).map((b) => b.id);
 
   const { brandId } = req.query;
   const where: Record<string, unknown> = { brandId: { in: brandIds } };

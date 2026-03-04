@@ -71,8 +71,9 @@ router.put('/:id', async (req, res) => {
   const parsed = updateBrandSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const orgId = req.user!.organizationId!;
-  const existing = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
+  const existing = await prisma.brand.findFirst({ where: isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: orgId! } });
   if (!existing) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   const brand = await prisma.brand.update({
@@ -88,8 +89,9 @@ router.post('/:id/whitelist/import', async (req, res) => {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const orgId = req.user!.organizationId!;
-  const brand = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
+  const brand = await prisma.brand.findFirst({ where: isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: orgId! } });
   if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   const raw = parsed.data.csv;
@@ -134,8 +136,9 @@ router.post('/:id/whitelist/import', async (req, res) => {
 
 // Delete brand
 router.delete('/:id', async (req, res) => {
-  const orgId = req.user!.organizationId!;
-  const existing = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
+  const existing = await prisma.brand.findFirst({ where: isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: orgId! } });
   if (!existing) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   await prisma.brand.delete({ where: { id: req.params.id } });

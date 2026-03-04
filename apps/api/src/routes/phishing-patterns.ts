@@ -3,28 +3,27 @@ import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 
-// Helper: verify brand belongs to user's org
-async function verifyBrandOrg(brandId: string, organizationId: string) {
-  return prisma.brand.findFirst({
-    where: { id: brandId, organizationId },
-  });
+// Helper: verify brand belongs to user's org (superadmin bypasses)
+async function verifyBrandOrg(brandId: string, organizationId: string | null, isSuperadmin: boolean) {
+  if (isSuperadmin) return prisma.brand.findFirst({ where: { id: brandId } });
+  return prisma.brand.findFirst({ where: { id: brandId, organizationId: organizationId! } });
 }
 
-// Helper: verify pattern belongs to user's org
-async function verifyPatternOrg(patternId: string, organizationId: string) {
-  return prisma.phishingPattern.findFirst({
-    where: { id: patternId, brand: { organizationId } },
-  });
+// Helper: verify pattern belongs to user's org (superadmin bypasses)
+async function verifyPatternOrg(patternId: string, organizationId: string | null, isSuperadmin: boolean) {
+  if (isSuperadmin) return prisma.phishingPattern.findFirst({ where: { id: patternId } });
+  return prisma.phishingPattern.findFirst({ where: { id: patternId, brand: { organizationId: organizationId! } } });
 }
 
 // List patterns for a brand
 router.get('/brands/:brandId/phishing-patterns', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
     const { brandId } = req.params;
     const { status } = req.query;
 
-    const brand = await verifyBrandOrg(brandId, orgId);
+    const brand = await verifyBrandOrg(brandId, orgId, isSuperadmin);
     if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
     const where: any = { brandId };
@@ -44,10 +43,11 @@ router.get('/brands/:brandId/phishing-patterns', async (req, res) => {
 // Create pattern
 router.post('/brands/:brandId/phishing-patterns', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
     const { brandId } = req.params;
 
-    const brand = await verifyBrandOrg(brandId, orgId);
+    const brand = await verifyBrandOrg(brandId, orgId, isSuperadmin);
     if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
     const { reportedBy, patternType, url, domain, description, tags, severity, victimCount } = req.body;
@@ -79,10 +79,11 @@ router.post('/brands/:brandId/phishing-patterns', async (req, res) => {
 // Update pattern
 router.patch('/phishing-patterns/:id', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
     const { id } = req.params;
 
-    const existing = await verifyPatternOrg(id, orgId);
+    const existing = await verifyPatternOrg(id, orgId, isSuperadmin);
     if (!existing) return res.status(404).json({ error: '指定されたパターンが見つかりません。' });
 
     const { status, severity, victimCount, tags } = req.body;
@@ -104,9 +105,10 @@ router.patch('/phishing-patterns/:id', async (req, res) => {
 // Delete pattern
 router.delete('/phishing-patterns/:id', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
 
-    const existing = await verifyPatternOrg(req.params.id, orgId);
+    const existing = await verifyPatternOrg(req.params.id, orgId, isSuperadmin);
     if (!existing) return res.status(404).json({ error: '指定されたパターンが見つかりません。' });
 
     await prisma.phishingPattern.delete({ where: { id: req.params.id } });
@@ -120,9 +122,10 @@ router.delete('/phishing-patterns/:id', async (req, res) => {
 // Apply pattern to detection
 router.post('/phishing-patterns/:id/apply', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
 
-    const pattern = await verifyPatternOrg(req.params.id, orgId);
+    const pattern = await verifyPatternOrg(req.params.id, orgId, isSuperadmin);
     if (!pattern) return res.status(404).json({ error: '指定されたパターンが見つかりません。' });
 
     if (!pattern.domain) {

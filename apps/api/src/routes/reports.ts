@@ -3,10 +3,14 @@ import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 
-// Helper: get brand IDs belonging to user's org
-async function orgBrandIds(organizationId: string): Promise<string[]> {
+// Helper: get brand IDs belonging to user's org (superadmin gets all)
+async function orgBrandIds(organizationId: string | null, isSuperadmin: boolean): Promise<string[]> {
+  if (isSuperadmin) {
+    const brands = await prisma.brand.findMany({ select: { id: true } });
+    return brands.map((b) => b.id);
+  }
   const brands = await prisma.brand.findMany({
-    where: { organizationId },
+    where: { organizationId: organizationId! },
     select: { id: true },
   });
   return brands.map((b) => b.id);
@@ -15,14 +19,15 @@ async function orgBrandIds(organizationId: string): Promise<string[]> {
 // GET /api/reports/generate?type=regulatory|board|clo&brandId=xxx
 router.get('/generate', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId!;
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
     const { type, brandId } = req.query;
 
     if (!type || !['regulatory', 'board', 'clo'].includes(String(type))) {
       return res.status(400).json({ error: 'レポートの種類を選択してください（行政機関向け・取締役会向け・CLO向け）。' });
     }
 
-    const brandIds = await orgBrandIds(orgId);
+    const brandIds = await orgBrandIds(orgId, isSuperadmin);
 
     // If brandId specified, verify it belongs to this org
     if (brandId && !brandIds.includes(String(brandId))) {
