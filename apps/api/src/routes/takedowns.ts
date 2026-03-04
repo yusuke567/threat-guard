@@ -110,9 +110,21 @@ router.post('/:id/send', async (req, res) => {
     });
 
     res.json({ success: true, message: `Takedown sent to ${parsed.data.email}` });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Email send failed:', err);
-    res.status(500).json({ error: 'メールの送信に失敗しました。宛先アドレスを確認してもう一度お試しください。' });
+    const detail = err?.message || String(err);
+    // Classify error for user-friendly message
+    let userMsg = 'メールの送信に失敗しました。';
+    if (detail.includes('EAUTH') || detail.includes('Invalid login') || detail.includes('535')) {
+      userMsg += ' SMTP認証エラー: メールサーバーのユーザー名またはパスワードが正しくありません。';
+    } else if (detail.includes('ECONNREFUSED') || detail.includes('ENOTFOUND')) {
+      userMsg += ' SMTPサーバーに接続できません。SMTP_HOSTを確認してください。';
+    } else if (detail.includes('chromium') || detail.includes('playwright') || detail.includes('browser')) {
+      userMsg += ' PDF生成に失敗しました（Chromiumエラー）。';
+    } else {
+      userMsg += ` 詳細: ${detail.slice(0, 200)}`;
+    }
+    res.status(500).json({ error: userMsg });
   }
 });
 
