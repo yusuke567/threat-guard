@@ -6,28 +6,35 @@ import { generateTakedownPdf, sendTakedownEmail } from '../services/takedown-exp
 
 const router = Router();
 
-// Helper: verify detectedDomain belongs to user's org
-async function verifyDomainOrg(domainId: string, organizationId: string) {
+// Helper: verify detectedDomain belongs to user's org (superadmin bypasses org check)
+async function verifyDomainOrg(domainId: string, organizationId: string | null, isSuperadmin: boolean) {
+  if (isSuperadmin) {
+    return prisma.detectedDomain.findFirst({ where: { id: domainId } });
+  }
   return prisma.detectedDomain.findFirst({
-    where: { id: domainId, brand: { organizationId } },
+    where: { id: domainId, brand: { organizationId: organizationId! } },
   });
 }
 
-// Helper: verify takedown belongs to user's org
-async function verifyTakedownOrg(takedownId: string, organizationId: string) {
+// Helper: verify takedown belongs to user's org (superadmin bypasses org check)
+async function verifyTakedownOrg(takedownId: string, organizationId: string | null, isSuperadmin: boolean) {
+  if (isSuperadmin) {
+    return prisma.takedownRequest.findFirst({ where: { id: takedownId } });
+  }
   return prisma.takedownRequest.findFirst({
-    where: { id: takedownId, detectedDomain: { brand: { organizationId } } },
+    where: { id: takedownId, detectedDomain: { brand: { organizationId: organizationId! } } },
   });
 }
 
 // Generate takedown request
 router.post('/', async (req, res) => {
-  const orgId = req.user!.organizationId!;
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
   const schema = z.object({ detectedDomainId: z.string().uuid() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const domain = await verifyDomainOrg(parsed.data.detectedDomainId, orgId);
+  const domain = await verifyDomainOrg(parsed.data.detectedDomainId, orgId, isSuperadmin);
   if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
   const result = await generateTakedownTemplate(parsed.data.detectedDomainId);
@@ -36,14 +43,15 @@ router.post('/', async (req, res) => {
 
 // Update takedown status
 router.put('/:id', async (req, res) => {
-  const orgId = req.user!.organizationId!;
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
   const schema = z.object({
     status: z.enum(['draft', 'sent', 'acknowledged', 'completed', 'rejected']),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const existing = await verifyTakedownOrg(req.params.id, orgId);
+  const existing = await verifyTakedownOrg(req.params.id, orgId, isSuperadmin);
   if (!existing) return res.status(404).json({ error: '指定された削除申請が見つかりません。' });
 
   const takedown = await prisma.takedownRequest.update({
@@ -61,8 +69,9 @@ router.put('/:id', async (req, res) => {
 
 // Download takedown as PDF
 router.get('/:id/pdf', async (req, res) => {
-  const orgId = req.user!.organizationId!;
-  const existing = await verifyTakedownOrg(req.params.id, orgId);
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
+  const existing = await verifyTakedownOrg(req.params.id, orgId, isSuperadmin);
   if (!existing) return res.status(404).json({ error: '指定された削除申請が見つかりません。' });
 
   try {
@@ -78,12 +87,13 @@ router.get('/:id/pdf', async (req, res) => {
 
 // Send takedown via email
 router.post('/:id/send', async (req, res) => {
-  const orgId = req.user!.organizationId!;
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  const orgId = req.user!.organizationId;
   const schema = z.object({ email: z.string().email() });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const existing = await verifyTakedownOrg(req.params.id, orgId);
+  const existing = await verifyTakedownOrg(req.params.id, orgId, isSuperadmin);
   if (!existing) return res.status(404).json({ error: '指定された削除申請が見つかりません。' });
 
   try {
