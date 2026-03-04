@@ -114,7 +114,7 @@ router.get('/stats', async (req, res) => {
     });
   } catch (err) {
     console.error('Dashboard stats error:', err);
-    res.status(500).json({ error: 'Failed to load dashboard stats' });
+    res.status(500).json({ error: 'ダッシュボードの読み込みに失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 

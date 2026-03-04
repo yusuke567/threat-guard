@@ -48,7 +48,7 @@ app.use('/api/alerts', authMiddleware, alertsRouter);
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({ error: 'サーバーで問題が発生しました。しばらくしてからもう一度お試しください。' });
 });
 
 app.listen(Number(port), '0.0.0.0', () => {

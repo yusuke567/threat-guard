@@ -48,7 +48,7 @@ router.get('/settings', async (req, res) => {
     where: { id: req.user!.userId },
     select: { alertEnabled: true, alertThreshold: true },
   });
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!user) return res.status(404).json({ error: 'ユーザー情報が見つかりません。再ログインをお試しください。' });
   res.json(user);
 });
 
@@ -74,10 +74,10 @@ router.post('/test-email', async (req, res) => {
     where: { id: userId },
     include: { organization: { include: { brands: { take: 1 } } } },
   });
-  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!user) return res.status(404).json({ error: 'ユーザー情報が見つかりません。再ログインをお試しください。' });
 
   const brand = user.organization?.brands?.[0];
-  if (!brand) return res.status(400).json({ error: 'No brand configured' });
+  if (!brand) return res.status(400).json({ error: 'ブランドが登録されていません。先にブランドを追加してください。' });
 
   // Find a detected domain for this brand (or create a dummy context)
   const detectedDomain = await prisma.detectedDomain.findFirst({
@@ -85,7 +85,7 @@ router.post('/test-email', async (req, res) => {
     orderBy: { riskScore: 'desc' },
   });
 
-  if (!detectedDomain) return res.status(400).json({ error: 'No detected domains found' });
+  if (!detectedDomain) return res.status(400).json({ error: '検知済みのドメインがまだありません。スキャンを実行してからお試しください。' });
 
   try {
     const { emailNotifyNewThreat } = await import('../services/email-notifier.js');
@@ -102,7 +102,7 @@ router.post('/test-email', async (req, res) => {
     res.json({ success: true, message: `Test email sent to ${user.email}` });
   } catch (err) {
     console.error('[Test Email] Error:', err);
-    res.status(500).json({ error: 'Failed to send test email', detail: String(err) });
+    res.status(500).json({ error: 'テストメールの送信に失敗しました。メール設定を確認してください。', detail: String(err) });
   }
 });
 

@@ -21,12 +21,12 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
       localStorage.removeItem('threatguard_user');
       window.location.href = '/login';
     }
-    throw new Error('Authentication required');
+    throw new Error('ログインが必要です。ログイン画面からログインしてください。');
   }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(error.error || 'API error');
+    throw new Error(error.error || '処理中にエラーが発生しました。しばらくしてからもう一度お試しください。');
   }
   return res.json();
 }

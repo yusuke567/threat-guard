@@ -23,7 +23,7 @@ router.post('/trigger', async (req, res) => {
   const { brandId, type } = parsed.data;
 
   const brand = await prisma.brand.findFirst({ where: { id: brandId, organizationId: orgId } });
-  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   const scanJob = await prisma.scanJob.create({ data: { brandId, type, status: 'running' } });
 

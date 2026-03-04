@@ -45,7 +45,7 @@ router.get('/:id', async (req, res) => {
       _count: { select: { detectedDomains: true, scanJobs: true } },
     },
   });
-  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
   res.json(brand);
 });
 
@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
     ? (req.body.organizationId || req.user!.organizationId)
     : req.user!.organizationId;
 
-  if (!orgId) return res.status(400).json({ error: 'Organization is required' });
+  if (!orgId) return res.status(400).json({ error: '組織を選択してください。' });
 
   const brand = await prisma.brand.create({
     data: { ...parsed.data, organizationId: orgId },
@@ -73,7 +73,7 @@ router.put('/:id', async (req, res) => {
 
   const orgId = req.user!.organizationId!;
   const existing = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
-  if (!existing) return res.status(404).json({ error: 'Brand not found' });
+  if (!existing) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   const brand = await prisma.brand.update({
     where: { id: req.params.id },
@@ -90,7 +90,7 @@ router.post('/:id/whitelist/import', async (req, res) => {
 
   const orgId = req.user!.organizationId!;
   const brand = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
-  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   const raw = parsed.data.csv;
   const domains = raw
@@ -136,7 +136,7 @@ router.post('/:id/whitelist/import', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const orgId = req.user!.organizationId!;
   const existing = await prisma.brand.findFirst({ where: { id: req.params.id, organizationId: orgId } });
-  if (!existing) return res.status(404).json({ error: 'Brand not found' });
+  if (!existing) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
   await prisma.brand.delete({ where: { id: req.params.id } });
   res.status(204).send();

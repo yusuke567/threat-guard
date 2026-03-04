@@ -72,7 +72,7 @@ router.get('/:id', async (req, res) => {
     },
   });
   if (!threat || threat.brand.organizationId !== orgId) {
-    return res.status(404).json({ error: 'Threat not found' });
+    return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
   }
   res.json(threat);
 });
@@ -86,14 +86,14 @@ router.get('/:id/content-analysis', async (req, res) => {
       include: { brand: { select: { organizationId: true } } },
     });
     if (!domain || domain.brand.organizationId !== orgId) {
-      return res.status(404).json({ error: 'Threat not found' });
+      return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     }
     const result = await analyzeContent(req.params.id);
     res.json(result);
   } catch (err: any) {
-    if (err.code === 'P2025') return res.status(404).json({ error: 'Threat not found' });
+    if (err.code === 'P2025') return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     console.error('Content analysis failed:', err);
-    res.status(500).json({ error: 'Content analysis failed' });
+    res.status(500).json({ error: 'コンテンツの分析に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 
@@ -106,14 +106,14 @@ router.get('/:id/abuse-contacts', async (req, res) => {
       include: { brand: { select: { organizationId: true } } },
     });
     if (!domain || domain.brand.organizationId !== orgId) {
-      return res.status(404).json({ error: 'Threat not found' });
+      return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     }
     const contacts = await getAbuseContacts(req.params.id);
     res.json(contacts);
   } catch (err: any) {
-    if (err.code === 'P2025') return res.status(404).json({ error: 'Threat not found' });
+    if (err.code === 'P2025') return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     console.error('Abuse contact lookup failed:', err);
-    res.status(500).json({ error: 'Abuse contact lookup failed' });
+    res.status(500).json({ error: '通報先の連絡先情報を取得できませんでした。しばらくしてからもう一度お試しください。' });
   }
 });
 

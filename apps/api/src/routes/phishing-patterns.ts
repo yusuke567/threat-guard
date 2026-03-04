@@ -25,7 +25,7 @@ router.get('/brands/:brandId/phishing-patterns', async (req, res) => {
     const { status } = req.query;
 
     const brand = await verifyBrandOrg(brandId, orgId);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
     const where: any = { brandId };
     if (status) where.status = status as string;
@@ -37,7 +37,7 @@ router.get('/brands/:brandId/phishing-patterns', async (req, res) => {
     res.json(patterns);
   } catch (err) {
     console.error('Error listing phishing patterns:', err);
-    res.status(500).json({ error: 'Failed to list patterns' });
+    res.status(500).json({ error: 'パターン一覧の取得に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 
@@ -48,12 +48,12 @@ router.post('/brands/:brandId/phishing-patterns', async (req, res) => {
     const { brandId } = req.params;
 
     const brand = await verifyBrandOrg(brandId, orgId);
-    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
     const { reportedBy, patternType, url, domain, description, tags, severity, victimCount } = req.body;
 
     if (!description) {
-      return res.status(400).json({ error: 'description is required' });
+      return res.status(400).json({ error: 'パターンの説明を入力してください。' });
     }
 
     const pattern = await prisma.phishingPattern.create({
@@ -72,7 +72,7 @@ router.post('/brands/:brandId/phishing-patterns', async (req, res) => {
     res.status(201).json(pattern);
   } catch (err) {
     console.error('Error creating phishing pattern:', err);
-    res.status(500).json({ error: 'Failed to create pattern' });
+    res.status(500).json({ error: 'パターンの登録に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 
@@ -83,7 +83,7 @@ router.patch('/phishing-patterns/:id', async (req, res) => {
     const { id } = req.params;
 
     const existing = await verifyPatternOrg(id, orgId);
-    if (!existing) return res.status(404).json({ error: 'Pattern not found' });
+    if (!existing) return res.status(404).json({ error: '指定されたパターンが見つかりません。' });
 
     const { status, severity, victimCount, tags } = req.body;
 
@@ -97,7 +97,7 @@ router.patch('/phishing-patterns/:id', async (req, res) => {
     res.json(pattern);
   } catch (err) {
     console.error('Error updating phishing pattern:', err);
-    res.status(500).json({ error: 'Failed to update pattern' });
+    res.status(500).json({ error: 'パターンの更新に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 
@@ -107,13 +107,13 @@ router.delete('/phishing-patterns/:id', async (req, res) => {
     const orgId = req.user!.organizationId!;
 
     const existing = await verifyPatternOrg(req.params.id, orgId);
-    if (!existing) return res.status(404).json({ error: 'Pattern not found' });
+    if (!existing) return res.status(404).json({ error: '指定されたパターンが見つかりません。' });
 
     await prisma.phishingPattern.delete({ where: { id: req.params.id } });
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting phishing pattern:', err);
-    res.status(500).json({ error: 'Failed to delete pattern' });
+    res.status(500).json({ error: 'パターンの削除に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 
@@ -123,10 +123,10 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
     const orgId = req.user!.organizationId!;
 
     const pattern = await verifyPatternOrg(req.params.id, orgId);
-    if (!pattern) return res.status(404).json({ error: 'Pattern not found' });
+    if (!pattern) return res.status(404).json({ error: '指定されたパターンが見つかりません。' });
 
     if (!pattern.domain) {
-      return res.status(400).json({ error: 'Pattern has no domain to apply' });
+      return res.status(400).json({ error: 'このパターンには対象ドメインが設定されていません。ドメインを追加してから適用してください。' });
     }
 
     const existing = await prisma.detectedDomain.findFirst({
@@ -158,7 +158,7 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
     res.status(201).json({ detectedDomain, alreadyExisted: false });
   } catch (err) {
     console.error('Error applying phishing pattern:', err);
-    res.status(500).json({ error: 'Failed to apply pattern' });
+    res.status(500).json({ error: 'パターンの適用に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 

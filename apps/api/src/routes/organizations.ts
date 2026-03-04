@@ -33,7 +33,7 @@ router.get('/all', requireSuperAdmin, async (_req, res) => {
 router.post('/', requireSuperAdmin, async (req, res) => {
   const { name } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return res.status(400).json({ error: 'Organization name is required' });
+    return res.status(400).json({ error: '組織名を入力してください。' });
   }
   const org = await prisma.organization.create({ data: { name: name.trim() } });
   res.status(201).json(org);
@@ -44,7 +44,7 @@ router.put('/:id', requireSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return res.status(400).json({ error: 'Organization name is required' });
+    return res.status(400).json({ error: '組織名を入力してください。' });
   }
   const org = await prisma.organization.update({
     where: { id },
@@ -70,20 +70,20 @@ router.post('/:id/users', requireSuperAdmin, async (req, res) => {
   const { email, name, password, role } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ error: 'メールアドレスとパスワードを入力してください。' });
   }
   if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return res.status(400).json({ error: 'パスワードは8文字以上で入力してください。' });
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return res.status(409).json({ error: 'Email already in use' });
+    return res.status(409).json({ error: 'このメールアドレスはすでに使用されています。' });
   }
 
   const org = await prisma.organization.findUnique({ where: { id: organizationId } });
   if (!org) {
-    return res.status(404).json({ error: 'Organization not found' });
+    return res.status(404).json({ error: '指定された組織が見つかりません。' });
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -108,12 +108,12 @@ router.delete('/:id/users/:userId', requireSuperAdmin, async (req, res) => {
     where: { id: userId, organizationId },
   });
   if (!user) {
-    return res.status(404).json({ error: 'User not found in this organization' });
+    return res.status(404).json({ error: 'この組織にそのユーザーは見つかりません。' });
   }
 
   // Prevent deleting yourself
   if (userId === req.user!.userId) {
-    return res.status(400).json({ error: 'Cannot delete yourself' });
+    return res.status(400).json({ error: '自分自身を削除することはできません。' });
   }
 
   await prisma.user.delete({ where: { id: userId } });
@@ -130,7 +130,7 @@ router.get('/:id', requireSuperAdmin, async (req, res) => {
       brands: { select: { id: true, name: true, domain: true } },
     },
   });
-  if (!org) return res.status(404).json({ error: 'Organization not found' });
+  if (!org) return res.status(404).json({ error: '指定された組織が見つかりません。' });
   res.json(org);
 });
 

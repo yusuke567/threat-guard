@@ -40,7 +40,7 @@ export function useAuthState(): AuthContextType {
     });
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.error || 'Login failed');
+      throw new Error(err.error || 'ログインに失敗しました。メールアドレスとパスワードを確認してください。');
     }
     const data = await res.json();
     // Store token separately

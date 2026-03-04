@@ -28,7 +28,7 @@ router.post('/', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const domain = await verifyDomainOrg(parsed.data.detectedDomainId, orgId);
-  if (!domain) return res.status(404).json({ error: 'Domain not found' });
+  if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
   const result = await generateTakedownTemplate(parsed.data.detectedDomainId);
   res.status(201).json(result);
@@ -44,7 +44,7 @@ router.put('/:id', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const existing = await verifyTakedownOrg(req.params.id, orgId);
-  if (!existing) return res.status(404).json({ error: 'Takedown not found' });
+  if (!existing) return res.status(404).json({ error: '指定されたテイクダウン依頼が見つかりません。' });
 
   const takedown = await prisma.takedownRequest.update({
     where: { id: req.params.id },
@@ -63,7 +63,7 @@ router.put('/:id', async (req, res) => {
 router.get('/:id/pdf', async (req, res) => {
   const orgId = req.user!.organizationId!;
   const existing = await verifyTakedownOrg(req.params.id, orgId);
-  if (!existing) return res.status(404).json({ error: 'Takedown not found' });
+  if (!existing) return res.status(404).json({ error: '指定されたテイクダウン依頼が見つかりません。' });
 
   try {
     const pdf = await generateTakedownPdf(req.params.id);
@@ -72,7 +72,7 @@ router.get('/:id/pdf', async (req, res) => {
     res.send(pdf);
   } catch (err) {
     console.error('PDF generation failed:', err);
-    res.status(500).json({ error: 'PDF generation failed' });
+    res.status(500).json({ error: 'PDFの作成に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 
@@ -84,7 +84,7 @@ router.post('/:id/send', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const existing = await verifyTakedownOrg(req.params.id, orgId);
-  if (!existing) return res.status(404).json({ error: 'Takedown not found' });
+  if (!existing) return res.status(404).json({ error: '指定されたテイクダウン依頼が見つかりません。' });
 
   try {
     await prisma.takedownRequest.update({
@@ -102,7 +102,7 @@ router.post('/:id/send', async (req, res) => {
     res.json({ success: true, message: `Takedown sent to ${parsed.data.email}` });
   } catch (err) {
     console.error('Email send failed:', err);
-    res.status(500).json({ error: 'Email send failed' });
+    res.status(500).json({ error: 'メールの送信に失敗しました。宛先アドレスを確認してもう一度お試しください。' });
   }
 });
 

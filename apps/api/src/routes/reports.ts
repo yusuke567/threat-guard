@@ -19,14 +19,14 @@ router.get('/generate', async (req, res) => {
     const { type, brandId } = req.query;
 
     if (!type || !['regulatory', 'board', 'clo'].includes(String(type))) {
-      return res.status(400).json({ error: 'type must be regulatory, board, or clo' });
+      return res.status(400).json({ error: 'レポートの種類を選択してください（行政機関向け・取締役会向け・CLO向け）。' });
     }
 
     const brandIds = await orgBrandIds(orgId);
 
     // If brandId specified, verify it belongs to this org
     if (brandId && !brandIds.includes(String(brandId))) {
-      return res.status(404).json({ error: 'Brand not found' });
+      return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
     }
 
     const where: Record<string, unknown> = {
@@ -44,7 +44,7 @@ router.get('/generate', async (req, res) => {
     }
   } catch (err) {
     console.error('Report generation error:', err);
-    res.status(500).json({ error: 'Failed to generate report' });
+    res.status(500).json({ error: 'レポートの作成に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
 

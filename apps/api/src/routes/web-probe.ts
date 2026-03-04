@@ -16,13 +16,13 @@ router.post('/:domainId', async (req, res) => {
   try {
     const orgId = req.user!.organizationId!;
     const domain = await verifyDomainOrg(req.params.domainId, orgId);
-    if (!domain) return res.status(404).json({ error: 'Domain not found' });
+    if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
     const result = await probeDomain(req.params.domainId);
     res.json(result);
   } catch (err: any) {
     console.error('Probe failed:', err);
-    res.status(500).json({ error: 'Probe failed', message: err.message });
+    res.status(500).json({ error: 'サイトの調査に失敗しました。しばらくしてからもう一度お試しください。', message: err.message });
   }
 });
 
@@ -34,7 +34,7 @@ router.get('/:domainId/history', async (req, res) => {
   const skip = (Number(page) - 1) * take;
 
   const domain = await verifyDomainOrg(req.params.domainId, orgId);
-  if (!domain) return res.status(404).json({ error: 'Domain not found' });
+  if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
   const [data, total] = await Promise.all([
     prisma.webProbe.findMany({

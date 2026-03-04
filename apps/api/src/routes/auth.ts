@@ -14,16 +14,16 @@ const loginSchema = z.object({
 // Login - returns JWT
 router.post('/login', async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Invalid credentials' });
+  if (!parsed.success) return res.status(400).json({ error: 'メールアドレスとパスワードを正しく入力してください。' });
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email },
     include: { organization: true },
   });
-  if (!user) return res.status(401).json({ error: 'Invalid email or password' });
+  if (!user) return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません。' });
 
   const valid = await bcrypt.compare(parsed.data.password, user.hashedPassword);
-  if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+  if (!valid) return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません。' });
 
   const token = signToken({
     userId: user.id,
@@ -58,7 +58,7 @@ router.post('/register', async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  if (existing) return res.status(409).json({ error: 'Email already registered' });
+  if (existing) return res.status(409).json({ error: 'このメールアドレスはすでに登録されています。' });
 
   const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
 
