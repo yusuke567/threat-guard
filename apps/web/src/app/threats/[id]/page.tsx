@@ -1007,13 +1007,26 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
 
               <div className="flex gap-3 pt-2">
                 {currentTakedownId && (
-                  <a
-                    href={downloadTakedownPdf(currentTakedownId)}
-                    target="_blank"
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = typeof window !== 'undefined' ? localStorage.getItem('threatguard_token') : null;
+                        const res = await fetch(downloadTakedownPdf(currentTakedownId), {
+                          headers: token ? { Authorization: `Bearer ${token}` } : {},
+                        });
+                        if (!res.ok) throw new Error('PDF取得に失敗しました');
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        window.open(url, '_blank');
+                      } catch (e) {
+                        console.error('PDF download failed:', e);
+                        alert('PDFの取得に失敗しました。');
+                      }
+                    }}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
                   >
                     プレビュー (PDF)
-                  </a>
+                  </button>
                 )}
                 <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
                   キャンセル
