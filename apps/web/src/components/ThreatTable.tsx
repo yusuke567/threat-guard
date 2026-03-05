@@ -55,10 +55,31 @@ interface ThreatTableProps {
   threats: Threat[];
   onSelect?: (id: string) => void;
   expandable?: boolean;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
-export default function ThreatTable({ threats, onSelect, expandable = false }: ThreatTableProps) {
+export default function ThreatTable({ threats, onSelect, expandable = false, selectable = false, selectedIds, onSelectionChange }: ThreatTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  const toggleSelect = (id: string, e: React.MouseEvent | React.ChangeEvent) => {
+    e.stopPropagation();
+    if (!selectedIds || !onSelectionChange) return;
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onSelectionChange(next);
+  };
+
+  const toggleAll = () => {
+    if (!selectedIds || !onSelectionChange) return;
+    if (selectedIds.size === threats.length) {
+      onSelectionChange(new Set());
+    } else {
+      onSelectionChange(new Set(threats.map((t) => t.id)));
+    }
+  };
 
   if (threats.length === 0) {
     return (
@@ -113,6 +134,16 @@ export default function ThreatTable({ threats, onSelect, expandable = false }: T
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-200 text-left text-sm text-gray-500">
+            {selectable && (
+              <th className="pb-3 font-medium w-10">
+                <input
+                  type="checkbox"
+                  checked={selectedIds ? selectedIds.size === threats.length && threats.length > 0 : false}
+                  onChange={toggleAll}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </th>
+            )}
             <th className="pb-3 font-medium">ドメイン</th>
             <th className="pb-3 font-medium">概要</th>
             <th className="pb-3 font-medium">
@@ -136,6 +167,16 @@ export default function ThreatTable({ threats, onSelect, expandable = false }: T
                 }`}
                 onClick={() => handleRowClick(threat)}
               >
+                {selectable && (
+                  <td className="py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds?.has(threat.id) || false}
+                      onChange={(e) => toggleSelect(threat.id, e)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
+                )}
                 <td className="py-3">
                   <div className="font-mono text-sm font-medium">{threat.domain}</div>
                   <div className="text-xs text-gray-400 mt-0.5">vs {threat.brand.domain}</div>
@@ -168,7 +209,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false }: T
               {/* Layer 2: Expanded Detail Panel */}
               {expandable && expandedRowId === threat.id && (
                 <tr key={`${threat.id}-detail`}>
-                  <td colSpan={6} className="bg-gray-50 border-b border-gray-200">
+                  <td colSpan={selectable ? 7 : 6} className="bg-gray-50 border-b border-gray-200">
                     <div className="p-5 space-y-4">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Screenshot */}
