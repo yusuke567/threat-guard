@@ -1,9 +1,10 @@
-node_modules/
-dist/
-.env
-.next/
 *.db
 *.db-journal
-screenshots/
-.vercel
+.env
 .git-credentials
+.mcp.json
+.next/
+.vercel
+dist/
+node_modules/
+screenshots/
