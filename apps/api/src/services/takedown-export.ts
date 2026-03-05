@@ -286,12 +286,16 @@ export async function sendTakedownEmail(
 ): Promise<void> {
   const { takedown, dd, whois } = await loadTakedownWithEvidence(takedownId);
 
-  // Try PDF generation, but don't fail the whole email if Chromium is unavailable
+  // Try PDF generation with timeout, but don't fail the whole email if Chromium is unavailable
   let pdf: Buffer | null = null;
   try {
-    pdf = await generateTakedownPdf(takedownId);
+    const pdfPromise = generateTakedownPdf(takedownId);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('PDF generation timed out (15s)')), 15000)
+    );
+    pdf = await Promise.race([pdfPromise, timeoutPromise]);
   } catch (err) {
-    console.warn('PDF generation failed (Chromium may not be installed), sending email without PDF attachment:', err);
+    console.warn('PDF generation failed (Chromium may not be installed or timed out), sending email without PDF attachment:', err);
   }
 
   const brand = dd.brand;
@@ -311,7 +315,12 @@ export async function sendTakedownEmail(
         auth: { user: process.env.SMTP_USER || '', pass: process.env.SMTP_PASS || '' },
       };
 
-  const transporter = nodemailer.createTransport(smtpConfig);
+  const transporter = nodemailer.createTransport({
+    ...smtpConfig,
+    connectionTimeout: 10000, // 10s connection timeout
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
 
   const senderEmail = brand.senderEmail || process.env.SMTP_FROM || process.env.SMTP_USER;
   const brandName = brand.name;
