@@ -112,6 +112,27 @@ export const applyPhishingPattern = (id: string) =>
 export const getAbuseContacts = (threatId: string) =>
   fetchAPI<{ registrar: string; abuseEmail: string | null; source: string }>(`/threats/${threatId}/abuse-contacts`);
 
+// Batch takedown
+export const getBulkAbuseContacts = (threatIds: string[]) =>
+  fetchAPI<any>('/takedown-batches/abuse-contacts', { method: 'POST', body: JSON.stringify({ threatIds }) });
+
+export const generateBatchTemplate = (data: { threatIds: string[]; abuseEmail: string; registrar: string; language: string }) =>
+  fetchAPI<{ template: string; language: string }>('/takedown-batches/generate-template', { method: 'POST', body: JSON.stringify(data) });
+
+export const submitBatchTakedown = (items: Array<{ threatId: string; abuseEmail: string; template: string; language: string; evidenceTypes: string }>) =>
+  fetchAPI<{ batchId: string; totalCount: number; sentCount: number; errors: any[] }>('/takedown-batches', { method: 'POST', body: JSON.stringify({ items }) });
+
+export const getTakedowns = (params?: Record<string, string>) => {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return fetchAPI<any>(`/takedown-batches${query}`);
+};
+
+export const updateTakedownStatus = (id: string, status: string, rejectionReason?: string) =>
+  fetchAPI<any>(`/takedown-batches/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, rejectionReason }) });
+
+export const resendTakedown = (id: string, template: string, language?: string) =>
+  fetchAPI<any>(`/takedown-batches/${id}/resend`, { method: 'POST', body: JSON.stringify({ template, language }) });
+
 // Admin: Organizations
 export const getAllOrganizations = () => fetchAPI<any[]>('/organizations/all');
 export const getOrganization = (id: string) => fetchAPI<any>(`/organizations/${id}`);

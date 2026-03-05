@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ThreatTable from '@/components/ThreatTable';
 import { getThreats } from '@/lib/api';
 
 export default function ThreatsPage() {
+  const router = useRouter();
   const [threats, setThreats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     status: '',
     category: '',
@@ -87,6 +90,33 @@ export default function ThreatsPage() {
         </div>
       </div>
 
+      {/* Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-blue-800">
+            {selectedIds.size}件を選択中
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              選択解除
+            </button>
+            <button
+              onClick={() => {
+                const ids = Array.from(selectedIds);
+                sessionStorage.setItem('takedown_threat_ids', JSON.stringify(ids));
+                router.push('/takedown-request');
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              🗑️ {selectedIds.size}件を削除申請
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         {loading ? (
@@ -97,7 +127,10 @@ export default function ThreatsPage() {
           <>
             <ThreatTable
               threats={threats?.data || []}
-              onSelect={(id) => window.location.href = `/threats/${id}`}
+              onSelect={(id) => router.push(`/threats/${id}`)}
+              selectable
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
             />
             {/* Pagination */}
             {threats && threats.totalPages > 1 && (

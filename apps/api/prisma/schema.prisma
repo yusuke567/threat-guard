@@ -97,19 +97,37 @@ model ThreatAnalysis {
   @@index([category])
 }
 
+model TakedownBatch {
+  id          String            @id @default(uuid())
+  status      String            @default("draft") // draft, sent, partial, completed
+  totalCount  Int               @default(0)
+  sentCount   Int               @default(0)
+  requests    TakedownRequest[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status])
+}
+
 model TakedownRequest {
-  id               String         @id @default(uuid())
+  id               String          @id @default(uuid())
   detectedDomainId String
-  detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  detectedDomain   DetectedDomain  @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  batchId          String?
+  batch            TakedownBatch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
   registrar        String
   abuseEmail       String?
   template         String
-  status           String         @default("draft")
+  language         String          @default("en") // en, ja
+  evidenceTypes    String          @default("") // comma-separated: screenshot,trademark,whois
+  status           String          @default("draft") // draft, sent, awaiting_response, completed, rejected
   sentAt           DateTime?
   respondedAt      DateTime?
-  createdAt        DateTime       @default(now())
+  rejectionReason  String?
+  createdAt        DateTime        @default(now())
 
   @@index([detectedDomainId])
+  @@index([batchId])
   @@index([status])
 }
 

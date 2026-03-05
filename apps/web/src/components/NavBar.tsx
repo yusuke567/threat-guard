@@ -19,6 +19,7 @@ export default function NavBar() {
         <div className="hidden md:flex items-center gap-6">
           <a href="/" className="text-gray-600 hover:text-gray-900 font-medium text-sm">ダッシュボード</a>
           <a href="/threats" className="text-gray-600 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
+          <a href="/takedowns" className="text-gray-600 hover:text-gray-900 font-medium text-sm">削除申請</a>
           <a href="/brands" className="text-gray-600 hover:text-gray-900 font-medium text-sm">ブランド管理</a>
           <a href="/phishing-patterns" className="text-gray-600 hover:text-gray-900 font-medium text-sm">📋 ユーザー報告</a>
           <a href="/reports" className="text-gray-600 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
@@ -57,6 +58,7 @@ export default function NavBar() {
         <div className="md:hidden mt-3 pt-3 border-t border-gray-200 space-y-2">
           <a href="/" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">ダッシュボード</a>
           <a href="/threats" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
+          <a href="/takedowns" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">削除申請</a>
           <a href="/brands" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">ブランド管理</a>
           <a href="/phishing-patterns" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">📋 ユーザー報告</a>
           <a href="/reports" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
