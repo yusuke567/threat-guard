@@ -3,6 +3,7 @@ import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
 import AuthGuard from '@/components/AuthGuard';
 import NavBar from '@/components/NavBar';
+import ThemeProvider from '@/components/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'ThreatGuard - Brand Protection Dashboard',
@@ -11,18 +12,20 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <body>
-        <AuthProvider>
-          <AuthGuard>
-            <div className="min-h-screen">
-              <NavBar />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-                {children}
-              </main>
-            </div>
-          </AuthGuard>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AuthGuard>
+              <div className="min-h-screen">
+                <NavBar />
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+                  {children}
+                </main>
+              </div>
+            </AuthGuard>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

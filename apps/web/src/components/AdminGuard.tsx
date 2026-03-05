@@ -23,7 +23,7 @@ export default function AdminGuard({ children }: { children: React.ReactNode }) 
   if (!user || user.role !== 'superadmin') {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-gray-500">アクセス権限がありません</p>
+        <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500">アクセス権限がありません</p>
       </div>
     );
   }

@@ -30,7 +30,7 @@ export default function GlossaryTerm({ term, children }: GlossaryTermProps) {
   return (
     <span className="relative inline-block" ref={ref}>
       <span
-        className="border-b border-dotted border-gray-400 cursor-help hover:border-blue-500 hover:text-blue-700 transition-colors"
+        className="border-b border-dotted border-gray-400 cursor-help hover:border-blue-500 hover:text-blue-700 dark:text-blue-300 transition-colors"
         onClick={() => setOpen(!open)}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}

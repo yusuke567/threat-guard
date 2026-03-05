@@ -21,7 +21,7 @@ const statusColors: Record<string, string> = {
   new_domain: 'bg-blue-100 text-blue-800',
   analyzing: 'bg-yellow-100 text-yellow-800',
   confirmed_threat: 'bg-red-100 text-red-800',
-  false_positive: 'bg-gray-100 text-gray-800',
+  false_positive: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
   takedown_sent: 'bg-orange-100 text-orange-800',
   resolved: 'bg-green-100 text-green-800',
 };
@@ -83,7 +83,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
 
   if (threats.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500">
         検知された脅威はありません
       </div>
     );
@@ -133,14 +133,14 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-sm text-gray-500">
+          <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
             {selectable && (
               <th className="pb-3 font-medium w-10">
                 <input
                   type="checkbox"
                   checked={selectedIds ? selectedIds.size === threats.length && threats.length > 0 : false}
                   onChange={toggleAll}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
               </th>
             )}
@@ -162,8 +162,8 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
             <>
               <tr
                 key={threat.id}
-                className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                  expandedRowId === threat.id ? 'bg-gray-50' : ''
+                className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 cursor-pointer ${
+                  expandedRowId === threat.id ? 'bg-gray-50 dark:bg-gray-900' : ''
                 }`}
                 onClick={() => handleRowClick(threat)}
               >
@@ -173,15 +173,15 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                       type="checkbox"
                       checked={selectedIds?.has(threat.id) || false}
                       onChange={(e) => toggleSelect(threat.id, e)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
                 )}
                 <td className="py-3">
                   <div className="font-mono text-sm font-medium">{threat.domain}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">vs {threat.brand.domain}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">vs {threat.brand.domain}</div>
                 </td>
-                <td className="py-3 text-sm text-gray-600">
+                <td className="py-3 text-sm text-gray-600 dark:text-gray-300">
                   {threat.analyses[0]
                     ? categoryDescriptions[threat.analyses[0].category] || threat.analyses[0].category
                     : '—'}
@@ -190,15 +190,15 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                   <RiskBadgeCompact score={threat.riskScore} threatId={threat.id} />
                 </td>
                 <td className="py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[threat.status] || 'bg-gray-100'}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[threat.status] || 'bg-gray-100 dark:bg-gray-700'}`}>
                     {statusLabels[threat.status] || threat.status}
                   </span>
                 </td>
-                <td className="py-3 text-sm text-gray-500">
+                <td className="py-3 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   {new Date(threat.firstSeen).toLocaleDateString('ja-JP')}
                 </td>
                 {expandable && (
-                  <td className="py-3 text-gray-400">
+                  <td className="py-3 text-gray-400 dark:text-gray-500">
                     <span className={`inline-block transition-transform ${expandedRowId === threat.id ? 'rotate-180' : ''}`}>
                       ▼
                     </span>
@@ -209,20 +209,20 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
               {/* Layer 2: Expanded Detail Panel */}
               {expandable && expandedRowId === threat.id && (
                 <tr key={`${threat.id}-detail`}>
-                  <td colSpan={selectable ? 7 : 6} className="bg-gray-50 border-b border-gray-200">
+                  <td colSpan={selectable ? 7 : 6} className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                     <div className="p-5 space-y-4">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Screenshot */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-4">
-                          <h4 className="text-sm font-bold text-gray-700 mb-2">📸 スクリーンショット</h4>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                          <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">📸 スクリーンショット</h4>
                           {threat.screenshotUrl ? (
                             <img
                               src={threat.screenshotUrl}
                               alt={`${threat.domain} のスクリーンショット`}
-                              className="w-full rounded border border-gray-200"
+                              className="w-full rounded border border-gray-200 dark:border-gray-700"
                             />
                           ) : (
-                            <div className="flex items-center justify-center h-32 bg-gray-100 rounded text-gray-400 text-sm">
+                            <div className="flex items-center justify-center h-32 bg-gray-100 dark:bg-gray-700 rounded text-gray-400 dark:text-gray-500 text-sm">
                               スクリーンショット未取得
                             </div>
                           )}
@@ -231,17 +231,17 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                         {/* Analysis Details */}
                         <div className="space-y-3">
                           {/* Threat Category & Confidence */}
-                          <div className="bg-white rounded-lg border border-gray-200 p-4">
-                            <h4 className="text-sm font-bold text-gray-700 mb-2">🔍 判定根拠</h4>
+                          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">🔍 判定根拠</h4>
                             {threat.analyses.length > 0 ? (
                               <div className="space-y-2">
                                 {threat.analyses.map((a, i) => (
                                   <div key={i} className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-600">
+                                    <span className="text-sm text-gray-600 dark:text-gray-300">
                                       {categoryLabels[a.category] || a.category}
                                     </span>
                                     <div className="flex items-center gap-2">
-                                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                                      <div className="w-24 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                                         <div
                                           className={`h-2 rounded-full ${
                                             a.confidence >= 0.8 ? 'bg-red-500' :
@@ -251,7 +251,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                                           style={{ width: `${a.confidence * 100}%` }}
                                         />
                                       </div>
-                                      <span className="text-xs text-gray-500 w-10 text-right">
+                                      <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 w-10 text-right">
                                         {Math.round(a.confidence * 100)}%
                                       </span>
                                     </div>
@@ -259,22 +259,22 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-sm text-gray-400">分析データなし</p>
+                              <p className="text-sm text-gray-400 dark:text-gray-500">分析データなし</p>
                             )}
                           </div>
 
                           {/* WHOIS Summary */}
-                          <div className="bg-white rounded-lg border border-gray-200 p-4">
-                            <h4 className="text-sm font-bold text-gray-700 mb-1">🌐 ドメイン情報</h4>
-                            <p className="text-sm text-gray-600">
+                          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">🌐 ドメイン情報</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                               {parseWhoisSummary(threat.whoisData) || '情報未取得'}
                             </p>
                           </div>
 
                           {/* SSL Summary */}
-                          <div className="bg-white rounded-lg border border-gray-200 p-4">
-                            <h4 className="text-sm font-bold text-gray-700 mb-1">🔒 SSL証明書</h4>
-                            <p className="text-sm text-gray-600">
+                          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">🔒 SSL証明書</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">
                               {parseSslSummary(threat.sslInfo) || '情報未取得'}
                             </p>
                           </div>
@@ -291,7 +291,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                           🚨 削除申請
                         </a>
                         <button
-                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             // TODO: Implement false positive marking
@@ -302,7 +302,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                         </button>
                         <a
                           href={`/threats/${threat.id}`}
-                          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                          className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
                           技術詳細 →

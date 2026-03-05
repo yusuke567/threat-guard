@@ -50,7 +50,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const COLOR_MAP: Record<string, { border: string; bg: string; text: string; hover: string; ring: string }> = {
-  blue: { border: 'border-blue-200', bg: 'bg-blue-50', text: 'text-blue-700', hover: 'hover:border-blue-400', ring: 'ring-blue-500' },
+  blue: { border: 'border-blue-200 dark:border-blue-800', bg: 'bg-blue-50 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', hover: 'hover:border-blue-400', ring: 'ring-blue-500' },
   purple: { border: 'border-purple-200', bg: 'bg-purple-50', text: 'text-purple-700', hover: 'hover:border-purple-400', ring: 'ring-purple-500' },
   amber: { border: 'border-amber-200', bg: 'bg-amber-50', text: 'text-amber-700', hover: 'hover:border-amber-400', ring: 'ring-amber-500' },
 };
@@ -86,14 +86,14 @@ export default function ReportsPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">📄 レポート</h1>
-          <p className="text-gray-500 mt-1">提出先に合わせたレポートを生成</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📄 レポート</h1>
+          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">提出先に合わせたレポートを生成</p>
         </div>
         <div className="flex items-center gap-3">
           <select
             value={brandId}
             onChange={(e) => setBrandId(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
           >
             <option value="">全ブランド</option>
             {brands.map((b) => (
@@ -120,12 +120,12 @@ export default function ReportsPage() {
             <button
               key={rt.id}
               onClick={() => handleGenerate(rt.id)}
-              className={`text-left rounded-xl border-2 p-5 transition-all ${c.border} ${c.hover} ${isSelected ? `ring-2 ${c.ring} ${c.bg}` : 'bg-white'}`}
+              className={`text-left rounded-xl border-2 p-5 transition-all ${c.border} ${c.hover} ${isSelected ? `ring-2 ${c.ring} ${c.bg}` : 'bg-white dark:bg-gray-800'}`}
             >
               <div className="text-3xl mb-2">{rt.icon}</div>
-              <h3 className="font-bold text-gray-900 text-lg">{rt.title}</h3>
+              <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">{rt.title}</h3>
               <p className={`text-sm font-medium mt-1 ${c.text}`}>{rt.description}</p>
-              <p className="text-xs text-gray-500 mt-2 leading-relaxed">{rt.detail}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">{rt.detail}</p>
             </button>
           );
         })}
@@ -140,7 +140,7 @@ export default function ReportsPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
           <p className="font-medium">エラーが発生しました</p>
           <p className="text-sm mt-1">{error}</p>
         </div>
@@ -148,10 +148,10 @@ export default function ReportsPage() {
 
       {/* Report Preview */}
       {report && !loading && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 print:border-0 print:p-0">
-          <div className="border-b border-gray-200 pb-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900">{report.title}</h2>
-            <p className="text-sm text-gray-500 mt-1">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 print:border-0 print:p-0">
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{report.title}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
               生成日時: {new Date(report.generatedAt).toLocaleString('ja-JP')}
             </p>
           </div>
@@ -181,7 +181,7 @@ function RegulatoryReport({ data }: { data: any }) {
       {/* Timeline */}
       {data.timeline?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 mb-3">検知タイムライン</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">検知タイムライン</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.timeline}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -196,23 +196,23 @@ function RegulatoryReport({ data }: { data: any }) {
 
       {/* Full threat list */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-3">脅威一覧（全{data.threats.length}件）</h3>
+        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">脅威一覧（全{data.threats.length}件）</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="py-2 pr-3 font-medium text-gray-600">ドメイン</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">ブランド</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">リスク</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">カテゴリ</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">ステータス</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">初検知</th>
-                <th className="py-2 font-medium text-gray-600">削除申請</th>
+              <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ドメイン</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ブランド</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">リスク</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">カテゴリ</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ステータス</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">初検知</th>
+                <th className="py-2 font-medium text-gray-600 dark:text-gray-300">削除申請</th>
               </tr>
             </thead>
             <tbody>
               {data.threats.map((t: any, i: number) => (
-                <tr key={i} className="border-b border-gray-100">
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pr-3 font-mono text-xs">{t.domain}</td>
                   <td className="py-2 pr-3">{t.brandName}</td>
                   <td className="py-2 pr-3">
@@ -222,7 +222,7 @@ function RegulatoryReport({ data }: { data: any }) {
                     {t.analyses.map((a: any) => CATEGORY_LABELS[a.category] || a.category).join(', ') || '—'}
                   </td>
                   <td className="py-2 pr-3">{STATUS_LABELS[t.status] || t.status}</td>
-                  <td className="py-2 pr-3 text-xs text-gray-500">
+                  <td className="py-2 pr-3 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
                     {new Date(t.firstSeen).toLocaleDateString('ja-JP')}
                   </td>
                   <td className="py-2 text-xs">
@@ -262,7 +262,7 @@ function BoardReport({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Risk Distribution */}
         <div>
-          <h3 className="font-bold text-gray-900 mb-3">リスク分布</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">リスク分布</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie data={riskData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value"
@@ -277,7 +277,7 @@ function BoardReport({ data }: { data: any }) {
         {/* Category Breakdown */}
         {data.categoryBreakdown?.length > 0 && (
           <div>
-            <h3 className="font-bold text-gray-900 mb-3">脅威カテゴリ</h3>
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">脅威カテゴリ</h3>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
@@ -302,7 +302,7 @@ function BoardReport({ data }: { data: any }) {
       {/* Trend */}
       {data.timeline?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 mb-3">検知トレンド</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">検知トレンド</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.timeline}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -318,17 +318,17 @@ function BoardReport({ data }: { data: any }) {
       {/* Brand Breakdown */}
       {data.brandBreakdown?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 mb-3">ブランド別脅威件数</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">ブランド別脅威件数</h3>
           <div className="space-y-3">
             {data.brandBreakdown.map((b: any) => {
               const max = Math.max(...data.brandBreakdown.map((x: any) => x.count), 1);
               return (
                 <div key={b.name}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">{b.name}</span>
-                    <span className="text-gray-500">{b.count}件</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">{b.name}</span>
+                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">{b.count}件</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5">
                     <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${(b.count / max) * 100}%` }} />
                   </div>
                 </div>
@@ -355,24 +355,24 @@ function CloReport({ data }: { data: any }) {
 
       {/* Threats with legal context */}
       <div>
-        <h3 className="font-bold text-gray-900 mb-3">法的リスク一覧</h3>
+        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">法的リスク一覧</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left">
-                <th className="py-2 pr-3 font-medium text-gray-600">優先度</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">ドメイン</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">ブランド</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">リスク</th>
-                <th className="py-2 pr-3 font-medium text-gray-600">法的根拠</th>
-                <th className="py-2 font-medium text-gray-600">TD状況</th>
+              <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">優先度</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ドメイン</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ブランド</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">リスク</th>
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">法的根拠</th>
+                <th className="py-2 font-medium text-gray-600 dark:text-gray-300">TD状況</th>
               </tr>
             </thead>
             <tbody>
               {data.threats.map((t: any, i: number) => (
-                <tr key={i} className="border-b border-gray-100">
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pr-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PRIORITY_COLORS[t.priority] || 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PRIORITY_COLORS[t.priority] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'}`}>
                       {t.priority}
                     </span>
                   </td>
@@ -393,12 +393,12 @@ function CloReport({ data }: { data: any }) {
       {/* Registrar Breakdown */}
       {data.registrarBreakdown?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 mb-3">レジストラ別集計</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">レジストラ別集計</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {data.registrarBreakdown.map((r: any) => (
-              <div key={r.registrar} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                <span className="text-sm font-medium text-gray-700">{r.registrar}</span>
-                <span className="text-sm font-bold text-gray-900">{r.count}件</span>
+              <div key={r.registrar} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 rounded-lg px-4 py-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{r.registrar}</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{r.count}件</span>
               </div>
             ))}
           </div>
@@ -410,10 +410,10 @@ function CloReport({ data }: { data: any }) {
 
 /* ========== Shared Components ========== */
 function SummaryCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
-  const colorClass = color === 'red' ? 'text-red-600' : color === 'green' ? 'text-green-600' : color === 'blue' ? 'text-blue-600' : color === 'yellow' ? 'text-yellow-600' : 'text-gray-900';
+  const colorClass = color === 'red' ? 'text-red-600' : color === 'green' ? 'text-green-600' : color === 'blue' ? 'text-blue-600' : color === 'yellow' ? 'text-yellow-600' : 'text-gray-900 dark:text-gray-100';
   return (
-    <div className="bg-gray-50 rounded-lg p-4">
-      <p className="text-xs text-gray-500 font-medium">{label}</p>
+    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+      <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium">{label}</p>
       <p className={`text-2xl font-bold mt-1 ${colorClass}`}>{value}</p>
     </div>
   );

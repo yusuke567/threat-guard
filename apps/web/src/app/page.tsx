@@ -99,7 +99,7 @@ export default function Dashboard() {
 
   if (error && !threats) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+      <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
         <p className="font-medium">エラーが発生しました</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -126,32 +126,32 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Welcome Guide */}
       {showGuide && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 relative">
+        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-5 relative">
           <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-blue-400 hover:text-blue-600 text-lg">✕</button>
-          <h2 className="font-bold text-blue-900 text-lg">🛡️ ThreatGuardへようこそ</h2>
-          <p className="text-blue-700 text-sm mt-2 leading-relaxed">
+          <h2 className="font-bold text-blue-900 dark:text-blue-200 text-lg">🛡️ ThreatGuardへようこそ</h2>
+          <p className="text-blue-700 dark:text-blue-300 text-sm mt-2 leading-relaxed">
             このダッシュボードでブランドのなりすまし脅威を監視・管理できます。
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 text-sm">① ブランドを登録</p>
-              <p className="text-blue-700 text-xs mt-1">「ブランド管理」から監視したいブランドとドメインを登録</p>
+            <div className="bg-white dark:bg-gray-800/60 rounded-lg p-3">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm">① ブランドを登録</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">「ブランド管理」から監視したいブランドとドメインを登録</p>
             </div>
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 text-sm">② スキャンを実行</p>
-              <p className="text-blue-700 text-xs mt-1">CT監視や類似ドメインスキャンでなりすましを自動検知</p>
+            <div className="bg-white dark:bg-gray-800/60 rounded-lg p-3">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm">② スキャンを実行</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">CT監視や類似ドメインスキャンでなりすましを自動検知</p>
             </div>
-            <div className="bg-white/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 text-sm">③ 脅威に対応</p>
-              <p className="text-blue-700 text-xs mt-1">リスクレベルに応じて削除申請を生成・送信</p>
+            <div className="bg-white dark:bg-gray-800/60 rounded-lg p-3">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm">③ 脅威に対応</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">リスクレベルに応じて削除申請を生成・送信</p>
             </div>
           </div>
         </div>
       )}
 
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">脅威一覧</h1>
-        <p className="text-gray-500 mt-1">検知されたなりすまし脅威の監視・管理</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">脅威一覧</h1>
+        <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">検知されたなりすまし脅威の監視・管理</p>
       </div>
 
       {/* Summary Cards - clickable filters */}
@@ -160,62 +160,62 @@ export default function Dashboard() {
           onClick={() => handleSummaryClick('action_needed')}
           className={`text-left rounded-xl border-2 p-4 transition-all ${
             summaryFilter === 'action_needed'
-              ? 'border-red-400 bg-red-50 ring-2 ring-red-200'
-              : 'border-gray-200 bg-white hover:border-red-200 hover:bg-red-50/50'
+              ? 'border-red-400 bg-red-50 dark:bg-red-900/30 ring-2 ring-red-200'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-red-200 dark:border-red-800 hover:bg-red-50 dark:bg-red-900/30/50'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">🔴 対応が必要</p>
-              <p className="text-3xl font-bold text-red-600 mt-1">{actionNeeded}<span className="text-base font-normal text-gray-400 ml-1">件</span></p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🔴 対応が必要</p>
+              <p className="text-3xl font-bold text-red-600 mt-1">{actionNeeded}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
             </div>
             <div className="text-4xl opacity-20">🚨</div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">リスクスコア60以上 — 削除申請を検討</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">リスクスコア60以上 — 削除申請を検討</p>
         </button>
 
         <button
           onClick={() => handleSummaryClick('monitoring')}
           className={`text-left rounded-xl border-2 p-4 transition-all ${
             summaryFilter === 'monitoring'
-              ? 'border-yellow-400 bg-yellow-50 ring-2 ring-yellow-200'
-              : 'border-gray-200 bg-white hover:border-yellow-200 hover:bg-yellow-50/50'
+              ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 ring-2 ring-yellow-200'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-yellow-200 dark:border-yellow-800 hover:bg-yellow-50 dark:bg-yellow-900/30/50'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">🟡 確認待ち</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-1">{monitoring}<span className="text-base font-normal text-gray-400 ml-1">件</span></p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🟡 確認待ち</p>
+              <p className="text-3xl font-bold text-yellow-600 mt-1">{monitoring}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
             </div>
             <div className="text-4xl opacity-20">👁</div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">リスクスコア40〜59 — 監視継続</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">リスクスコア40〜59 — 監視継続</p>
         </button>
 
         <button
           onClick={() => handleSummaryClick('resolved')}
           className={`text-left rounded-xl border-2 p-4 transition-all ${
             summaryFilter === 'resolved'
-              ? 'border-green-400 bg-green-50 ring-2 ring-green-200'
-              : 'border-gray-200 bg-white hover:border-green-200 hover:bg-green-50/50'
+              ? 'border-green-400 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-200'
+              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-200 dark:border-green-800 hover:bg-green-50 dark:bg-green-900/30/50'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">🟢 対応済み</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">{resolved}<span className="text-base font-normal text-gray-400 ml-1">件</span></p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🟢 対応済み</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">{resolved}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
             </div>
             <div className="text-4xl opacity-20">✅</div>
           </div>
-          <p className="text-xs text-gray-400 mt-2">対応不要 or 削除完了</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">対応不要 or 削除完了</p>
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex flex-wrap gap-4 items-center">
           <select
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
             value={filters.brandId}
             onChange={(e) => updateFilter('brandId', e.target.value)}
           >
@@ -226,7 +226,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
             value={filters.period}
             onChange={(e) => updateFilter('period', e.target.value)}
           >
@@ -237,7 +237,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
             value={filters.status}
             onChange={(e) => updateFilter('status', e.target.value)}
           >
@@ -251,7 +251,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
             value={filters.minRiskScore}
             onChange={(e) => updateFilter('minRiskScore', e.target.value)}
           >
@@ -284,14 +284,14 @@ export default function Dashboard() {
 
       {/* Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-blue-800">
             {selectedIds.size}件を選択中
           </span>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedIds(new Set())}
-              className="text-sm text-gray-600 hover:text-gray-800"
+              className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:text-gray-200"
             >
               選択解除
             </button>
@@ -310,7 +310,7 @@ export default function Dashboard() {
       )}
 
       {/* Threat Table */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -327,8 +327,8 @@ export default function Dashboard() {
             />
             {/* Pagination */}
             {threats && threats.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm text-gray-500">
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   {threats.total}件中 {(threats.page - 1) * threats.pageSize + 1}〜
                   {Math.min(threats.page * threats.pageSize, threats.total)}件
                 </p>

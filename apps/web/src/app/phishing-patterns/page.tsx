@@ -13,17 +13,17 @@ const PATTERN_TYPES = [
 ];
 
 const SEVERITIES = [
-  { value: 'low', label: '低', color: 'bg-gray-100 text-gray-700' },
-  { value: 'medium', label: '中', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'high', label: '高', color: 'bg-orange-100 text-orange-700' },
-  { value: 'critical', label: '重大', color: 'bg-red-100 text-red-700' },
+  { value: 'low', label: '低', color: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200' },
+  { value: 'medium', label: '中', color: 'bg-yellow-100 text-yellow-700 dark:text-yellow-300' },
+  { value: 'high', label: '高', color: 'bg-orange-100 text-orange-700 dark:text-orange-300' },
+  { value: 'critical', label: '重大', color: 'bg-red-100 text-red-700 dark:text-red-300' },
 ];
 
 const STATUSES = [
-  { value: 'new', label: '新規', color: 'bg-blue-100 text-blue-700' },
-  { value: 'confirmed', label: '確認済', color: 'bg-green-100 text-green-700' },
+  { value: 'new', label: '新規', color: 'bg-blue-100 text-blue-700 dark:text-blue-300' },
+  { value: 'confirmed', label: '確認済', color: 'bg-green-100 text-green-700 dark:text-green-300' },
   { value: 'rule_created', label: 'ルール反映済', color: 'bg-purple-100 text-purple-700' },
-  { value: 'archived', label: 'アーカイブ', color: 'bg-gray-100 text-gray-500' },
+  { value: 'archived', label: 'アーカイブ', color: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 dark:text-gray-500' },
 ];
 
 export default function PhishingPatternsPage() {
@@ -104,8 +104,8 @@ export default function PhishingPatternsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">📋 ユーザー報告パターン</h1>
-          <p className="text-gray-500 mt-1">ユーザーからヒアリングしたフィッシング手口</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📋 ユーザー報告パターン</h1>
+          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">ユーザーからヒアリングしたフィッシング手口</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -116,9 +116,9 @@ export default function PhishingPatternsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap gap-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-wrap gap-4">
         <select
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
           value={selectedBrand}
           onChange={(e) => setSelectedBrand(e.target.value)}
         >
@@ -127,7 +127,7 @@ export default function PhishingPatternsPage() {
           ))}
         </select>
         <select
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
@@ -140,23 +140,23 @@ export default function PhishingPatternsPage() {
 
       {/* Create form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <form onSubmit={handleCreate} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
           <h2 className="text-lg font-semibold">新規パターン報告</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">報告者</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">報告者</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 placeholder="匿名可"
                 value={form.reportedBy}
                 onChange={(e) => setForm({ ...form, reportedBy: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">パターン種別</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">パターン種別</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 value={form.patternType}
                 onChange={(e) => setForm({ ...form, patternType: e.target.value })}
               >
@@ -166,29 +166,29 @@ export default function PhishingPatternsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">フィッシングURL</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">フィッシングURL</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 placeholder="https://..."
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ドメイン</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ドメイン</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 placeholder="自動抽出 or 手動入力"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">重要度</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">重要度</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 value={form.severity}
                 onChange={(e) => setForm({ ...form, severity: e.target.value })}
               >
@@ -198,10 +198,10 @@ export default function PhishingPatternsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">被害者数</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">被害者数</label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 min={0}
                 value={form.victimCount}
                 onChange={(e) => setForm({ ...form, victimCount: parseInt(e.target.value) || 0 })}
@@ -209,9 +209,9 @@ export default function PhishingPatternsPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">手口の説明 *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">手口の説明 *</label>
             <textarea
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
               rows={3}
               required
               placeholder="どのような手口でフィッシングが行われたか"
@@ -223,7 +223,7 @@ export default function PhishingPatternsPage() {
             <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
               登録
             </button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm">
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm">
               キャンセル
             </button>
           </div>
@@ -231,30 +231,30 @@ export default function PhishingPatternsPage() {
       )}
 
       {/* Pattern list */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
         ) : patterns.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">報告されたパターンはありません</div>
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500">報告されたパターンはありません</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">種別</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">ドメイン / URL</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">説明</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">重要度</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">ステータス</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">被害</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">報告日</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">操作</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">種別</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ドメイン / URL</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">説明</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">重要度</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ステータス</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">被害</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">報告日</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {patterns.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50">
+                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
                   <td className="px-4 py-3">
                     {PATTERN_TYPES.find((t) => t.value === p.patternType)?.label || p.patternType}
                   </td>
@@ -265,13 +265,13 @@ export default function PhishingPatternsPage() {
                   <td className="px-4 py-3">{getSeverityBadge(p.severity)}</td>
                   <td className="px-4 py-3">{getStatusBadge(p.status)}</td>
                   <td className="px-4 py-3">{p.victimCount > 0 ? `${p.victimCount}名` : '-'}</td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString('ja-JP')}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(p.createdAt).toLocaleDateString('ja-JP')}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       {p.status === 'new' && (
                         <button
                           onClick={() => handleStatusChange(p.id, 'confirmed')}
-                          className="px-2 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100"
+                          className="px-2 py-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100"
                         >
                           確認
                         </button>
@@ -287,14 +287,14 @@ export default function PhishingPatternsPage() {
                       {p.status !== 'archived' && (
                         <button
                           onClick={() => handleStatusChange(p.id, 'archived')}
-                          className="px-2 py-1 text-xs bg-gray-50 text-gray-600 rounded hover:bg-gray-100"
+                          className="px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-100 dark:bg-gray-700"
                         >
                           📦
                         </button>
                       )}
                       <button
                         onClick={() => handleDelete(p.id)}
-                        className="px-2 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100"
+                        className="px-2 py-1 text-xs bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100"
                       >
                         🗑
                       </button>

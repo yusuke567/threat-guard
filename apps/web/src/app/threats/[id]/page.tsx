@@ -16,7 +16,7 @@ const statusColors: Record<string, string> = {
   new_domain: 'bg-blue-100 text-blue-800',
   analyzing: 'bg-yellow-100 text-yellow-800',
   confirmed_threat: 'bg-red-100 text-red-800',
-  false_positive: 'bg-gray-100 text-gray-800',
+  false_positive: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
   takedown_sent: 'bg-orange-100 text-orange-800',
   resolved: 'bg-green-100 text-green-800',
 };
@@ -270,7 +270,7 @@ export default function ThreatDetailPage() {
   }
 
   if (!threat) {
-    return <div className="text-center py-20 text-gray-500">脅威が見つかりません</div>;
+    return <div className="text-center py-20 text-gray-500 dark:text-gray-400 dark:text-gray-500">脅威が見つかりません</div>;
   }
 
   const latestAnalysis = threat.analyses?.[0];
@@ -291,18 +291,18 @@ export default function ThreatDetailPage() {
       <div>
         {/* Breadcrumb + Prev/Next */}
         <div className="flex items-center justify-between mb-3">
-          <a href="/" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+          <a href="/" className="text-blue-600 hover:text-blue-700 dark:text-blue-300 text-sm font-medium">
             ← 脅威一覧に戻る
           </a>
           <div className="flex items-center gap-2 text-sm">
             {prevId ? (
-              <a href={`/threats/${prevId}`} className="text-blue-600 hover:text-blue-700">← 前の脅威</a>
+              <a href={`/threats/${prevId}`} className="text-blue-600 hover:text-blue-700 dark:text-blue-300">← 前の脅威</a>
             ) : (
               <span className="text-gray-300">← 前の脅威</span>
             )}
             <span className="text-gray-300">|</span>
             {nextId ? (
-              <a href={`/threats/${nextId}`} className="text-blue-600 hover:text-blue-700">次の脅威 →</a>
+              <a href={`/threats/${nextId}`} className="text-blue-600 hover:text-blue-700 dark:text-blue-300">次の脅威 →</a>
             ) : (
               <span className="text-gray-300">次の脅威 →</span>
             )}
@@ -311,14 +311,14 @@ export default function ThreatDetailPage() {
 
         {/* Domain + Risk Badge */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
-          <h1 className="text-2xl font-bold text-gray-900 font-mono">{threat.domain}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 font-mono">{threat.domain}</h1>
           <span className="shrink-0 text-lg">
             {getRiskEmoji(threat.riskScore)}{' '}
             <span className={`text-sm font-bold ${
-              (threat.riskScore ?? 0) >= 80 ? 'text-red-700' :
-              (threat.riskScore ?? 0) >= 60 ? 'text-orange-700' :
-              (threat.riskScore ?? 0) >= 40 ? 'text-yellow-700' :
-              'text-green-700'
+              (threat.riskScore ?? 0) >= 80 ? 'text-red-700 dark:text-red-300' :
+              (threat.riskScore ?? 0) >= 60 ? 'text-orange-700 dark:text-orange-300' :
+              (threat.riskScore ?? 0) >= 40 ? 'text-yellow-700 dark:text-yellow-300' :
+              'text-green-700 dark:text-green-300'
             }`}>
               {getRiskLabel(threat.riskScore)}
             </span>
@@ -326,7 +326,7 @@ export default function ThreatDetailPage() {
         </div>
 
         {/* One-line summary (Layer 1) */}
-        <p className="text-gray-600 mb-3">
+        <p className="text-gray-600 dark:text-gray-300 mb-3">
           {getDangerSummary(threat, latestAnalysis)}
         </p>
 
@@ -334,12 +334,12 @@ export default function ThreatDetailPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Status dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">ステータス:</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">ステータス:</span>
             <select
               value={threat.status}
               onChange={(e) => handleStatusChange(e.target.value)}
               disabled={statusUpdating}
-              className={`px-2 py-1 rounded-full text-xs font-medium border cursor-pointer disabled:opacity-50 ${statusColors[threat.status] || 'bg-gray-100'}`}
+              className={`px-2 py-1 rounded-full text-xs font-medium border cursor-pointer disabled:opacity-50 ${statusColors[threat.status] || 'bg-gray-100 dark:bg-gray-700'}`}
             >
               {statusOrder.map((s) => (
                 <option key={s} value={s}>{statusLabels[s]}</option>
@@ -350,7 +350,7 @@ export default function ThreatDetailPage() {
           <span className="text-gray-300">|</span>
 
           {/* Detection date */}
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
             検知日: {formatDateShort(threat.firstSeen)}
           </span>
 
@@ -366,7 +366,7 @@ export default function ThreatDetailPage() {
           <button
             onClick={handleFalsePositive}
             disabled={threat.status === 'false_positive'}
-            className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+            className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 transition-colors disabled:opacity-50"
           >
             誤検知にする
           </button>
@@ -374,7 +374,7 @@ export default function ThreatDetailPage() {
       </div>
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="flex gap-0">
           {tabs.map((tab) => (
             <button
@@ -383,7 +383,7 @@ export default function ThreatDetailPage() {
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 dark:text-gray-200 hover:border-gray-300 dark:border-gray-600'
               }`}
             >
               {tab.label}
@@ -448,16 +448,16 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
       <RiskBadgeFull score={threat.riskScore} />
 
       {/* なぜ危険か (Layer 1) */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-3">なぜ危険か</h2>
-        <p className="text-gray-700 leading-relaxed">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3">なぜ危険か</h2>
+        <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
           {getDangerSummaryDetailed(threat, latestAnalysis, contentAnalysis, probe)}
         </p>
       </div>
 
       {/* 判定根拠 (Layer 2) */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">判定根拠</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">判定根拠</h2>
         <div className="space-y-3">
           {/* Analysis category & confidence */}
           {latestAnalysis && (
@@ -491,7 +491,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
               <span className={whois.registrantOrganization ? '🟢' : '⚠️'}>
                 {whois.registrantOrganization ? '⚪' : '⚠️'}
               </span>
-              <span className="text-gray-700">
+              <span className="text-gray-700 dark:text-gray-200">
                 {whois.registrantOrganization
                   ? `登録者: ${whois.registrantOrganization}`
                   : '登録者情報が隠されています（WHOIS匿名化）'}
@@ -508,7 +508,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
                 return (
                   <>
                     <span>{isNew ? '⚠️' : '⚪'}</span>
-                    <span className="text-gray-700">
+                    <span className="text-gray-700 dark:text-gray-200">
                       <GlossaryTerm term="SSL">SSL証明書</GlossaryTerm>: 発行{daysAgo}日前
                       {isNew && '（取得直後のSSL証明書は偽サイトの特徴です）'}
                     </span>
@@ -522,7 +522,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
           {probe && (
             <div className="flex items-center gap-3 text-sm">
               <span>⚪</span>
-              <span className="text-gray-700">
+              <span className="text-gray-700 dark:text-gray-200">
                 サイト稼働状態: {probe.httpStatus === 200 ? 'サイトが稼働中です' : probe.dnsResolved ? 'ドメインは存在しますがサイトは応答しません' : 'サーバー未設定'}
               </span>
             </div>
@@ -534,7 +534,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
               <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">
                 AI分析の詳細を見る
               </summary>
-              <p className="mt-2 text-xs text-gray-600 bg-gray-50 rounded-lg p-3 leading-relaxed">
+              <p className="mt-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 leading-relaxed">
                 {latestAnalysis.reasoning}
               </p>
             </details>
@@ -543,8 +543,8 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
       </div>
 
       {/* ドメイン情報 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">ドメイン情報</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">ドメイン情報</h2>
         <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
           <InfoItem label="ドメイン" value={threat.domain} mono />
           <InfoItem label="ブランド" value={`${threat.brand?.name} (${threat.brand?.domain})`} />
@@ -576,24 +576,24 @@ function ScreenshotsTab({ threat, probe, probing, onProbe }: {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Fake site screenshot */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">検知サイト: {threat.domain}</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">検知サイト: {threat.domain}</h3>
           {threat.screenshotUrl ? (
             <>
               <img
                 src={threat.screenshotUrl}
                 alt={`${threat.domain} のスクリーンショット`}
-                className="w-full rounded-lg border border-gray-200"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700"
               />
               {probe?.probeAt && (
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                   撮影日時: {formatDate(probe.probeAt)}
                 </p>
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center h-48 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <p className="text-gray-400 text-sm mb-3">スクリーンショット未取得</p>
+            <div className="flex flex-col items-center justify-center h-48 bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+              <p className="text-gray-400 dark:text-gray-500 text-sm mb-3">スクリーンショット未取得</p>
               <button
                 onClick={onProbe}
                 disabled={probing}
@@ -606,10 +606,10 @@ function ScreenshotsTab({ threat, probe, probing, onProbe }: {
         </div>
 
         {/* Original site (brand) */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">正規サイト: {threat.brand?.domain}</h3>
-          <div className="flex flex-col items-center justify-center h-48 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <p className="text-gray-400 text-sm">正規サイトのスクリーンショット</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">正規サイト: {threat.brand?.domain}</h3>
+          <div className="flex flex-col items-center justify-center h-48 bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+            <p className="text-gray-400 dark:text-gray-500 text-sm">正規サイトのスクリーンショット</p>
             <p className="text-gray-300 text-xs mt-1">（比較用・今後対応予定）</p>
           </div>
         </div>
@@ -621,7 +621,7 @@ function ScreenshotsTab({ threat, probe, probing, onProbe }: {
           <button
             onClick={onProbe}
             disabled={probing}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
+            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 disabled:opacity-50"
           >
             {probing ? '再取得中...' : '最新のスクリーンショットを再取得'}
           </button>
@@ -694,10 +694,10 @@ function TechnicalTab({ threat, whois, ssl, probe }: {
     <div className="space-y-6">
       {/* Export buttons */}
       <div className="flex gap-3">
-        <button onClick={handleExportJson} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+        <button onClick={handleExportJson} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
           JSONエクスポート
         </button>
-        <button onClick={handleExportCsv} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+        <button onClick={handleExportCsv} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
           CSVエクスポート
         </button>
       </div>
@@ -715,22 +715,22 @@ function TechnicalTab({ threat, whois, ssl, probe }: {
       {/* Full WHOIS */}
       <TechSection title="WHOIS">
         {whois ? (
-          <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap max-h-80 bg-gray-50 rounded-lg p-3">
+          <pre className="text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-80 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
             {JSON.stringify(whois, null, 2)}
           </pre>
         ) : (
-          <p className="text-sm text-gray-400">WHOIS情報未取得</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">WHOIS情報未取得</p>
         )}
       </TechSection>
 
       {/* HTTP Response Headers */}
       <TechSection title="HTTP レスポンスヘッダー">
         {probeHeaders ? (
-          <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap max-h-80 bg-gray-50 rounded-lg p-3">
+          <pre className="text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-80 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
             {JSON.stringify(probeHeaders, null, 2)}
           </pre>
         ) : (
-          <p className="text-sm text-gray-400">ヘッダー情報未取得</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">ヘッダー情報未取得</p>
         )}
       </TechSection>
 
@@ -746,20 +746,20 @@ function TechnicalTab({ threat, whois, ssl, probe }: {
             </dl>
             <details>
               <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">Raw SSL Data</summary>
-              <pre className="mt-2 text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap max-h-60 bg-gray-50 rounded-lg p-3">
+              <pre className="mt-2 text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-60 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
                 {JSON.stringify(ssl, null, 2)}
               </pre>
             </details>
           </>
         ) : (
-          <p className="text-sm text-gray-400">SSL情報未取得</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">SSL情報未取得</p>
         )}
       </TechSection>
 
       {/* Raw HTML snippet */}
       {probe?.htmlSnippet && (
         <TechSection title="HTMLスニペット">
-          <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap max-h-60 bg-gray-50 rounded-lg p-3">
+          <pre className="text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-60 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
             {probe.htmlSnippet}
           </pre>
         </TechSection>
@@ -847,30 +847,30 @@ function HistoryTab({ threat }: { threat: any }) {
   };
 
   if (events.length === 0) {
-    return <p className="text-center py-12 text-gray-400">対応履歴はまだありません</p>;
+    return <p className="text-center py-12 text-gray-400 dark:text-gray-500">対応履歴はまだありません</p>;
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="space-y-0">
         {events.map((ev, i) => (
           <div key={i} className="relative pl-8 pb-6 last:pb-0">
             {/* Connector line */}
             {i < events.length - 1 && (
-              <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-gray-200" />
+              <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-600" />
             )}
             {/* Dot */}
             <div className={`absolute left-0 top-1 w-6 h-6 rounded-full ${colorMap[ev.color]} flex items-center justify-center`}>
-              <div className="w-2 h-2 bg-white rounded-full" />
+              <div className="w-2 h-2 bg-white dark:bg-gray-800 rounded-full" />
             </div>
 
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-xs font-bold text-gray-500">{ev.type}</span>
-                <span className="text-xs text-gray-400">{formatDate(ev.date)}</span>
+                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 dark:text-gray-500">{ev.type}</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(ev.date)}</span>
               </div>
-              <p className="text-sm font-medium text-gray-900">{ev.title}</p>
-              {ev.detail && <p className="text-xs text-gray-500 mt-0.5">{ev.detail}</p>}
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{ev.title}</p>
+              {ev.detail && <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">{ev.detail}</p>}
             </div>
           </div>
         ))}
@@ -898,22 +898,22 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
 }) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           {/* Modal header */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">削除申請</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">削除申請</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-gray-300 text-xl">&times;</button>
           </div>
 
           {/* Target info */}
-          <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mb-4">
             <div className="flex items-center gap-3">
               <span className="font-mono text-sm font-medium">{threat.domain}</span>
               <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                (threat.riskScore ?? 0) >= 80 ? 'bg-red-100 text-red-700' :
-                (threat.riskScore ?? 0) >= 60 ? 'bg-orange-100 text-orange-700' :
-                'bg-yellow-100 text-yellow-700'
+                (threat.riskScore ?? 0) >= 80 ? 'bg-red-100 text-red-700 dark:text-red-300' :
+                (threat.riskScore ?? 0) >= 60 ? 'bg-orange-100 text-orange-700 dark:text-orange-300' :
+                'bg-yellow-100 text-yellow-700 dark:text-yellow-300'
               }`}>
                 {getRiskEmoji(threat.riskScore)} {getRiskLabel(threat.riskScore)}
               </span>
@@ -922,17 +922,17 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
 
           {/* Error / Success messages */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">{error}</div>
           )}
           {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">{success}</div>
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm">{success}</div>
           )}
 
           {/* Step: Loading contacts */}
           {step === 'loading_contacts' && (
             <div className="flex items-center gap-3 py-8 justify-center">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-              <span className="text-sm text-gray-600">WHOIS情報から通報先を取得中...</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">WHOIS情報から通報先を取得中...</span>
             </div>
           )}
 
@@ -940,13 +940,13 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'confirm_recipient' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   <GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>
                 </label>
-                <p className="text-sm font-medium text-gray-900">{registrar || '不明'}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{registrar || '不明'}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   <GlossaryTerm term="abuse連絡先">通報先メールアドレス</GlossaryTerm>
                 </label>
                 <input
@@ -954,7 +954,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
                   value={abuseEmail}
                   onChange={(e) => onAbuseEmailChange(e.target.value)}
                   placeholder="abuse@registrar.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 {abuseEmail
                   ? <p className="mt-1 text-xs text-green-600">WHOISから自動取得しました（変更可能）</p>
@@ -966,7 +966,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
                 <button onClick={onGenerate} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
                   削除申請文面を生成
                 </button>
-                <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                <button onClick={onClose} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
                   キャンセル
                 </button>
               </div>
@@ -977,7 +977,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'generating' && (
             <div className="flex items-center gap-3 py-8 justify-center">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-              <span className="text-sm text-gray-600">AIが削除申請文面を生成中...（30秒ほど）</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">AIが削除申請文面を生成中...（30秒ほど）</span>
             </div>
           )}
 
@@ -986,22 +986,22 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-500">送信先:</span>{' '}
+                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">送信先:</span>{' '}
                   <span className="font-medium">{abuseEmail}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">レジストラ:</span>{' '}
+                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">レジストラ:</span>{' '}
                   <span className="font-medium">{registrar}</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">申請内容（編集可能）</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">申請内容（編集可能）</label>
                 <textarea
                   value={template}
                   onChange={(e) => onTemplateChange(e.target.value)}
                   rows={12}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -1023,12 +1023,12 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
                         alert('PDFの取得に失敗しました。');
                       }
                     }}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600"
                   >
                     プレビュー (PDF)
                   </button>
                 )}
-                <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+                <button onClick={onClose} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
                   キャンセル
                 </button>
                 <button onClick={onSend} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 ml-auto">
@@ -1042,15 +1042,15 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'sending' && (
             <div className="flex items-center gap-3 py-8 justify-center">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-              <span className="text-sm text-gray-600">メールを送信中...</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">メールを送信中...</span>
             </div>
           )}
 
           {/* Step: Sent */}
           {step === 'sent' && (
             <div className="text-center py-6">
-              <p className="text-green-700 font-medium mb-4">削除申請の送信が完了しました</p>
-              <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">
+              <p className="text-green-700 dark:text-green-300 font-medium mb-4">削除申請の送信が完了しました</p>
+              <button onClick={onClose} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
                 閉じる
               </button>
             </div>
@@ -1066,8 +1066,8 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
 function InfoItem({ label, value, mono }: { label: React.ReactNode; value: string; mono?: boolean }) {
   return (
     <div>
-      <dt className="text-gray-500 text-xs">{label}</dt>
-      <dd className={`mt-0.5 font-medium text-gray-900 ${mono ? 'font-mono text-xs' : ''}`}>{value}</dd>
+      <dt className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-xs">{label}</dt>
+      <dd className={`mt-0.5 font-medium text-gray-900 dark:text-gray-100 ${mono ? 'font-mono text-xs' : ''}`}>{value}</dd>
     </div>
   );
 }
@@ -1075,17 +1075,17 @@ function InfoItem({ label, value, mono }: { label: React.ReactNode; value: strin
 function EvidenceRow({ label, value, bar }: { label: string; value: string; bar?: number }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className="text-sm text-gray-700">{label}</span>
+      <span className="text-sm text-gray-700 dark:text-gray-200">{label}</span>
       <div className="flex items-center gap-2 shrink-0">
         {bar != null && (
-          <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="w-20 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${bar >= 0.8 ? 'bg-red-500' : bar >= 0.6 ? 'bg-orange-500' : 'bg-yellow-500'}`}
               style={{ width: `${Math.round(bar * 100)}%` }}
             />
           </div>
         )}
-        <span className="text-xs font-medium text-gray-500">{value}</span>
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">{value}</span>
       </div>
     </div>
   );
@@ -1093,8 +1093,8 @@ function EvidenceRow({ label, value, bar }: { label: string; value: string; bar?
 
 function TechSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h3 className="text-sm font-bold text-gray-900 mb-3">{title}</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">{title}</h3>
       {children}
     </div>
   );

@@ -138,8 +138,8 @@ export default function BrandsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">ブランド管理</h1>
-          <p className="text-gray-500 mt-1">監視対象のブランドを管理</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">ブランド管理</h1>
+          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">監視対象のブランドを管理</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -151,36 +151,36 @@ export default function BrandsPage() {
 
       {/* Create Form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <form onSubmit={handleCreate} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
           <h2 className="text-lg font-bold">新規ブランド登録</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ブランド名</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ブランド名</label>
               <input
                 type="text"
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="例: MyBrand"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ドメイン</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ドメイン</label>
               <input
                 type="text"
                 required
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value })}
                 placeholder="例: mybrand.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">組織</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">組織</label>
               {organizations.length > 0 ? (
                 <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                   value={form.organizationId}
                   onChange={(e) => setForm({ ...form, organizationId: e.target.value, newOrgName: '' })}
                 >
@@ -193,7 +193,7 @@ export default function BrandsPage() {
               {!form.organizationId && (
                 <input
                   type="text"
-                  className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm ${organizations.length > 0 ? 'mt-2' : ''}`}
+                  className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm ${organizations.length > 0 ? 'mt-2' : ''}`}
                   value={form.newOrgName}
                   onChange={(e) => setForm({ ...form, newOrgName: e.target.value })}
                   placeholder="新しい組織名を入力（例: 株式会社〇〇）"
@@ -201,29 +201,29 @@ export default function BrandsPage() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">検知キーワード（カンマ区切り）</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">検知キーワード（カンマ区切り）</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                 value={form.keywords}
                 onChange={(e) => setForm({ ...form, keywords: e.target.value })}
                 placeholder="例: マイブランド, mybrand, my-brand"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 ブランドの別名・略称・日本語名など。なりすましドメインの検知精度が上がります。
               </p>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">管理ドメイン（任意）</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">管理ドメイン（任意）</label>
             <textarea
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
               rows={3}
               value={form.managedDomains}
               onChange={(e) => setForm({ ...form, managedDomains: e.target.value })}
               placeholder={"例:\nmybrand.jp\nmybrand.co.jp\nmybrand.net"}
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
               自社で管理しているドメインを入力（カンマ・改行区切り）。ホワイトリストに自動登録され、誤検知を防ぎます。
             </p>
           </div>
@@ -244,62 +244,62 @@ export default function BrandsPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : brands.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">
           まだブランドが登録されていません
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {brands.map((brand: any) => (
-            <div key={brand.id} className="bg-white rounded-xl border border-gray-200 p-6">
+            <div key={brand.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
               {editingBrand?.id === brand.id ? (
                 <form onSubmit={handleUpdate} className="space-y-4">
                   <h3 className="text-lg font-bold">ブランド編集</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ブランド名</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ブランド名</label>
                       <input
                         type="text"
                         required
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ドメイン</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ドメイン</label>
                       <input
                         type="text"
                         required
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                         value={editForm.domain}
                         onChange={(e) => setEditForm({ ...editForm, domain: e.target.value })}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">検知キーワード（カンマ区切り）</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">検知キーワード（カンマ区切り）</label>
                     <input
                       type="text"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                       value={editForm.keywords}
                       onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">管理ドメイン（任意）</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">管理ドメイン（任意）</label>
                     <textarea
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                       rows={3}
                       value={editForm.managedDomains}
                       onChange={(e) => setEditForm({ ...editForm, managedDomains: e.target.value })}
                     />
                   </div>
                   {/* SMTP Settings - Collapsible */}
-                  <div className="border-t border-gray-200 pt-4 mt-2">
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
                     <button
                       type="button"
                       onClick={() => setSmtpOpen(!smtpOpen)}
-                      className="flex items-center gap-2 text-sm font-bold text-gray-700 hover:text-gray-900 w-full text-left"
+                      className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white dark:text-gray-100 w-full text-left"
                     >
                       <svg
                         className={`w-4 h-4 transition-transform ${smtpOpen ? 'rotate-90' : ''}`}
@@ -311,53 +311,53 @@ export default function BrandsPage() {
                     </button>
                     {smtpOpen && (
                     <>
-                    <p className="text-xs text-gray-400 mb-3 mt-2">未設定の場合、システムデフォルトのSMTP設定が使用されます</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 mt-2">未設定の場合、システムデフォルトのSMTP設定が使用されます</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">送信元メールアドレス</label>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">送信元メールアドレス</label>
                         <input
                           type="email"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                           value={editForm.senderEmail}
                           onChange={(e) => setEditForm({ ...editForm, senderEmail: e.target.value })}
                           placeholder="abuse@yourcompany.com"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPホスト</label>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPホスト</label>
                         <input
                           type="text"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                           value={editForm.smtpHost}
                           onChange={(e) => setEditForm({ ...editForm, smtpHost: e.target.value })}
                           placeholder="smtp.yourcompany.com"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPポート</label>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPポート</label>
                         <input
                           type="number"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                           value={editForm.smtpPort}
                           onChange={(e) => setEditForm({ ...editForm, smtpPort: e.target.value })}
                           placeholder="587"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPユーザー</label>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPユーザー</label>
                         <input
                           type="text"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                           value={editForm.smtpUser}
                           onChange={(e) => setEditForm({ ...editForm, smtpUser: e.target.value })}
                           placeholder="user@yourcompany.com"
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">SMTPパスワード</label>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPパスワード</label>
                         <input
                           type="password"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
                           value={editForm.smtpPass}
                           onChange={(e) => setEditForm({ ...editForm, smtpPass: e.target.value })}
                           placeholder="••••••••"
@@ -381,14 +381,14 @@ export default function BrandsPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-bold text-lg">{brand.name}</h3>
-                      <p className="text-gray-500 text-sm font-mono">{brand.domain}</p>
+                      <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-mono">{brand.domain}</p>
                       {brand.senderEmail && (
                         <p className="text-xs text-green-600 mt-1">📧 {brand.senderEmail}</p>
                       )}
                       {brand.keywords && String(brand.keywords).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {String(brand.keywords).split(',').filter(Boolean).map((kw: string) => (
-                            <span key={kw} className="px-2 py-0.5 bg-gray-100 rounded text-xs">{kw.trim()}</span>
+                            <span key={kw} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">{kw.trim()}</span>
                           ))}
                         </div>
                       )}
@@ -397,14 +397,14 @@ export default function BrandsPage() {
                       <div className="text-2xl font-bold text-blue-600">
                         {brand._count?.detectedDomains ?? 0}
                       </div>
-                      <div className="text-xs text-gray-500">検知数</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">検知数</div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     <button
                       onClick={() => handleScan(brand.id, 'ct_monitor')}
                       disabled={scanning === brand.id}
-                      className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 disabled:opacity-50"
+                      className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-100 disabled:opacity-50"
                     >
                       🔍 CT監視スキャン
                     </button>
@@ -417,13 +417,13 @@ export default function BrandsPage() {
                     </button>
                     <button
                       onClick={() => startEdit(brand)}
-                      className="px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-100"
+                      className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium hover:bg-gray-100 dark:bg-gray-700"
                     >
                       ✏️ 編集
                     </button>
                     <button
                       onClick={() => handleDelete(brand.id)}
-                      className="px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg text-xs font-medium ml-auto"
+                      className="px-3 py-1.5 text-red-600 hover:bg-red-50 dark:bg-red-900/30 rounded-lg text-xs font-medium ml-auto"
                     >
                       削除
                     </button>

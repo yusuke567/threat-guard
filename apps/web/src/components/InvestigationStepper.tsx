@@ -88,38 +88,38 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
   const currentStep = !step1Done ? 1 : !step2Done ? 2 : !step3Done ? 3 : 3;
 
   const colorMap: Record<string, string> = {
-    red: 'border-red-300 bg-red-50',
-    orange: 'border-orange-300 bg-orange-50',
-    yellow: 'border-yellow-300 bg-yellow-50',
+    red: 'border-red-300 bg-red-50 dark:bg-red-900/30',
+    orange: 'border-orange-300 bg-orange-50 dark:bg-orange-900/30',
+    yellow: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-900/30',
     amber: 'border-amber-300 bg-amber-50',
-    green: 'border-green-300 bg-green-50',
+    green: 'border-green-300 bg-green-50 dark:bg-green-900/30',
   };
 
   const textColorMap: Record<string, string> = {
-    red: 'text-red-700',
-    orange: 'text-orange-700',
-    yellow: 'text-yellow-700',
+    red: 'text-red-700 dark:text-red-300',
+    orange: 'text-orange-700 dark:text-orange-300',
+    yellow: 'text-yellow-700 dark:text-yellow-300',
     amber: 'text-amber-700',
-    green: 'text-green-700',
+    green: 'text-green-700 dark:text-green-300',
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-lg font-bold text-gray-900 mb-5">📋 この脅威の調査状況</h2>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-5">📋 この脅威の調査状況</h2>
 
       <div className="space-y-0">
         {/* STEP 1: ドメイン分析 */}
         <div className="relative pl-8 pb-6">
           {/* Connector line */}
-          <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-gray-200" />
+          <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-600" />
           {/* Step icon */}
           <div className="absolute left-0 top-0.5 w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center">
             ✓
           </div>
 
           <div className="mb-2">
-            <span className="text-sm font-bold text-gray-900">STEP 1: ドメイン分析</span>
-            <span className="text-xs text-gray-400 ml-2">ドメイン名・登録情報をAIが分析しました</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">STEP 1: ドメイン分析</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">ドメイン名・登録情報をAIが分析しました</span>
           </div>
 
           <div className={`rounded-lg border p-3 ${colorMap[domainRisk.color]}`}>
@@ -136,14 +136,14 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
           {latestAnalysis && (
             <details className="mt-3">
               <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">📋 分析の詳細を見る</summary>
-              <div className="mt-3 rounded-lg border border-gray-200 p-3">
-                <h4 className="text-xs font-bold text-gray-700 mb-2">AI分析結果</h4>
+              <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-2">AI分析結果</h4>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg">{categoryLabels[latestAnalysis.category]?.split(' ')[0]}</span>
                   <span className="text-sm font-medium">{categoryLabels[latestAnalysis.category] || latestAnalysis.category}</span>
-                  <span className="text-xs text-gray-400">（判定確度: {Math.round(latestAnalysis.confidence * 100)}%）</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">（判定確度: {Math.round(latestAnalysis.confidence * 100)}%）</span>
                 </div>
-                <p className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
                   {latestAnalysis.reasoning}
                 </p>
               </div>
@@ -158,17 +158,17 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
         {/* STEP 2: サイト調査 */}
         <div className="relative pl-8 pb-6">
           {/* Connector line */}
-          <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-gray-200" />
+          <div className="absolute left-3 top-6 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-600" />
           {/* Step icon */}
           <div className={`absolute left-0 top-0.5 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
-            step2Done ? 'bg-green-500 text-white' : currentStep === 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'
+            step2Done ? 'bg-green-500 text-white' : currentStep === 2 ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 dark:text-gray-500'
           }`}>
             {step2Done ? '✓' : '2'}
           </div>
 
           <div className="mb-2">
-            <span className="text-sm font-bold text-gray-900">STEP 2: <GlossaryTerm term="プローブ">サイト調査</GlossaryTerm></span>
-            <span className="text-xs text-gray-400 ml-2">実際にサイトにアクセスして内容を調べます</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">STEP 2: <GlossaryTerm term="プローブ">サイト調査</GlossaryTerm></span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">実際にサイトにアクセスして内容を調べます</span>
           </div>
 
           {step2Done && siteResult ? (
@@ -183,16 +183,16 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
               </div>
 
               {/* Site status details */}
-              <div className="text-xs text-gray-500 mt-2 space-y-1">
+              <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2 space-y-1">
                 <div>🔴 サイトの稼働状況: {probe?.httpStatus === 200 ? 'サイトが稼働中です' : probe?.dnsResolved ? 'ドメインは存在しますがサイトは正常に表示されません' : 'サーバー未設定'}</div>
                 {probe?.finalUrl && <div>↗️ 転送先: <span className="font-mono text-[10px]">{probe.finalUrl}</span></div>}
-                <div className="text-gray-400">最終調査: {new Date(probe.probeAt).toLocaleString('ja-JP')}</div>
+                <div className="text-gray-400 dark:text-gray-500">最終調査: {new Date(probe.probeAt).toLocaleString('ja-JP')}</div>
               </div>
 
               <button
                 onClick={onProbe}
                 disabled={probing}
-                className="mt-2 px-3 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                className="mt-2 px-3 py-1 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 disabled:opacity-50"
               >
                 {probeStatus === 'running' ? '⏳ 再調査中...' : '🔄 再調査する'}
               </button>
@@ -203,31 +203,31 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
                 <div className="mt-3 space-y-3">
                   {/* Threat Indicators */}
                   {contentAnalysis && (
-                    <div className="rounded-lg border border-gray-200 p-3">
-                      <h4 className="text-xs font-bold text-gray-700 mb-2">危険な兆候チェック</h4>
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                      <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-2">危険な兆候チェック</h4>
                       <div className="space-y-2 text-xs">
                         <div className="flex items-center gap-2">
                           <span>{contentAnalysis.hasLoginForm ? '⚠️' : '✅'}</span>
-                          <span className={contentAnalysis.hasLoginForm ? 'text-red-700' : 'text-gray-600'}>
+                          <span className={contentAnalysis.hasLoginForm ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}>
                             ログイン画面の模倣: {contentAnalysis.hasLoginForm ? '検出されました' : '検出なし'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span>{contentAnalysis.hasPasswordField ? '⚠️' : '✅'}</span>
-                          <span className={contentAnalysis.hasPasswordField ? 'text-red-700' : 'text-gray-600'}>
+                          <span className={contentAnalysis.hasPasswordField ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}>
                             パスワード入力欄: {contentAnalysis.hasPasswordField ? '検出されました' : '検出なし'}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span>{contentAnalysis.logoDetected ? '⚠️' : '✅'}</span>
-                          <span className={contentAnalysis.logoDetected ? 'text-amber-700' : 'text-gray-600'}>
+                          <span className={contentAnalysis.logoDetected ? 'text-amber-700' : 'text-gray-600 dark:text-gray-300'}>
                             自社ロゴの無断使用: {contentAnalysis.logoDetected ? '検出の可能性あり' : '検出なし'}
                           </span>
                         </div>
                         {contentAnalysis.imageSimilarity !== null && contentAnalysis.imageSimilarity !== undefined && (
                           <div className="flex items-center gap-2">
                             <span>{contentAnalysis.imageSimilarity > 0.7 ? '⚠️' : '✅'}</span>
-                            <span className={contentAnalysis.imageSimilarity > 0.7 ? 'text-red-700' : 'text-gray-600'}>
+                            <span className={contentAnalysis.imageSimilarity > 0.7 ? 'text-red-700 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}>
                               自社サイトとの類似度: {Math.round(contentAnalysis.imageSimilarity * 100)}%
                             </span>
                           </div>
@@ -236,9 +236,9 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
                           <div className="flex items-start gap-2">
                             <span>⚠️</span>
                             <div>
-                              <span className="text-red-700">不審なキーワード: </span>
+                              <span className="text-red-700 dark:text-red-300">不審なキーワード: </span>
                               {contentAnalysis.keywordMatches.map((kw: string) => (
-                                <span key={kw} className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] mr-1">{kw}</span>
+                                <span key={kw} className="px-1.5 py-0.5 bg-red-100 text-red-700 dark:text-red-300 rounded text-[10px] mr-1">{kw}</span>
                               ))}
                             </div>
                           </div>
@@ -249,15 +249,15 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
 
                   {/* Screenshot */}
                   {threat.screenshotUrl && (
-                    <div className="rounded-lg border border-gray-200 p-3">
-                      <h4 className="text-xs font-bold text-gray-700 mb-2">サイトの画面キャプチャ</h4>
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                      <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 mb-2">サイトの画面キャプチャ</h4>
                       <img
                         src={threat.screenshotUrl.startsWith('/') ? threat.screenshotUrl : threat.screenshotUrl}
                         alt="サイトの画面キャプチャ"
                         className="rounded border w-full"
                       />
                       {probe?.probeAt && (
-                        <p className="text-[10px] text-gray-400 mt-1">{new Date(probe.probeAt).toLocaleString('ja-JP')} 取得</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{new Date(probe.probeAt).toLocaleString('ja-JP')} 取得</p>
                       )}
                     </div>
                   )}
@@ -265,8 +265,8 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
               </details>
             </>
           ) : (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-              <p className="text-xs text-blue-700 mb-2">まだサイトを調査していません。ボタンを押して調査を開始してください。</p>
+            <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-3">
+              <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">まだサイトを調査していません。ボタンを押して調査を開始してください。</p>
               <button
                 onClick={onProbe}
                 disabled={probing}
@@ -289,29 +289,29 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
         <div className="relative pl-8">
           {/* Step icon */}
           <div className={`absolute left-0 top-0.5 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ${
-            step3Done ? 'bg-green-500 text-white' : shouldRecommendTakedown ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 text-gray-500'
+            step3Done ? 'bg-green-500 text-white' : shouldRecommendTakedown ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 dark:text-gray-500'
           }`}>
             {step3Done ? '✓' : '3'}
           </div>
 
           <div className="mb-2">
-            <span className="text-sm font-bold text-gray-900">STEP 3: 削除申請</span>
-            <span className="text-xs text-gray-400 ml-2">ドメインの停止を<GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>に依頼します</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">STEP 3: 削除申請</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">ドメインの停止を<GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>に依頼します</span>
           </div>
 
           {/* Error / Success */}
           {takedownError && (
-            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">{takedownError}</div>
+            <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-xs">{takedownError}</div>
           )}
           {takedownSuccess && (
-            <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs">✅ {takedownSuccess}</div>
+            <div className="mb-2 p-2 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-xs">✅ {takedownSuccess}</div>
           )}
 
           {step3Done ? (
-            <div className="rounded-lg border border-green-300 bg-green-50 p-3">
+            <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-900/30 p-3">
               <div className="flex items-center gap-2">
                 <span>✅</span>
-                <span className="font-bold text-sm text-green-700">削除申請済み</span>
+                <span className="font-bold text-sm text-green-700 dark:text-green-300">削除申請済み</span>
               </div>
               <p className="text-xs text-green-600 mt-1">
                 {threat.takedowns?.[0]?.status === 'sent' ? 'レジストラからの回答を待っています' :
@@ -322,15 +322,15 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
           ) : takedownStep === 'loading_contacts' ? (
             <div className="flex items-center gap-3 py-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-              <span className="text-xs text-gray-600">WHOIS情報からabuse連絡先を取得中...</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300">WHOIS情報からabuse連絡先を取得中...</span>
             </div>
           ) : takedownStep === 'confirm_recipient' ? (
-            <div className="space-y-3 border border-blue-200 rounded-lg p-3 bg-blue-50/50">
-              <div className="text-xs text-gray-600">
-                <GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>: <span className="font-medium text-gray-900">{registrar}</span>
+            <div className="space-y-3 border border-blue-200 dark:border-blue-800 rounded-lg p-3 bg-blue-50 dark:bg-blue-900/30/50">
+              <div className="text-xs text-gray-600 dark:text-gray-300">
+                <GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>: <span className="font-medium text-gray-900 dark:text-gray-100">{registrar}</span>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
                   <GlossaryTerm term="abuse連絡先">Abuse連絡先</GlossaryTerm>メールアドレス
                 </label>
                 <input
@@ -338,56 +338,56 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
                   value={abuseEmail || ''}
                   onChange={(e) => onAbuseEmailChange?.(e.target.value)}
                   placeholder="abuse@registrar.com"
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 {!abuseEmail && <p className="mt-1 text-[10px] text-amber-600">⚠️ 自動取得できませんでした。手動で入力してください。</p>}
                 {abuseEmail && <p className="mt-1 text-[10px] text-green-600">✅ WHOISから自動取得しました（変更可能）</p>}
               </div>
               <div className="flex gap-2">
                 <button onClick={onGenerate} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium">📝 削除申請文面を生成</button>
-                <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">キャンセル</button>
+                <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 text-xs">キャンセル</button>
               </div>
             </div>
           ) : takedownStep === 'generating' ? (
             <div className="flex items-center gap-3 py-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-              <span className="text-xs text-gray-600">AIが削除申請文面を生成中...（30秒ほど）</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300">AIが削除申請文面を生成中...（30秒ほど）</span>
             </div>
           ) : takedownStep === 'review' ? (
             <div className="space-y-3">
               <div className="border border-amber-200 rounded-lg p-3 bg-amber-50/50">
                 <h4 className="text-xs font-medium mb-2">📋 内容を確認してください</h4>
-                <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-500 mb-2">
-                  <div>送信先: <span className="font-medium text-gray-900">{abuseEmail}</span></div>
-                  <div>レジストラ: <span className="font-medium text-gray-900">{registrar}</span></div>
+                <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-2">
+                  <div>送信先: <span className="font-medium text-gray-900 dark:text-gray-100">{abuseEmail}</span></div>
+                  <div>レジストラ: <span className="font-medium text-gray-900 dark:text-gray-100">{registrar}</span></div>
                 </div>
                 <textarea
                   value={template || ''}
                   onChange={(e) => onTemplateChange?.(e.target.value)}
                   rows={10}
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-[10px] font-mono focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-[10px] font-mono focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="flex gap-2">
                 <button onClick={onSend} className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium">✅ 確認して送信</button>
-                {takedownPdfUrl && <a href={takedownPdfUrl} target="_blank" className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">📄 PDF</a>}
-                <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">キャンセル</button>
+                {takedownPdfUrl && <a href={takedownPdfUrl} target="_blank" className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 text-xs">📄 PDF</a>}
+                <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 text-xs">キャンセル</button>
               </div>
             </div>
           ) : takedownStep === 'sending' ? (
             <div className="flex items-center gap-3 py-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-              <span className="text-xs text-gray-600">メールを送信中...</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300">メールを送信中...</span>
             </div>
           ) : takedownStep === 'sent' ? (
             <div className="space-y-2">
-              <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs">新しい削除申請を作成</button>
+              <button onClick={onResetFlow} className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 text-xs">新しい削除申請を作成</button>
             </div>
           ) : (
-            <div className={`rounded-lg border p-3 ${shouldRecommendTakedown ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+            <div className={`rounded-lg border p-3 ${shouldRecommendTakedown ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'}`}>
               {shouldRecommendTakedown ? (
                 <>
-                  <p className="text-xs text-red-700 mb-2 font-medium">⚡ 削除申請が推奨されています</p>
+                  <p className="text-xs text-red-700 dark:text-red-300 mb-2 font-medium">⚡ 削除申請が推奨されています</p>
                   <button
                     onClick={onStartTakedown}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
@@ -396,7 +396,7 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
                   </button>
                 </>
               ) : (
-                <p className="text-xs text-gray-500">STEP 1・2 の結果に基づいて、削除申請が必要か判断します</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">STEP 1・2 の結果に基づいて、削除申請が必要か判断します</p>
               )}
             </div>
           )}
@@ -407,17 +407,17 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
               <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">📋 過去の申請を見る</summary>
               <div className="mt-2 space-y-2">
                 {threat.takedowns.map((td: any) => (
-                  <div key={td.id} className="border border-gray-200 rounded-lg p-3">
+                  <div key={td.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium">レジストラ: {td.registrar}</span>
                       <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
                         td.status === 'sent' ? 'bg-blue-100 text-blue-800' :
                         td.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
+                        'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                       }`}>{td.status === 'draft' ? '下書き' : td.status === 'sent' ? '送信済' : td.status === 'completed' ? '完了' : td.status}</span>
                     </div>
-                    <div className="text-[10px] text-gray-400">{new Date(td.createdAt).toLocaleString('ja-JP')}</div>
-                    <pre className="text-[10px] text-gray-600 bg-gray-50 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-32 mt-1">{td.template}</pre>
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500">{new Date(td.createdAt).toLocaleString('ja-JP')}</div>
+                    <pre className="text-[10px] text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-32 mt-1">{td.template}</pre>
                   </div>
                 ))}
               </div>
