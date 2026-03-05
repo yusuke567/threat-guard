@@ -156,6 +156,12 @@ export default function TakedownRequestPage() {
         }
       }
 
+      if (items.length === 0) {
+        setError('送信可能な申請がありません。送信先メールアドレスと文面を確認してください。');
+        setSending(false);
+        return;
+      }
+
       const res = await submitBatchTakedown(items);
       setResult(res);
       sessionStorage.removeItem('takedown_threat_ids');

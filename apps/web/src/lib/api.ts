@@ -27,7 +27,10 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(error.error || '処理中にエラーが発生しました。しばらくしてからもう一度お試しください。');
+    const msg = error.error
+      || (typeof error.message === 'string' ? error.message : null)
+      || `エラーが発生しました (${res.status})`;
+    throw new Error(msg);
   }
   return res.json();
 }
