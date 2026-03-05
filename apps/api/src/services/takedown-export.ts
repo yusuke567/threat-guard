@@ -286,7 +286,13 @@ export async function sendTakedownEmail(
 ): Promise<void> {
   const { takedown, dd, whois } = await loadTakedownWithEvidence(takedownId);
 
-  const pdf = await generateTakedownPdf(takedownId);
+  // Try PDF generation, but don't fail the whole email if Chromium is unavailable
+  let pdf: Buffer | null = null;
+  try {
+    pdf = await generateTakedownPdf(takedownId);
+  } catch (err) {
+    console.warn('PDF generation failed (Chromium may not be installed), sending email without PDF attachment:', err);
+  }
 
   const brand = dd.brand;
 
@@ -315,18 +321,21 @@ export async function sendTakedownEmail(
   const evidenceText = buildEvidenceText(dd, whois);
   const fullBody = takedown.template + '\n' + evidenceText;
 
+  const attachments: any[] = [];
+  if (pdf) {
+    attachments.push({
+      filename: `takedown-${domain}-evidence.pdf`,
+      content: pdf,
+      contentType: 'application/pdf',
+    });
+  }
+
   await transporter.sendMail({
     from: senderEmail,
     to: recipientEmail,
     subject: `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`,
     text: fullBody,
-    attachments: [
-      {
-        filename: `takedown-${domain}-evidence.pdf`,
-        content: pdf,
-        contentType: 'application/pdf',
-      },
-    ],
+    attachments,
   });
 
   // Update status
