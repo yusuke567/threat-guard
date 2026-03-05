@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ThreatTable from '@/components/ThreatTable';
 import Tooltip from '@/components/Tooltip';
 import { getThreats, getDashboardStats, getBrands } from '@/lib/api';
@@ -19,6 +20,7 @@ type FilterState = {
 type SummaryFilter = 'all' | 'action_needed' | 'monitoring' | 'resolved';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [threats, setThreats] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [brands, setBrands] = useState<any[]>([]);
@@ -26,6 +28,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(true);
   const [summaryFilter, setSummaryFilter] = useState<SummaryFilter>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<FilterState>({
     brandId: '',
     period: '',
@@ -279,6 +282,33 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-blue-800">
+            {selectedIds.size}件を選択中
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              選択解除
+            </button>
+            <button
+              onClick={() => {
+                const ids = Array.from(selectedIds);
+                sessionStorage.setItem('takedown_threat_ids', JSON.stringify(ids));
+                router.push('/takedown-request');
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+            >
+              🗑️ {selectedIds.size}件を削除申請
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Threat Table */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         {loading ? (
@@ -289,8 +319,11 @@ export default function Dashboard() {
           <>
             <ThreatTable
               threats={threats?.data || []}
-              onSelect={(id) => window.location.href = `/threats/${id}`}
+              onSelect={(id) => router.push(`/threats/${id}`)}
               expandable
+              selectable
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
             />
             {/* Pagination */}
             {threats && threats.totalPages > 1 && (

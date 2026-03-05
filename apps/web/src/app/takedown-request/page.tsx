@@ -92,8 +92,9 @@ export default function TakedownRequestPage() {
 
   const activeThreats = threats.filter((t) => !excludedIds.has(t.threatId));
   const activeGroups = groups
-    .map((g) => ({
+    .map((g, originalIndex) => ({
       ...g,
+      originalIndex,
       threats: g.threats.filter((t) => !excludedIds.has(t.threatId)),
     }))
     .filter((g) => g.threats.length > 0);
@@ -309,9 +310,9 @@ export default function TakedownRequestPage() {
                       value={g.manualEmail || ''}
                       onChange={(e) => {
                         const updated = [...groups];
-                        const idx = groups.indexOf(g);
+                        const idx = g.originalIndex ?? groups.indexOf(g);
                         if (idx >= 0) {
-                          updated[idx] = { ...g, manualEmail: e.target.value };
+                          updated[idx] = { ...updated[idx], manualEmail: e.target.value };
                           setGroups(updated);
                         }
                       }}
@@ -367,9 +368,9 @@ export default function TakedownRequestPage() {
                       value={g.language || 'ja'}
                       onChange={(e) => {
                         const updated = [...groups];
-                        const idx = groups.indexOf(g);
+                        const idx = g.originalIndex ?? groups.indexOf(g);
                         if (idx >= 0) {
-                          updated[idx] = { ...g, language: e.target.value };
+                          updated[idx] = { ...updated[idx], language: e.target.value };
                           setGroups(updated);
                         }
                       }}
@@ -397,9 +398,9 @@ export default function TakedownRequestPage() {
                     value={g.template || ''}
                     onChange={(e) => {
                       const updated = [...groups];
-                      const idx = groups.indexOf(g);
+                      const idx = g.originalIndex ?? groups.indexOf(g);
                       if (idx >= 0) {
-                        updated[idx] = { ...g, template: e.target.value };
+                        updated[idx] = { ...updated[idx], template: e.target.value };
                         setGroups(updated);
                       }
                     }}
@@ -413,9 +414,9 @@ export default function TakedownRequestPage() {
                     onClick={async () => {
                       if (!email) return;
                       const updated = [...groups];
-                      const idx = groups.indexOf(g);
+                      const idx = g.originalIndex ?? groups.indexOf(g);
                       if (idx < 0) return;
-                      updated[idx] = { ...g, loading: true };
+                      updated[idx] = { ...updated[idx], loading: true };
                       setGroups([...updated]);
                       try {
                         const activeInGroup = g.threats.filter((t) => !excludedIds.has(t.threatId));
@@ -452,7 +453,7 @@ export default function TakedownRequestPage() {
                           checked={(g.evidenceTypes || []).includes(key)}
                           onChange={(e) => {
                             const updated = [...groups];
-                            const idx = groups.indexOf(g);
+                            const idx = g.originalIndex ?? groups.indexOf(g);
                             if (idx < 0) return;
                             const types = [...(g.evidenceTypes || [])];
                             if (e.target.checked) types.push(key);
@@ -460,7 +461,7 @@ export default function TakedownRequestPage() {
                               const ti = types.indexOf(key);
                               if (ti >= 0) types.splice(ti, 1);
                             }
-                            updated[idx] = { ...g, evidenceTypes: types };
+                            updated[idx] = { ...updated[idx], evidenceTypes: types };
                             setGroups(updated);
                           }}
                           className="rounded border-gray-300 text-blue-600"
