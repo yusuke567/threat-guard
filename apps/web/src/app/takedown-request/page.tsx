@@ -66,12 +66,12 @@ export default function TakedownRequestPage() {
   useEffect(() => {
     const stored = sessionStorage.getItem('takedown_threat_ids');
     if (!stored) {
-      router.push('/threats');
+      router.push('/');
       return;
     }
     const ids: string[] = JSON.parse(stored);
     if (ids.length === 0) {
-      router.push('/threats');
+      router.push('/');
       return;
     }
 
@@ -200,7 +200,7 @@ export default function TakedownRequestPage() {
               進捗を確認する
             </button>
             <button
-              onClick={() => router.push('/threats')}
+              onClick={() => router.push('/')}
               className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
             >
               脅威一覧に戻る
@@ -326,7 +326,7 @@ export default function TakedownRequestPage() {
 
           <div className="flex justify-between">
             <button
-              onClick={() => router.push('/threats')}
+              onClick={() => router.push('/')}
               className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm"
             >
               ← 脅威一覧に戻る

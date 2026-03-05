@@ -6,6 +6,7 @@ import { useAuth } from './AuthProvider';
 export default function NavBar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const isSuperAdmin = user?.role === 'superadmin';
 
   return (
     <nav className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4">
@@ -17,13 +18,18 @@ export default function NavBar() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-6">
-          <a href="/" className="text-gray-600 hover:text-gray-900 font-medium text-sm">ダッシュボード</a>
-          <a href="/threats" className="text-gray-600 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
+          <a href="/" className="text-gray-600 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
           <a href="/takedowns" className="text-gray-600 hover:text-gray-900 font-medium text-sm">削除申請</a>
           <a href="/brands" className="text-gray-600 hover:text-gray-900 font-medium text-sm">ブランド管理</a>
-          <a href="/phishing-patterns" className="text-gray-600 hover:text-gray-900 font-medium text-sm">📋 ユーザー報告</a>
-          <a href="/reports" className="text-gray-600 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
-          <a href="/alerts" className="text-gray-600 hover:text-gray-900 font-medium text-sm">🔔 通知設定</a>
+          <a href="/reports" className="text-gray-600 hover:text-gray-900 font-medium text-sm">レポート</a>
+          <a href="/alerts" className="text-gray-600 hover:text-gray-900 font-medium text-sm">設定</a>
+          {isSuperAdmin && (
+            <>
+              <span className="text-gray-300">|</span>
+              <a href="/admin/organizations" className="text-gray-600 hover:text-gray-900 font-medium text-sm">組織管理</a>
+              <a href="/phishing-patterns" className="text-gray-600 hover:text-gray-900 font-medium text-sm">検知ルール</a>
+            </>
+          )}
           {user && (
             <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-200">
               {user.organizationName && (
@@ -56,13 +62,18 @@ export default function NavBar() {
       {/* Mobile menu */}
       {open && (
         <div className="md:hidden mt-3 pt-3 border-t border-gray-200 space-y-2">
-          <a href="/" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">ダッシュボード</a>
-          <a href="/threats" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
+          <a href="/" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">脅威一覧</a>
           <a href="/takedowns" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">削除申請</a>
           <a href="/brands" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">ブランド管理</a>
-          <a href="/phishing-patterns" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">📋 ユーザー報告</a>
-          <a href="/reports" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">📄 レポート</a>
-          <a href="/alerts" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">🔔 通知設定</a>
+          <a href="/reports" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">レポート</a>
+          <a href="/alerts" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">設定</a>
+          {isSuperAdmin && (
+            <div className="pt-2 mt-2 border-t border-gray-100 space-y-2">
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">管理者メニュー</p>
+              <a href="/admin/organizations" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">組織管理</a>
+              <a href="/phishing-patterns" className="block py-2 text-gray-700 hover:text-gray-900 font-medium text-sm">検知ルール</a>
+            </div>
+          )}
           {user && (
             <div className="pt-2 mt-2 border-t border-gray-100 space-y-1">
               {user.organizationName && (

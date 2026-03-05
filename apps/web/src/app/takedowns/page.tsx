@@ -94,7 +94,7 @@ export default function TakedownsPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-1">削除申請はまだありません</h3>
             <p className="text-gray-500 text-sm mb-4">脅威一覧から脅威を選択して削除申請を送信してください。</p>
             <button
-              onClick={() => router.push('/threats')}
+              onClick={() => router.push('/')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
             >
               脅威一覧へ
