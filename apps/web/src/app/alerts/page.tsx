@@ -155,8 +155,8 @@ export default function AlertsPage() {
               </button>
               <button
                 onClick={handleTestEmail}
-                disabled={sendingTest || !alertEnabled}
-                title={!alertEnabled ? 'メールアラートを有効にしてください' : 'テストメールを送信'}
+                disabled={sendingTest}
+                title="SMTP接続テストメールを送信"
                 className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingTest ? '送信中...' : '📧 テストメール送信'}
