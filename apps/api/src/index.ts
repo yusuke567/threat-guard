@@ -33,7 +33,7 @@ app.use('/screenshots', express.static(path.join(process.cwd(), 'screenshots')))
 
 // Health check (public)
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'dfaacea-smtp465' });
 });
 
 // Auth routes (public)
