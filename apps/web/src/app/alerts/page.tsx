@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAlerts, getAlertSettings, updateAlertSettings } from '@/lib/api';
+import { getAlerts, getAlertSettings, updateAlertSettings, sendTestEmail } from '@/lib/api';
 
 const TYPE_LABELS: Record<string, string> = {
   new_threat: '新規脅威',
@@ -16,6 +16,8 @@ export default function AlertsPage() {
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
 
   // History state
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -44,6 +46,26 @@ export default function AlertsPage() {
       .catch(console.error)
       .finally(() => setAlertsLoading(false));
   }, [page]);
+
+  const handleTestEmail = async () => {
+    setSendingTest(true);
+    setTestMessage(null);
+    try {
+      const res = await sendTestEmail();
+      setTestMessage(res.message || 'テストメールを送信しました');
+      // Refresh alert history
+      setPage(1);
+      const data = await getAlerts(1, LIMIT);
+      setAlerts(data.alerts || []);
+      setTotalPages(data.totalPages || 1);
+      setTimeout(() => setTestMessage(null), 5000);
+    } catch (e: any) {
+      console.error(e);
+      setTestMessage(e?.message || 'テストメール送信に失敗しました');
+    } finally {
+      setSendingTest(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -122,14 +144,22 @@ export default function AlertsPage() {
               </div>
             </div>
 
-            {/* Save */}
-            <div className="flex items-center gap-3 pt-2">
+            {/* Save & Test */}
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
               <button
                 onClick={handleSave}
                 disabled={saving}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
               >
                 {saving ? '保存中...' : '保存'}
+              </button>
+              <button
+                onClick={handleTestEmail}
+                disabled={sendingTest || !alertEnabled}
+                title={!alertEnabled ? 'メールアラートを有効にしてください' : 'テストメールを送信'}
+                className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingTest ? '送信中...' : '📧 テストメール送信'}
               </button>
               {saveMessage && (
                 <span
@@ -138,6 +168,15 @@ export default function AlertsPage() {
                   }`}
                 >
                   {saveMessage}
+                </span>
+              )}
+              {testMessage && (
+                <span
+                  className={`text-sm font-medium ${
+                    testMessage.includes('失敗') ? 'text-red-600' : 'text-green-600'
+                  }`}
+                >
+                  {testMessage}
                 </span>
               )}
             </div>

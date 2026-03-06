@@ -153,6 +153,8 @@ export const getAlerts = (page?: number, limit?: number) => {
 export const getAlertSettings = () => fetchAPI<any>("/alerts/settings");
 export const updateAlertSettings = (data: { alertEnabled?: boolean; alertThreshold?: number }) =>
   fetchAPI<any>("/alerts/settings", { method: "PUT", body: JSON.stringify(data) });
+export const sendTestEmail = () =>
+  fetchAPI<any>("/alerts/test-email", { method: "POST" });
 
 // Admin: Organization Users
 export const getOrgUsers = (orgId: string) => fetchAPI<any[]>(`/organizations/${orgId}/users`);
