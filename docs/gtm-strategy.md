@@ -93,10 +93,10 @@ Tier 3: 代理店チャネル（月200万〜 / Enterprise+）
 | 1Password | パスワード管理 | SMBはセルフサーブ、エンタープライズはSales Contact。ハイブリッド |
 | Bolster / PhishLabs / Red Points | ブランドプロテクション | 全社「Contact Sales」モデル。セルフサーブ提供なし |
 
-### BrandShieldの差別化ポイント
+### ThreatGuardの差別化ポイント
 - **競合が全て「Contact Sales」モデルの中で、セルフサーブで即利用可能**
 - 業界標準: デモ依頼 → 2週間後に営業 → PoC → 3ヶ月後に導入
-- BrandShield: サインアップ → 即日検知開始 → 効果を見て稟議（ボトムアップ型）
+- ThreatGuard: サインアップ → 即日検知開始 → 効果を見て稟議（ボトムアップ型）
 - 特にSMB〜ミッドマーケット（従業員100-500名のEC/フィンテック）で差別化が効く
 
 ---
