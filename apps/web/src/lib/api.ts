@@ -27,10 +27,11 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: res.statusText }));
-    const msg = error.error
+    const base = error.error
       || (typeof error.message === 'string' ? error.message : null)
       || `エラーが発生しました (${res.status})`;
-    throw new Error(msg);
+    const detail = error.detail ? `\n${error.detail}` : '';
+    throw new Error(base + detail);
   }
   return res.json();
 }
