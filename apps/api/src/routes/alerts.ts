@@ -94,7 +94,7 @@ router.post('/test-email', async (req, res) => {
       brandName: brand.name,
       domain: detectedDomain.domain,
       detectedDomainId: detectedDomain.id,
-      riskScore: detectedDomain.riskScore,
+      riskScore: detectedDomain.riskScore ?? 0,
       category: 'test',
       source: 'test_email',
     });

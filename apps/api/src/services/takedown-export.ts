@@ -304,8 +304,8 @@ export async function sendTakedownEmail(
   const smtpConfig = brand.smtpHost
     ? {
         host: brand.smtpHost,
-        port: brand.smtpPort || 587,
-        secure: (brand.smtpPort || 587) === 465,
+        port: brand.smtpPort || 465,
+        secure: (brand.smtpPort || 465) === 465,
         auth: { user: brand.smtpUser || '', pass: brand.smtpPass || '' },
       }
     : {
