@@ -74,32 +74,15 @@ router.post('/test-email', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'ユーザー情報が見つかりません。再ログインをお試しください。' });
 
-    const nodemailer = (await import('nodemailer')).default;
+    const { sendMail, isMailConfigured } = await import('../services/mail.js');
 
-    const host = process.env.SMTP_HOST;
-    const port = Number(process.env.SMTP_PORT) || 465;
-    const smtpUser = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
-    const from = process.env.SMTP_FROM || smtpUser;
-
-    if (!host || !smtpUser || !pass) {
-      return res.status(400).json({ error: 'SMTP設定（SMTP_HOST, SMTP_USER, SMTP_PASS）が未設定です。環境変数を確認してください。' });
+    if (!isMailConfigured()) {
+      return res.status(400).json({ error: 'メール設定が未設定です。RESEND_API_KEY（推奨）またはSMTP設定を環境変数に追加してください。' });
     }
 
-    const transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user: smtpUser, pass },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
-
-    await transporter.sendMail({
-      from,
+    await sendMail({
       to: user.email,
-      subject: '[ThreatGuard] ✅ テストメール — SMTP接続確認',
+      subject: '[ThreatGuard] ✅ テストメール — メール送信確認',
       html: `<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
@@ -110,11 +93,11 @@ router.post('/test-email', async (req, res) => {
   <h1 style="margin:0;color:#fff;font-size:18px;">🛡️ ThreatGuard</h1>
 </td></tr>
 <tr><td style="padding:24px;">
-  <h2 style="margin:0 0 12px;color:#1e293b;">✅ SMTP接続テスト成功</h2>
+  <h2 style="margin:0 0 12px;color:#1e293b;">✅ メール送信テスト成功</h2>
   <p style="color:#475569;">このメールが届いていれば、メール通知は正常に動作しています。</p>
   <table style="margin:16px 0;background:#f8fafc;border-radius:6px;padding:12px;width:100%;">
     <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">送信先: ${user.email}</td></tr>
-    <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">SMTPホスト: ${host}:${port}</td></tr>
+    <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">送信方式: ${process.env.RESEND_API_KEY ? 'Resend API' : 'SMTP'}</td></tr>
     <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">送信日時: ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</td></tr>
   </table>
 </td></tr>
@@ -127,11 +110,7 @@ router.post('/test-email', async (req, res) => {
     res.json({ success: true, message: `テストメールを ${user.email} に送信しました` });
   } catch (err) {
     console.error('[Test Email] Error:', err);
-    const errMsg = String(err);
-    if (errMsg.includes('ETIMEDOUT')) {
-      return res.status(500).json({ error: 'SMTP接続がタイムアウトしました。ポート設定（SMTP_PORT=465）を確認してください。', detail: errMsg });
-    }
-    res.status(500).json({ error: 'テストメールの送信に失敗しました。SMTP設定を確認してください。', detail: errMsg });
+    res.status(500).json({ error: 'テストメールの送信に失敗しました。メール設定を確認してください。', detail: String(err) });
   }
 });
 

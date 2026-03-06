@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { prisma } from '../lib/prisma.js';
+import { sendMail, isMailConfigured } from './mail.js';
 
 interface EmailThreatAlert {
   brandId: string;
@@ -41,27 +42,41 @@ function riskLabel(score: number): string {
   return '低';
 }
 
-async function getTransporter(brandId: string) {
+async function getSenderConfig(brandId: string) {
   const brand = await prisma.brand.findUnique({ where: { id: brandId } });
+  const senderEmail = brand?.senderEmail || process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.SMTP_USER;
 
-  const host = brand?.smtpHost || process.env.SMTP_HOST;
-  const port = brand?.smtpPort || Number(process.env.SMTP_PORT) || 465;
-  const user = brand?.smtpUser || process.env.SMTP_USER;
-  const pass = brand?.smtpPass || process.env.SMTP_PASS;
-  const senderEmail = brand?.senderEmail || process.env.SMTP_FROM || user;
-
-  if (!host || !user || !pass) {
-    return null;
+  // Brand-specific SMTP takes priority
+  if (brand?.smtpHost && brand?.smtpUser && brand?.smtpPass) {
+    const port = brand.smtpPort || 465;
+    const transporter = nodemailer.createTransport({
+      host: brand.smtpHost,
+      port,
+      secure: port === 465,
+      auth: { user: brand.smtpUser, pass: brand.smtpPass },
+    });
+    return { type: 'smtp' as const, transporter, senderEmail };
   }
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
+  // Otherwise use shared mail service (Resend or env SMTP)
+  if (isMailConfigured()) {
+    return { type: 'shared' as const, transporter: null, senderEmail };
+  }
 
-  return { transporter, senderEmail };
+  return null;
+}
+
+async function sendEmailViaConfig(
+  config: NonNullable<Awaited<ReturnType<typeof getSenderConfig>>>,
+  to: string,
+  subject: string,
+  html: string,
+): Promise<void> {
+  if (config.type === 'smtp' && config.transporter) {
+    await config.transporter.sendMail({ from: config.senderEmail, to, subject, html });
+  } else {
+    await sendMail({ from: config.senderEmail || undefined, to, subject, html });
+  }
 }
 
 function wrapHtml(title: string, body: string): string {
@@ -227,9 +242,9 @@ async function isDuplicate(userId: string, detectedDomainId: string, type: strin
 }
 
 export async function emailNotifyNewThreat(alert: EmailThreatAlert): Promise<void> {
-  const smtp = await getTransporter(alert.brandId);
-  if (!smtp) {
-    console.log('[Email] SMTP not configured, skipping email notification');
+  const config = await getSenderConfig(alert.brandId);
+  if (!config) {
+    console.log('[Email] Mail not configured, skipping email notification');
     return;
   }
 
@@ -246,12 +261,7 @@ export async function emailNotifyNewThreat(alert: EmailThreatAlert): Promise<voi
     }
 
     try {
-      await smtp.transporter.sendMail({
-        from: smtp.senderEmail,
-        to: user.email,
-        subject,
-        html,
-      });
+      await sendEmailViaConfig(config, user.email, subject, html);
 
       await prisma.alertLog.create({
         data: {
@@ -281,9 +291,9 @@ export async function emailNotifyNewThreat(alert: EmailThreatAlert): Promise<voi
 }
 
 export async function emailNotifySiteChange(alert: EmailSiteChangeAlert): Promise<void> {
-  const smtp = await getTransporter(alert.brandId);
-  if (!smtp) {
-    console.log('[Email] SMTP not configured, skipping site change notification');
+  const config = await getSenderConfig(alert.brandId);
+  if (!config) {
+    console.log('[Email] Mail not configured, skipping site change notification');
     return;
   }
 
@@ -300,12 +310,7 @@ export async function emailNotifySiteChange(alert: EmailSiteChangeAlert): Promis
     }
 
     try {
-      await smtp.transporter.sendMail({
-        from: smtp.senderEmail,
-        to: user.email,
-        subject,
-        html,
-      });
+      await sendEmailViaConfig(config, user.email, subject, html);
 
       await prisma.alertLog.create({
         data: {
@@ -342,9 +347,9 @@ export async function emailNotifyScanSummary(
 ): Promise<void> {
   if (newThreats === 0) return;
 
-  const smtp = await getTransporter(brandId);
-  if (!smtp) {
-    console.log('[Email] SMTP not configured, skipping scan summary notification');
+  const config = await getSenderConfig(brandId);
+  if (!config) {
+    console.log('[Email] Mail not configured, skipping scan summary notification');
     return;
   }
 
@@ -380,12 +385,7 @@ export async function emailNotifyScanSummary(
     }
 
     try {
-      await smtp.transporter.sendMail({
-        from: smtp.senderEmail,
-        to: user.email,
-        subject,
-        html,
-      });
+      await sendEmailViaConfig(config, user.email, subject, html);
 
       await prisma.alertLog.create({
         data: {

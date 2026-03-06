@@ -26,6 +26,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "playwright": "^1.41.0",
+    "resend": "^6.9.3",
     "zod": "^3.22.0"
   },
   "devDependencies": {

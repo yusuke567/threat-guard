@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import { prisma } from '../lib/prisma.js';
 import path from 'path';
 import fs from 'fs/promises';
+import { sendMail, isMailConfigured } from './mail.js';
 
 const EXPORT_DIR = path.resolve('exports');
 
@@ -300,29 +301,7 @@ export async function sendTakedownEmail(
 
   const brand = dd.brand;
 
-  // Use brand-specific SMTP if configured, otherwise fall back to env defaults
-  const smtpConfig = brand.smtpHost
-    ? {
-        host: brand.smtpHost,
-        port: brand.smtpPort || 465,
-        secure: (brand.smtpPort || 465) === 465,
-        auth: { user: brand.smtpUser || '', pass: brand.smtpPass || '' },
-      }
-    : {
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: Number(process.env.SMTP_PORT || 465),
-        secure: Number(process.env.SMTP_PORT || 465) === 465,
-        auth: { user: process.env.SMTP_USER || '', pass: process.env.SMTP_PASS || '' },
-      };
-
-  const transporter = nodemailer.createTransport({
-    ...smtpConfig,
-    connectionTimeout: 10000, // 10s connection timeout
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
-  });
-
-  const senderEmail = brand.senderEmail || process.env.SMTP_FROM || process.env.SMTP_USER;
+  const senderEmail = brand.senderEmail || process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.SMTP_USER;
   const brandName = brand.name;
   const domain = dd.domain;
 
@@ -330,22 +309,38 @@ export async function sendTakedownEmail(
   const evidenceText = buildEvidenceText(dd, whois);
   const fullBody = takedown.template + '\n' + evidenceText;
 
-  const attachments: any[] = [];
-  if (pdf) {
-    attachments.push({
-      filename: `takedown-${domain}-evidence.pdf`,
-      content: pdf,
-      contentType: 'application/pdf',
+  const pdfAttachments = pdf
+    ? [{ filename: `takedown-${domain}-evidence.pdf`, content: pdf as Buffer }]
+    : undefined;
+
+  // Use brand-specific SMTP if configured, otherwise use shared mail (Resend/SMTP)
+  if (brand.smtpHost && brand.smtpUser && brand.smtpPass) {
+    const port = brand.smtpPort || 465;
+    const transporter = nodemailer.createTransport({
+      host: brand.smtpHost,
+      port,
+      secure: port === 465,
+      auth: { user: brand.smtpUser, pass: brand.smtpPass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+    await transporter.sendMail({
+      from: senderEmail,
+      to: recipientEmail,
+      subject: `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`,
+      text: fullBody,
+      attachments: pdfAttachments,
+    });
+  } else {
+    await sendMail({
+      from: senderEmail || undefined,
+      to: recipientEmail,
+      subject: `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`,
+      html: `<pre>${fullBody}</pre>`,
+      attachments: pdfAttachments,
     });
   }
-
-  await transporter.sendMail({
-    from: senderEmail,
-    to: recipientEmail,
-    subject: `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`,
-    text: fullBody,
-    attachments,
-  });
 
   // Update status
   await prisma.takedownRequest.update({
