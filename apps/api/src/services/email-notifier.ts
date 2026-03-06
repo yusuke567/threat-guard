@@ -45,7 +45,7 @@ async function getTransporter(brandId: string) {
   const brand = await prisma.brand.findUnique({ where: { id: brandId } });
 
   const host = brand?.smtpHost || process.env.SMTP_HOST;
-  const port = brand?.smtpPort || Number(process.env.SMTP_PORT) || 587;
+  const port = brand?.smtpPort || Number(process.env.SMTP_PORT) || 465;
   const user = brand?.smtpUser || process.env.SMTP_USER;
   const pass = brand?.smtpPass || process.env.SMTP_PASS;
   const senderEmail = brand?.senderEmail || process.env.SMTP_FROM || user;
