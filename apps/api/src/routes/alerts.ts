@@ -70,13 +70,13 @@ router.put('/settings', async (req, res) => {
 router.post('/test-email', async (req, res) => {
   const userId = req.user!.userId;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { organization: { include: { brands: { take: 1 } } } },
-  });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return res.status(404).json({ error: 'ユーザー情報が見つかりません。再ログインをお試しください。' });
 
-  const brand = user.organization?.brands?.[0];
+  // superadmin (orgId=null) → any brand; otherwise → org's brand
+  const brand = user.organizationId
+    ? await prisma.brand.findFirst({ where: { organizationId: user.organizationId } })
+    : await prisma.brand.findFirst();
   if (!brand) return res.status(400).json({ error: 'ブランドが登録されていません。先にブランドを追加してください。' });
 
   // Find a detected domain for this brand (or create a dummy context)
