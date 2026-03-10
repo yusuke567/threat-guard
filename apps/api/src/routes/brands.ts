@@ -3,6 +3,32 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { captureScreenshot } from '../services/screenshot.js';
 import path from 'node:path';
+import fs from 'node:fs';
+import multer from 'multer';
+
+// Logo upload config
+const logoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const dir = path.join(process.cwd(), 'uploads', 'logos');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.png';
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+const logoUpload = multer({
+  storage: logoStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (_req, file, cb) => {
+    if (/^image\/(png|jpe?g|gif|svg\+xml|webp)$/.test(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('画像ファイルのみアップロードできます'));
+    }
+  },
+});
 
 const router = Router();
 
@@ -83,6 +109,138 @@ router.put('/:id', async (req, res) => {
     data: parsed.data,
   });
   res.json(brand);
+});
+
+// Brand stats — threat summary
+router.get('/:id/stats', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin
+      ? { id: req.params.id }
+      : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    // Status breakdown
+    const statusCounts = await prisma.detectedDomain.groupBy({
+      by: ['status'],
+      where: { brandId: brand.id },
+      _count: { id: true },
+    });
+
+    // Risk score distribution
+    const riskBands = await prisma.$queryRaw<Array<{ band: string; count: bigint }>>`
+      SELECT
+        CASE
+          WHEN "riskScore" IS NULL THEN 'unknown'
+          WHEN "riskScore" >= 80 THEN 'critical'
+          WHEN "riskScore" >= 60 THEN 'high'
+          WHEN "riskScore" >= 40 THEN 'medium'
+          ELSE 'low'
+        END AS band,
+        COUNT(*)::bigint AS count
+      FROM "DetectedDomain"
+      WHERE "brandId" = ${brand.id}
+      GROUP BY band
+    `;
+
+    // Average risk score
+    const avgRisk = await prisma.detectedDomain.aggregate({
+      where: { brandId: brand.id, riskScore: { not: null } },
+      _avg: { riskScore: true },
+    });
+
+    // Last 30 days daily counts
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dailyCounts = await prisma.$queryRaw<Array<{ date: string; count: bigint }>>`
+      SELECT DATE("firstSeen") AS date, COUNT(*)::bigint AS count
+      FROM "DetectedDomain"
+      WHERE "brandId" = ${brand.id} AND "firstSeen" >= ${thirtyDaysAgo}
+      GROUP BY DATE("firstSeen")
+      ORDER BY date
+    `;
+
+    // Recent scan jobs
+    const recentScans = await prisma.scanJob.findMany({
+      where: { brandId: brand.id },
+      orderBy: { startedAt: 'desc' },
+      take: 10,
+    });
+
+    // Total count
+    const totalThreats = statusCounts.reduce((sum, s) => sum + s._count.id, 0);
+
+    res.json({
+      totalThreats,
+      statusBreakdown: Object.fromEntries(statusCounts.map((s) => [s.status, s._count.id])),
+      riskDistribution: Object.fromEntries(riskBands.map((r) => [r.band, Number(r.count)])),
+      averageRiskScore: avgRisk._avg.riskScore ? Math.round(avgRisk._avg.riskScore) : null,
+      dailyTrend: dailyCounts.map((d) => ({ date: String(d.date).slice(0, 10), count: Number(d.count) })),
+      recentScans,
+    });
+  } catch (err) {
+    console.error('Brand stats error:', err);
+    res.status(500).json({ error: '統計情報の取得に失敗しました。' });
+  }
+});
+
+// Upload brand logo
+router.post('/:id/logo', logoUpload.single('logo'), async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin
+      ? { id: req.params.id }
+      : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    if (!req.file) return res.status(400).json({ error: 'ファイルが選択されていません。' });
+
+    // Delete old logo if exists
+    if (brand.logoUrl) {
+      const oldPath = path.join(process.cwd(), brand.logoUrl.replace(/^\//, ''));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    const logoUrl = `/uploads/logos/${req.file.filename}`;
+    await prisma.brand.update({
+      where: { id: brand.id },
+      data: { logoUrl },
+    });
+
+    res.json({ logoUrl });
+  } catch (err) {
+    console.error('Logo upload error:', err);
+    res.status(500).json({ error: 'ロゴのアップロードに失敗しました。' });
+  }
+});
+
+// Delete brand logo
+router.delete('/:id/logo', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin
+      ? { id: req.params.id }
+      : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    if (brand.logoUrl) {
+      const oldPath = path.join(process.cwd(), brand.logoUrl.replace(/^\//, ''));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    await prisma.brand.update({
+      where: { id: brand.id },
+      data: { logoUrl: null },
+    });
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Logo delete error:', err);
+    res.status(500).json({ error: 'ロゴの削除に失敗しました。' });
+  }
 });
 
 // Import whitelist domains from CSV

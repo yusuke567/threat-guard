@@ -52,6 +52,24 @@ export const deleteBrand = (id: string) =>
   fetchAPI<void>(`/brands/${id}`, { method: 'DELETE' });
 export const captureBrandScreenshot = (id: string) =>
   fetchAPI<{ screenshotUrl: string }>(`/brands/${id}/capture-screenshot`, { method: 'POST' });
+export const getBrandStats = (id: string) => fetchAPI<any>(`/brands/${id}/stats`);
+export const uploadBrandLogo = async (id: string, file: File): Promise<{ logoUrl: string }> => {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append('logo', file);
+  const res = await fetch(`${API_BASE}/brands/${id}/logo`, {
+    method: 'POST',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `エラーが発生しました (${res.status})`);
+  }
+  return res.json();
+};
+export const deleteBrandLogo = (id: string) =>
+  fetchAPI<void>(`/brands/${id}/logo`, { method: 'DELETE' });
 
 // Threats
 export const getThreats = (params?: Record<string, string>) => {

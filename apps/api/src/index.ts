@@ -30,6 +30,8 @@ app.use(express.json());
 
 // Serve screenshots as static files
 app.use('/screenshots', express.static(path.join(process.cwd(), 'screenshots')));
+// Serve uploaded files (logos etc.)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Health check (public)
 app.get('/api/health', (_req, res) => {

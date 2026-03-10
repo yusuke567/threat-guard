@@ -379,8 +379,16 @@ export default function BrandsPage() {
               ) : (
                 <>
                   <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg">{brand.name}</h3>
+                    <div className="flex items-start gap-3">
+                      {brand.logoUrl ? (
+                        <img src={brand.logoUrl} alt={brand.name} className="w-10 h-10 rounded-lg object-contain border border-gray-200 dark:border-gray-600 flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg text-gray-400">🏢</span>
+                        </div>
+                      )}
+                      <div>
+                        <a href={`/brands/${brand.id}`} className="font-bold text-lg hover:text-blue-600 transition-colors">{brand.name}</a>
                       <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-mono">{brand.domain}</p>
                       {brand.senderEmail && (
                         <p className="text-xs text-green-600 mt-1">📧 {brand.senderEmail}</p>
@@ -392,6 +400,7 @@ export default function BrandsPage() {
                           ))}
                         </div>
                       )}
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-blue-600">
