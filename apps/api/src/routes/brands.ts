@@ -70,6 +70,7 @@ router.get('/:id', async (req, res) => {
     where,
     include: {
       organization: true,
+      brandDomains: { orderBy: [{ type: 'asc' }, { createdAt: 'asc' }] },
       _count: { select: { detectedDomains: true, scanJobs: true } },
     },
   });
@@ -242,6 +243,98 @@ router.delete('/:id/logo', async (req, res) => {
     res.status(500).json({ error: 'ロゴの削除に失敗しました。' });
   }
 });
+
+// ──────── BrandDomain 2-layer management ────────
+
+// List brand domains
+router.get('/:id/domains', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    const domains = await prisma.brandDomain.findMany({
+      where: { brandId: brand.id },
+      orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
+    });
+    res.json(domains);
+  } catch (err) {
+    console.error('List brand domains error:', err);
+    res.status(500).json({ error: 'ドメイン一覧の取得に失敗しました。' });
+  }
+});
+
+// Add brand domain
+router.post('/:id/domains', async (req, res) => {
+  try {
+    const schema = z.object({
+      domain: z.string().min(1),
+      type: z.enum(['primary', 'owned']).default('owned'),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    const domain = parsed.data.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+
+    // If setting as primary, demote existing primary
+    if (parsed.data.type === 'primary') {
+      await prisma.brandDomain.updateMany({
+        where: { brandId: brand.id, type: 'primary' },
+        data: { type: 'owned' },
+      });
+    }
+
+    const bd = await prisma.brandDomain.upsert({
+      where: { brandId_domain: { brandId: brand.id, domain } },
+      update: { type: parsed.data.type },
+      create: { brandId: brand.id, domain, type: parsed.data.type },
+    });
+
+    // Sync whitelistDomains field for backward compatibility
+    await syncWhitelistDomains(brand.id);
+
+    res.status(201).json(bd);
+  } catch (err) {
+    console.error('Add brand domain error:', err);
+    res.status(500).json({ error: 'ドメインの追加に失敗しました。' });
+  }
+});
+
+// Delete brand domain
+router.delete('/:id/domains/:domainId', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    const bd = await prisma.brandDomain.findFirst({ where: { id: req.params.domainId, brandId: brand.id } });
+    if (!bd) return res.status(404).json({ error: 'ドメインが見つかりません。' });
+
+    await prisma.brandDomain.delete({ where: { id: bd.id } });
+
+    // Sync whitelistDomains field
+    await syncWhitelistDomains(brand.id);
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Delete brand domain error:', err);
+    res.status(500).json({ error: 'ドメインの削除に失敗しました。' });
+  }
+});
+
+// Helper: sync BrandDomain → Brand.whitelistDomains for backward compatibility
+async function syncWhitelistDomains(brandId: string) {
+  const domains = await prisma.brandDomain.findMany({ where: { brandId } });
+  const domainStr = domains.map((d) => d.domain).join(',');
+  await prisma.brand.update({ where: { id: brandId }, data: { whitelistDomains: domainStr } });
+}
 
 // Import whitelist domains from CSV
 router.post('/:id/whitelist/import', async (req, res) => {

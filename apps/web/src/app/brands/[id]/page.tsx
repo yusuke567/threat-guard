@@ -10,7 +10,9 @@ import {
   triggerScan,
   uploadBrandLogo,
   deleteBrandLogo,
-  getScans,
+  getBrandDomains,
+  addBrandDomain,
+  removeBrandDomain,
 } from '@/lib/api';
 
 /* ──────────────────────── types ──────────────────────── */
@@ -28,6 +30,7 @@ interface BrandData {
   smtpUser?: string | null;
   smtpPass?: string | null;
   organization?: { id: string; name: string };
+  brandDomains?: Array<{ id: string; domain: string; type: string; whoisExpiry?: string | null; createdAt: string }>;
   _count?: { detectedDomains: number; scanJobs: number };
   createdAt: string;
 }
@@ -86,6 +89,9 @@ export default function BrandDetailPage() {
   const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '', managedDomains: '', senderEmail: '', smtpHost: '', smtpPort: '', smtpUser: '', smtpPass: '' });
   const [smtpOpen, setSmtpOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [newDomain, setNewDomain] = useState('');
+  const [newDomainType, setNewDomainType] = useState<'primary' | 'owned'>('owned');
+  const [addingDomain, setAddingDomain] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -178,6 +184,30 @@ export default function BrandDetailPage() {
     }
   };
 
+  const handleAddDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDomain.trim() || !brand) return;
+    setAddingDomain(true);
+    try {
+      await addBrandDomain(brand.id, newDomain.trim(), newDomainType);
+      setNewDomain('');
+      setNewDomainType('owned');
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'ドメインの追加に失敗しました');
+    } finally {
+      setAddingDomain(false);
+    }
+  };
+
+  const handleRemoveDomain = async (domainId: string) => {
+    if (!brand || !confirm('このドメインを削除しますか？')) return;
+    try {
+      await removeBrandDomain(brand.id, domainId);
+      loadData();
+    } catch (e) { console.error(e); }
+  };
+
   const handleLogoDelete = async () => {
     if (!brand || !confirm('ロゴを削除しますか？')) return;
     try {
@@ -202,10 +232,6 @@ export default function BrandDetailPage() {
       </div>
     );
   }
-
-  const whitelistList = brand.whitelistDomains
-    ? brand.whitelistDomains.split(',').filter(Boolean)
-    : [];
 
   return (
     <div className="space-y-6">
@@ -461,27 +487,85 @@ export default function BrandDetailPage() {
         </>
       )}
 
-      {/* Managed Domains */}
+      {/* Domain 2-layer Management */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">
-          登録ドメイン <span className="text-gray-400 font-normal">({whitelistList.length})</span>
+          ドメイン管理 <span className="text-gray-400 font-normal">({brand.brandDomains?.length || 0})</span>
         </h2>
-        {whitelistList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {whitelistList.map((d) => (
-              <div key={d} className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                {d === brand.domain ? (
-                  <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-[10px] font-medium">PRIMARY</span>
+
+        {/* Primary Domains */}
+        {(() => {
+          const primaryDomains = brand.brandDomains?.filter((d) => d.type === 'primary') || [];
+          const ownedDomains = brand.brandDomains?.filter((d) => d.type === 'owned') || [];
+          return (
+            <>
+              <div className="mb-4">
+                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">🎯 プライマリドメイン（監視対象）</h3>
+                {primaryDomains.length > 0 ? (
+                  <div className="space-y-1">
+                    {primaryDomains.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-[10px] font-medium">PRIMARY</span>
+                          <span className="text-sm font-mono text-gray-700 dark:text-gray-200">{d.domain}</span>
+                        </div>
+                        <button onClick={() => handleRemoveDomain(d.id)} className="text-xs text-red-500 hover:text-red-600">✕</button>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded text-[10px] font-medium">OWNED</span>
+                  <p className="text-sm text-gray-400 px-3">プライマリドメインが設定されていません</p>
                 )}
-                <span className="text-sm font-mono text-gray-700 dark:text-gray-200 truncate">{d}</span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400">ドメインが登録されていません</p>
-        )}
+
+              <div className="mb-4">
+                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">🏢 保有ドメイン（ホワイトリスト）</h3>
+                {ownedDomains.length > 0 ? (
+                  <div className="space-y-1">
+                    {ownedDomains.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded text-[10px] font-medium">OWNED</span>
+                          <span className="text-sm font-mono text-gray-700 dark:text-gray-200">{d.domain}</span>
+                        </div>
+                        <button onClick={() => handleRemoveDomain(d.id)} className="text-xs text-red-500 hover:text-red-600">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 px-3">保有ドメインが登録されていません</p>
+                )}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* Add domain form */}
+        <form onSubmit={handleAddDomain} className="flex flex-col sm:flex-row gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <input
+            type="text"
+            value={newDomain}
+            onChange={(e) => setNewDomain(e.target.value)}
+            placeholder="example.com"
+            className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+          />
+          <select
+            value={newDomainType}
+            onChange={(e) => setNewDomainType(e.target.value as 'primary' | 'owned')}
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+          >
+            <option value="owned">保有ドメイン</option>
+            <option value="primary">プライマリ</option>
+          </select>
+          <button
+            type="submit"
+            disabled={addingDomain || !newDomain.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          >
+            追加
+          </button>
+        </form>
+        <p className="text-xs text-gray-400 mt-2">プライマリ = 監視対象の本体ドメイン。保有 = 自社管理ドメイン（ホワイトリスト自動登録）。</p>
       </div>
 
       {/* Recent Scans */}

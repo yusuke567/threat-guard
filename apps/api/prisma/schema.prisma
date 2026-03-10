@@ -51,10 +51,25 @@ model Brand {
   detectedDomains  DetectedDomain[]
   scanJobs         ScanJob[]
   phishingPatterns PhishingPattern[]
+  brandDomains     BrandDomain[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
   @@index([organizationId])
+  @@index([domain])
+}
+
+model BrandDomain {
+  id          String   @id @default(uuid())
+  brandId     String
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  domain      String
+  type        String   @default("owned") // "primary" | "owned"
+  whoisExpiry DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([brandId, domain])
+  @@index([brandId])
   @@index([domain])
 }
 

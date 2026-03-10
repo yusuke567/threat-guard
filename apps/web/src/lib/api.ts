@@ -71,6 +71,14 @@ export const uploadBrandLogo = async (id: string, file: File): Promise<{ logoUrl
 export const deleteBrandLogo = (id: string) =>
   fetchAPI<void>(`/brands/${id}/logo`, { method: 'DELETE' });
 
+// Brand Domains (2-layer)
+export const getBrandDomains = (brandId: string) =>
+  fetchAPI<any[]>(`/brands/${brandId}/domains`);
+export const addBrandDomain = (brandId: string, domain: string, type: 'primary' | 'owned' = 'owned') =>
+  fetchAPI<any>(`/brands/${brandId}/domains`, { method: 'POST', body: JSON.stringify({ domain, type }) });
+export const removeBrandDomain = (brandId: string, domainId: string) =>
+  fetchAPI<void>(`/brands/${brandId}/domains/${domainId}`, { method: 'DELETE' });
+
 // Threats
 export const getThreats = (params?: Record<string, string>) => {
   const query = params ? '?' + new URLSearchParams(params).toString() : '';
