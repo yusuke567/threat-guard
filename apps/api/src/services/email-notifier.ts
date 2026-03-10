@@ -44,7 +44,7 @@ function riskLabel(score: number): string {
 
 async function getSenderConfig(brandId: string) {
   const brand = await prisma.brand.findUnique({ where: { id: brandId } });
-  const senderEmail = brand?.senderEmail || process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.SMTP_USER;
+  const senderEmail = brand?.senderEmail || process.env.RESEND_FROM;
 
   // Brand-specific SMTP takes priority
   if (brand?.smtpHost && brand?.smtpUser && brand?.smtpPass) {

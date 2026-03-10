@@ -77,7 +77,7 @@ router.post('/test-email', async (req, res) => {
     const { sendMail, isMailConfigured } = await import('../services/mail.js');
 
     if (!isMailConfigured()) {
-      return res.status(400).json({ error: 'メール設定が未設定です。RESEND_API_KEY（推奨）またはSMTP設定を環境変数に追加してください。' });
+      return res.status(400).json({ error: 'メール設定が未設定です。RESEND_API_KEY を環境変数に追加してください。' });
     }
 
     await sendMail({
@@ -97,7 +97,7 @@ router.post('/test-email', async (req, res) => {
   <p style="color:#475569;">このメールが届いていれば、メール通知は正常に動作しています。</p>
   <table style="margin:16px 0;background:#f8fafc;border-radius:6px;padding:12px;width:100%;">
     <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">送信先: ${user.email}</td></tr>
-    <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">送信方式: ${process.env.RESEND_API_KEY ? 'Resend API' : 'SMTP'}</td></tr>
+    <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">送信方式: Resend API</td></tr>
     <tr><td style="padding:4px 0;color:#64748b;font-size:13px;">送信日時: ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}</td></tr>
   </table>
 </td></tr>

@@ -301,7 +301,7 @@ export async function sendTakedownEmail(
 
   const brand = dd.brand;
 
-  const senderEmail = brand.senderEmail || process.env.RESEND_FROM || process.env.SMTP_FROM || process.env.SMTP_USER;
+  const senderEmail = brand.senderEmail || process.env.RESEND_FROM;
   const brandName = brand.name;
   const domain = dd.domain;
 
