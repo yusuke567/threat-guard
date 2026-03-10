@@ -69,21 +69,26 @@ router.get('/', async (req, res) => {
 
 // Get threat detail - verify org ownership
 router.get('/:id', async (req, res) => {
-  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
-  const orgId = req.user!.organizationId;
-  const threat = await prisma.detectedDomain.findUnique({
-    where: { id: req.params.id },
-    include: {
-      brand: { include: { organization: true } },
-      analyses: { orderBy: { analyzedAt: 'desc' } },
-      takedowns: { orderBy: { createdAt: 'desc' } },
-      webProbes: { orderBy: { probeAt: 'desc' }, take: 5 },
-    },
-  });
-  if (!threat || (!isSuperadmin && threat.brand.organizationId !== orgId)) {
-    return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
+    const threat = await prisma.detectedDomain.findUnique({
+      where: { id: req.params.id },
+      include: {
+        brand: { include: { organization: true } },
+        analyses: { orderBy: { analyzedAt: 'desc' } },
+        takedowns: { orderBy: { createdAt: 'desc' } },
+        webProbes: { orderBy: { probeAt: 'desc' }, take: 5 },
+      },
+    });
+    if (!threat || (!isSuperadmin && threat.brand.organizationId !== orgId)) {
+      return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
+    }
+    res.json(threat);
+  } catch (err) {
+    console.error('Threat detail error:', err);
+    res.status(500).json({ error: '脅威詳細の取得に失敗しました。' });
   }
-  res.json(threat);
 });
 
 // Content analysis - verify org
