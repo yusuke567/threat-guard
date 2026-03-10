@@ -79,6 +79,7 @@ router.get('/:id', async (req, res) => {
         analyses: { orderBy: { analyzedAt: 'desc' } },
         takedowns: { orderBy: { createdAt: 'desc' } },
         webProbes: { orderBy: { probeAt: 'desc' }, take: 5 },
+        statusLogs: { orderBy: { createdAt: 'desc' } },
       },
     });
     if (!threat || (!isSuperadmin && threat.brand.organizationId !== orgId)) {
@@ -152,10 +153,24 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(404).json({ error: '指定された脅威情報が見つかりません。' });
     }
 
+    const oldStatus = domain.status;
     const updated = await prisma.detectedDomain.update({
       where: { id: req.params.id },
       data: { status },
     });
+
+    // Log status change
+    if (oldStatus !== status) {
+      await prisma.threatStatusLog.create({
+        data: {
+          detectedDomainId: req.params.id,
+          fromStatus: oldStatus,
+          toStatus: status,
+          changedBy: req.user!.email || req.user!.userId,
+        },
+      });
+    }
+
     res.json(updated);
   } catch (err: any) {
     console.error('Status update failed:', err);

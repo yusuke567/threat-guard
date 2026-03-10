@@ -50,6 +50,8 @@ export const updateBrand = (id: string, data: any) =>
   fetchAPI<any>(`/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const deleteBrand = (id: string) =>
   fetchAPI<void>(`/brands/${id}`, { method: 'DELETE' });
+export const captureBrandScreenshot = (id: string) =>
+  fetchAPI<{ screenshotUrl: string }>(`/brands/${id}/capture-screenshot`, { method: 'POST' });
 
 // Threats
 export const getThreats = (params?: Record<string, string>) => {

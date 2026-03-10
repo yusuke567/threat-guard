@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   getThreat, getThreats, generateTakedown, getAbuseContacts,
   sendTakedownEmail, downloadTakedownPdf, getContentAnalysis,
-  triggerProbe, updateThreatStatus,
+  triggerProbe, updateThreatStatus, captureBrandScreenshot,
 } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 import GlossaryTerm from '@/components/GlossaryTerm';
@@ -572,12 +572,40 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
 function ScreenshotsTab({ threat, probe, probing, onProbe }: {
   threat: any; probe: any; probing: boolean; onProbe: () => void;
 }) {
+  const [capturingBrand, setCapturingBrand] = useState(false);
+  const [brandScreenshotUrl, setBrandScreenshotUrl] = useState<string | null>(threat.brand?.screenshotUrl || null);
+
+  const handleCaptureBrand = async () => {
+    if (!threat.brand?.id) return;
+    setCapturingBrand(true);
+    try {
+      const result = await captureBrandScreenshot(threat.brand.id);
+      setBrandScreenshotUrl(result.screenshotUrl);
+    } catch (e) {
+      console.error('Brand screenshot capture failed', e);
+    } finally {
+      setCapturingBrand(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Comparison header */}
+      {threat.screenshotUrl && brandScreenshotUrl && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            ⚠️ 左が検知されたサイト、右が正規サイトです。外観を比較してフィッシング判定の参考にしてください。
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Fake site screenshot */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">検知サイト: {threat.domain}</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-red-200 dark:border-red-800 p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded text-xs font-bold">検知サイト</span>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 font-mono">{threat.domain}</h3>
+          </div>
           {threat.screenshotUrl ? (
             <>
               <img
@@ -606,27 +634,56 @@ function ScreenshotsTab({ threat, probe, probing, onProbe }: {
         </div>
 
         {/* Original site (brand) */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">正規サイト: {threat.brand?.domain}</h3>
-          <div className="flex flex-col items-center justify-center h-48 bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
-            <p className="text-gray-400 dark:text-gray-500 text-sm">正規サイトのスクリーンショット</p>
-            <p className="text-gray-300 text-xs mt-1">（比較用・今後対応予定）</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-green-200 dark:border-green-800 p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs font-bold">正規サイト</span>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 font-mono">{threat.brand?.domain}</h3>
           </div>
+          {brandScreenshotUrl ? (
+            <>
+              <img
+                src={brandScreenshotUrl}
+                alt={`${threat.brand?.domain} のスクリーンショット`}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-700"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-gray-400 dark:text-gray-500">正規サイトのスクリーンショット</p>
+                <button
+                  onClick={handleCaptureBrand}
+                  disabled={capturingBrand}
+                  className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                >
+                  {capturingBrand ? '再取得中...' : '再取得'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-48 bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+              <p className="text-gray-400 dark:text-gray-500 text-sm mb-3">正規サイトのスクリーンショット未取得</p>
+              <button
+                onClick={handleCaptureBrand}
+                disabled={capturingBrand}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              >
+                {capturingBrand ? '取得中...' : '正規サイトのスクリーンショットを取得'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Re-probe button */}
-      {threat.screenshotUrl && (
-        <div className="flex justify-center">
+      <div className="flex justify-center gap-3">
+        {threat.screenshotUrl && (
           <button
             onClick={onProbe}
             disabled={probing}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 disabled:opacity-50"
+            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           >
-            {probing ? '再取得中...' : '最新のスクリーンショットを再取得'}
+            {probing ? '再取得中...' : '検知サイトのスクリーンショットを再取得'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -832,6 +889,17 @@ function HistoryTab({ threat }: { threat: any }) {
         color: td.status === 'completed' ? 'green' : 'yellow',
       });
     }
+  });
+
+  // Status changes
+  threat.statusLogs?.forEach((log: any) => {
+    events.push({
+      date: log.createdAt,
+      type: 'ステータス変更',
+      title: `${statusLabels[log.fromStatus] || log.fromStatus} → ${statusLabels[log.toStatus] || log.toStatus}`,
+      detail: log.changedBy ? `変更者: ${log.changedBy}` : '',
+      color: log.toStatus === 'resolved' ? 'green' : log.toStatus === 'false_positive' ? 'gray' : 'blue',
+    });
   });
 
   // Sort by date descending (newest first)

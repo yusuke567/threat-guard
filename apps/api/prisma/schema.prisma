@@ -40,6 +40,7 @@ model Brand {
   name           String
   domain         String
   logoUrl        String?
+  screenshotUrl  String?
   keywords       String         @default("")
   whitelistDomains String       @default("")
   senderEmail      String?
@@ -73,6 +74,7 @@ model DetectedDomain {
   analyses      ThreatAnalysis[]
   takedowns     TakedownRequest[]
   webProbes     WebProbe[]
+  statusLogs    ThreatStatusLog[]
   alertLogs     AlertLog[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
@@ -81,6 +83,19 @@ model DetectedDomain {
   @@index([status])
   @@index([riskScore])
   @@index([domain])
+}
+
+model ThreatStatusLog {
+  id               String         @id @default(uuid())
+  detectedDomainId String
+  detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  fromStatus       String
+  toStatus         String
+  changedBy        String?
+  createdAt        DateTime       @default(now())
+
+  @@index([detectedDomainId])
+  @@index([createdAt])
 }
 
 model ThreatAnalysis {

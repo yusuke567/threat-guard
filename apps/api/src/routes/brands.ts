@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { captureScreenshot } from '../services/screenshot.js';
+import path from 'node:path';
 
 const router = Router();
 
@@ -132,6 +134,31 @@ router.post('/:id/whitelist/import', async (req, res) => {
     totalWhitelist: merged.length,
     reclassified,
   });
+});
+
+// Capture screenshot of brand's official site
+router.post('/:id/capture-screenshot', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
+    const brand = await prisma.brand.findFirst({
+      where: isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: orgId! },
+    });
+    if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
+
+    const filepath = await captureScreenshot(brand.domain);
+    const screenshotUrl = `/screenshots/${path.basename(filepath)}`;
+
+    await prisma.brand.update({
+      where: { id: req.params.id },
+      data: { screenshotUrl },
+    });
+
+    res.json({ screenshotUrl });
+  } catch (err: any) {
+    console.error('Brand screenshot capture failed:', err);
+    res.status(500).json({ error: '正規サイトのスクリーンショット取得に失敗しました。' });
+  }
 });
 
 // Delete brand
