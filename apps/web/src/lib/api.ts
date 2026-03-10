@@ -33,6 +33,7 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
     const detail = error.detail ? `\n${error.detail}` : '';
     throw new Error(base + detail);
   }
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
