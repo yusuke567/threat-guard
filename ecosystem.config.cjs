@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'brandshield-api',
+      name: 'threat-guard-api',
       cwd: './apps/api',
       script: 'npx',
       args: 'tsx src/index.ts',
@@ -10,7 +10,7 @@ module.exports = {
       max_restarts: 10,
     },
     {
-      name: 'brandshield-web',
+      name: 'threat-guard-web',
       cwd: './apps/web',
       script: 'npx',
       args: 'next start --port 4983 --hostname 0.0.0.0',

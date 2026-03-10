@@ -2,7 +2,7 @@
 # Quick Tunnel launcher with Slack notification
 # Starts cloudflared and posts the new URL to Slack
 
-SLACK_WEBHOOK_URL=$(grep SLACK_WEBHOOK_URL /Users/fpao840tujmkse/Projects/brand-shield/.env 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
+SLACK_WEBHOOK_URL=$(grep SLACK_WEBHOOK_URL /Users/fpao840tujmkse/Projects/threat-guard/.env 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
 LOG_FILE="/tmp/cloudflared-tunnel.log"
 
 # Start cloudflared and capture output
