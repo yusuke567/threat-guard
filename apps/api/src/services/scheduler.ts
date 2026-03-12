@@ -40,6 +40,7 @@ async function runFullScan(brandId: string, brandName: string) {
 
           if (score >= 60) {
             await notifyNewThreat({
+              brandId,
               brandName,
               domain: domain.domain,
               riskScore: score,
@@ -68,7 +69,7 @@ async function runFullScan(brandId: string, brandName: string) {
       }
 
       // Send scan summary
-      await notifyScanSummary(brandName, newDomains.length, highRiskCount);
+      await notifyScanSummary(brandName, newDomains.length, highRiskCount, brandId);
 
       try {
         await emailNotifyScanSummary(brandId, brandName, newDomains.length, highRiskCount);
@@ -174,6 +175,7 @@ async function runWebProbes() {
       if (changeDetails.length > 0) {
         changes++;
         await notifySiteChange({
+          brandId: domain.brandId,
           brandName: domain.brand.name,
           domain: domain.domain,
           changes: changeDetails,

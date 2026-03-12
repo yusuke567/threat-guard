@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { sendSlackTest } from '../services/slack-notifier.js';
 
 const router = Router();
 
@@ -111,6 +112,122 @@ router.post('/test-email', async (req, res) => {
   } catch (err) {
     console.error('[Test Email] Error:', err);
     res.status(500).json({ error: 'テストメールの送信に失敗しました。メール設定を確認してください。', detail: String(err) });
+  }
+});
+
+// ── Slack notification settings (org-level) ─────────────────────
+
+const slackSettingsSchema = z.object({
+  slackWebhookUrl: z.string().url().nullable().optional(),
+  slackNotifyEnabled: z.boolean().optional(),
+  slackNotifyThreshold: z.number().int().min(0).max(100).optional(),
+  slackNotifyTypes: z.string().optional(),
+});
+
+// GET /api/alerts/slack-settings — get org's Slack notification settings
+router.get('/slack-settings', async (req, res) => {
+  try {
+    const orgId = req.user!.organizationId;
+    if (!orgId) {
+      return res.status(403).json({ error: '組織が設定されていません。' });
+    }
+
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        slackWebhookUrl: true,
+        slackNotifyEnabled: true,
+        slackNotifyThreshold: true,
+        slackNotifyTypes: true,
+      },
+    });
+
+    if (!org) return res.status(404).json({ error: '組織が見つかりません。' });
+
+    // Mask webhook URL for security (show only last 8 chars)
+    const maskedUrl = org.slackWebhookUrl
+      ? `${'*'.repeat(Math.max(0, org.slackWebhookUrl.length - 8))}${org.slackWebhookUrl.slice(-8)}`
+      : null;
+
+    res.json({
+      slackWebhookUrl: maskedUrl,
+      slackWebhookConfigured: !!org.slackWebhookUrl,
+      slackNotifyEnabled: org.slackNotifyEnabled,
+      slackNotifyThreshold: org.slackNotifyThreshold,
+      slackNotifyTypes: org.slackNotifyTypes,
+    });
+  } catch (err) {
+    console.error('[Slack Settings] GET error:', err);
+    res.status(500).json({ error: 'Slack設定の取得に失敗しました。' });
+  }
+});
+
+// PUT /api/alerts/slack-settings — update org's Slack notification settings
+router.put('/slack-settings', async (req, res) => {
+  try {
+    const orgId = req.user!.organizationId;
+    if (!orgId) {
+      return res.status(403).json({ error: '組織が設定されていません。' });
+    }
+
+    // Only admin or superadmin can update Slack settings
+    if (req.user!.role !== 'admin' && req.user!.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Slack設定の変更には管理者権限が必要です。' });
+    }
+
+    const parsed = slackSettingsSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+    const data: Record<string, unknown> = {};
+    if (parsed.data.slackNotifyEnabled !== undefined) data.slackNotifyEnabled = parsed.data.slackNotifyEnabled;
+    if (parsed.data.slackNotifyThreshold !== undefined) data.slackNotifyThreshold = parsed.data.slackNotifyThreshold;
+    if (parsed.data.slackNotifyTypes !== undefined) data.slackNotifyTypes = parsed.data.slackNotifyTypes;
+    if (parsed.data.slackWebhookUrl !== undefined) data.slackWebhookUrl = parsed.data.slackWebhookUrl;
+
+    const org = await prisma.organization.update({
+      where: { id: orgId },
+      data,
+      select: {
+        slackNotifyEnabled: true,
+        slackNotifyThreshold: true,
+        slackNotifyTypes: true,
+      },
+    });
+
+    res.json({ ...org, slackWebhookConfigured: !!parsed.data.slackWebhookUrl });
+  } catch (err) {
+    console.error('[Slack Settings] PUT error:', err);
+    res.status(500).json({ error: 'Slack設定の保存に失敗しました。' });
+  }
+});
+
+// POST /api/alerts/slack-test — send a test Slack notification
+router.post('/slack-test', async (req, res) => {
+  try {
+    const orgId = req.user!.organizationId;
+    if (!orgId) {
+      return res.status(403).json({ error: '組織が設定されていません。' });
+    }
+
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { slackWebhookUrl: true, name: true },
+    });
+
+    if (!org?.slackWebhookUrl) {
+      return res.status(400).json({ error: 'Slack Webhook URLが設定されていません。先にURLを保存してください。' });
+    }
+
+    const success = await sendSlackTest(org.slackWebhookUrl, org.name);
+
+    if (success) {
+      res.json({ success: true, message: 'テスト通知をSlackに送信しました' });
+    } else {
+      res.status(400).json({ error: 'Slack通知の送信に失敗しました。Webhook URLを確認してください。' });
+    }
+  } catch (err) {
+    console.error('[Slack Test] Error:', err);
+    res.status(500).json({ error: 'テスト送信中にエラーが発生しました。' });
   }
 });
 

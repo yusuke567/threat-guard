@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAlerts, getAlertSettings, updateAlertSettings, sendTestEmail } from '@/lib/api';
+import { getAlerts, getAlertSettings, updateAlertSettings, sendTestEmail, getSlackSettings, updateSlackSettings, sendSlackTestNotification } from '@/lib/api';
 
 const TYPE_LABELS: Record<string, string> = {
   new_threat: '新規脅威',
@@ -19,12 +19,36 @@ export default function AlertsPage() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testMessage, setTestMessage] = useState<string | null>(null);
 
+  // Slack settings state
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
+  const [slackWebhookConfigured, setSlackWebhookConfigured] = useState(false);
+  const [slackNotifyEnabled, setSlackNotifyEnabled] = useState(false);
+  const [slackNotifyThreshold, setSlackNotifyThreshold] = useState(60);
+  const [slackNotifyTypes, setSlackNotifyTypes] = useState('new_threat,site_change,scan_summary');
+  const [slackLoading, setSlackLoading] = useState(true);
+  const [slackSaving, setSlackSaving] = useState(false);
+  const [slackSaveMessage, setSlackSaveMessage] = useState<string | null>(null);
+  const [slackTesting, setSlackTesting] = useState(false);
+  const [slackTestMessage, setSlackTestMessage] = useState<string | null>(null);
+
   // History state
   const [alerts, setAlerts] = useState<any[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
+
+  useEffect(() => {
+    getSlackSettings()
+      .then((data) => {
+        setSlackWebhookConfigured(data.slackWebhookConfigured ?? false);
+        setSlackNotifyEnabled(data.slackNotifyEnabled ?? false);
+        setSlackNotifyThreshold(data.slackNotifyThreshold ?? 60);
+        setSlackNotifyTypes(data.slackNotifyTypes ?? 'new_threat,site_change,scan_summary');
+      })
+      .catch(console.error)
+      .finally(() => setSlackLoading(false));
+  }, []);
 
   useEffect(() => {
     getAlertSettings()
@@ -79,6 +103,64 @@ export default function AlertsPage() {
       setSaveMessage('保存に失敗しました');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const SLACK_TYPE_OPTIONS = [
+    { value: 'new_threat', label: '新規脅威検知' },
+    { value: 'site_change', label: 'サイト変化検知' },
+    { value: 'scan_summary', label: 'スキャンサマリー' },
+  ];
+
+  const toggleSlackType = (type: string) => {
+    const types = slackNotifyTypes.split(',').map((t) => t.trim()).filter(Boolean);
+    if (types.includes(type)) {
+      setSlackNotifyTypes(types.filter((t) => t !== type).join(','));
+    } else {
+      setSlackNotifyTypes([...types, type].join(','));
+    }
+  };
+
+  const handleSlackSave = async () => {
+    setSlackSaving(true);
+    setSlackSaveMessage(null);
+    try {
+      const data: any = {
+        slackNotifyEnabled,
+        slackNotifyThreshold,
+        slackNotifyTypes,
+      };
+      // Only send webhook URL if user entered a new one
+      if (slackWebhookUrl && slackWebhookUrl.startsWith('https://')) {
+        data.slackWebhookUrl = slackWebhookUrl;
+      }
+      await updateSlackSettings(data);
+      if (slackWebhookUrl && slackWebhookUrl.startsWith('https://')) {
+        setSlackWebhookConfigured(true);
+        setSlackWebhookUrl('');
+      }
+      setSlackSaveMessage('Slack設定を保存しました');
+      setTimeout(() => setSlackSaveMessage(null), 3000);
+    } catch (e: any) {
+      console.error(e);
+      setSlackSaveMessage(e?.message || '保存に失敗しました');
+    } finally {
+      setSlackSaving(false);
+    }
+  };
+
+  const handleSlackTest = async () => {
+    setSlackTesting(true);
+    setSlackTestMessage(null);
+    try {
+      const res = await sendSlackTestNotification();
+      setSlackTestMessage(res.message || 'テスト通知を送信しました');
+      setTimeout(() => setSlackTestMessage(null), 5000);
+    } catch (e: any) {
+      console.error(e);
+      setSlackTestMessage(e?.message || 'テスト送信に失敗しました');
+    } finally {
+      setSlackTesting(false);
     }
   };
 
@@ -184,7 +266,140 @@ export default function AlertsPage() {
         )}
       </div>
 
-      {/* Section 2: Alert History */}
+      {/* Section 2: Slack Notification Settings */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Slack通知設定</h2>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+            Slack
+          </span>
+        </div>
+
+        {slackLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />
+          </div>
+        ) : (
+          <>
+            {/* Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-gray-100">Slackアラート</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">脅威検知時にSlackチャンネルに通知を送信</p>
+              </div>
+              <button
+                onClick={() => setSlackNotifyEnabled(!slackNotifyEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  slackNotifyEnabled ? 'bg-purple-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-800 transition-transform ${
+                    slackNotifyEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Webhook URL */}
+            <div>
+              <label className="block font-medium text-gray-900 dark:text-gray-100 mb-1">Webhook URL</label>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                SlackのIncoming Webhook URLを設定してください
+              </p>
+              {slackWebhookConfigured && !slackWebhookUrl && (
+                <p className="text-sm text-green-600 dark:text-green-400 mb-2">✅ Webhook URL設定済み</p>
+              )}
+              <input
+                type="url"
+                value={slackWebhookUrl}
+                onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                placeholder={slackWebhookConfigured ? '新しいURLで上書き（変更しない場合は空欄）' : 'https://hooks.slack.com/services/...'}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Threshold */}
+            <div>
+              <label className="block font-medium text-gray-900 dark:text-gray-100 mb-1">リスクスコア閾値</label>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                この値以上のリスクスコアを持つ脅威のみSlack通知されます
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={10}
+                  value={slackNotifyThreshold}
+                  onChange={(e) => setSlackNotifyThreshold(Number(e.target.value))}
+                  className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                />
+                <span className="text-lg font-bold text-purple-600 w-12 text-right">{slackNotifyThreshold}</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1 px-0.5">
+                <span>0</span>
+                <span>50</span>
+                <span>100</span>
+              </div>
+            </div>
+
+            {/* Notification types */}
+            <div>
+              <label className="block font-medium text-gray-900 dark:text-gray-100 mb-2">通知タイプ</label>
+              <div className="flex flex-wrap gap-2">
+                {SLACK_TYPE_OPTIONS.map((opt) => {
+                  const active = slackNotifyTypes.split(',').map((t) => t.trim()).includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleSlackType(opt.value)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                        active
+                          ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300'
+                          : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      {active ? '✓ ' : ''}{opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Save & Test */}
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
+              <button
+                onClick={handleSlackSave}
+                disabled={slackSaving}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+              >
+                {slackSaving ? '保存中...' : '保存'}
+              </button>
+              <button
+                onClick={handleSlackTest}
+                disabled={slackTesting || !slackWebhookConfigured}
+                title={!slackWebhookConfigured ? '先にWebhook URLを保存してください' : 'テスト通知を送信'}
+                className="px-4 py-2 border border-purple-600 text-purple-600 rounded-lg text-sm font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {slackTesting ? '送信中...' : '🔔 テスト送信'}
+              </button>
+              {slackSaveMessage && (
+                <span className={`text-sm font-medium ${slackSaveMessage.includes('失敗') ? 'text-red-600' : 'text-green-600'}`}>
+                  {slackSaveMessage}
+                </span>
+              )}
+              {slackTestMessage && (
+                <span className={`text-sm font-medium ${slackTestMessage.includes('失敗') ? 'text-red-600' : 'text-green-600'}`}>
+                  {slackTestMessage}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Section 3: Alert History */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
         <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">アラート履歴</h2>
 

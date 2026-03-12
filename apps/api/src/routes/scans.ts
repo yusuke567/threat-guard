@@ -42,13 +42,13 @@ router.post('/trigger', async (req, res) => {
           const analysis = await analyzeThreat(domain.id);
           const score = await calculateRiskScore(domain.id);
           if (score >= 60) {
-            await notifyNewThreat({ brandName: brand.name, domain: domain.domain, riskScore: score, category: analysis.category, source: domain.source });
+            await notifyNewThreat({ brandId, brandName: brand.name, domain: domain.domain, riskScore: score, category: analysis.category, source: domain.source });
           }
           if (score >= 80) highRiskCount++;
         } catch (err) { console.error(`Analysis failed for ${domain.domain}:`, err); }
       }
 
-      await notifyScanSummary(brand.name, newDomains.length, highRiskCount);
+      await notifyScanSummary(brand.name, newDomains.length, highRiskCount, brandId);
       await prisma.scanJob.update({ where: { id: scanJob.id }, data: { status: 'completed', completedAt: new Date(), findingsCount } });
     } catch (error) {
       await prisma.scanJob.update({ where: { id: scanJob.id }, data: { status: 'failed', error: String(error), completedAt: new Date() } });

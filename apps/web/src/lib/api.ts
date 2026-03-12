@@ -186,6 +186,17 @@ export const updateAlertSettings = (data: { alertEnabled?: boolean; alertThresho
 export const sendTestEmail = () =>
   fetchAPI<any>("/alerts/test-email", { method: "POST" });
 
+// Slack notification settings
+export const getSlackSettings = () => fetchAPI<any>("/alerts/slack-settings");
+export const updateSlackSettings = (data: {
+  slackWebhookUrl?: string | null;
+  slackNotifyEnabled?: boolean;
+  slackNotifyThreshold?: number;
+  slackNotifyTypes?: string;
+}) => fetchAPI<any>("/alerts/slack-settings", { method: "PUT", body: JSON.stringify(data) });
+export const sendSlackTestNotification = () =>
+  fetchAPI<any>("/alerts/slack-test", { method: "POST" });
+
 // Admin: Organization Users
 export const getOrgUsers = (orgId: string) => fetchAPI<any[]>(`/organizations/${orgId}/users`);
 export const createOrgUser = (orgId: string, data: { email: string; name?: string; password: string; role: string }) =>
