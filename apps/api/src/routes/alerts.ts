@@ -124,10 +124,23 @@ const slackSettingsSchema = z.object({
   slackNotifyTypes: z.string().optional(),
 });
 
+// Helper: resolve orgId for superadmin (query param or first org)
+async function resolveOrgId(req: any): Promise<string | null> {
+  const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+  if (!isSuperadmin) return req.user!.organizationId;
+
+  // superadmin: use ?orgId= query param or fall back to first org
+  const queryOrgId = req.query.orgId as string | undefined;
+  if (queryOrgId) return queryOrgId;
+
+  const firstOrg = await prisma.organization.findFirst({ select: { id: true }, orderBy: { createdAt: 'asc' } });
+  return firstOrg?.id ?? null;
+}
+
 // GET /api/alerts/slack-settings — get org's Slack notification settings
 router.get('/slack-settings', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId;
+    const orgId = await resolveOrgId(req);
     if (!orgId) {
       return res.status(403).json({ error: '組織が設定されていません。' });
     }
@@ -165,7 +178,7 @@ router.get('/slack-settings', async (req, res) => {
 // PUT /api/alerts/slack-settings — update org's Slack notification settings
 router.put('/slack-settings', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId;
+    const orgId = await resolveOrgId(req);
     if (!orgId) {
       return res.status(403).json({ error: '組織が設定されていません。' });
     }
@@ -204,7 +217,7 @@ router.put('/slack-settings', async (req, res) => {
 // POST /api/alerts/slack-test — send a test Slack notification
 router.post('/slack-test', async (req, res) => {
   try {
-    const orgId = req.user!.organizationId;
+    const orgId = await resolveOrgId(req);
     if (!orgId) {
       return res.status(403).json({ error: '組織が設定されていません。' });
     }
