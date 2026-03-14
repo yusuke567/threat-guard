@@ -8,6 +8,7 @@ import { notifyNewThreat, notifyScanSummary, notifySiteChange } from './slack-no
 import { emailNotifyNewThreat, emailNotifyScanSummary, emailNotifySiteChange } from './email-notifier.js';
 import { probeDomain } from './web-prober.js';
 import { analyzeContent } from './content-analyzer.js';
+import { monitorTwitter } from './twitter-monitor.js';
 
 async function runFullScan(brandId: string, brandName: string) {
   console.log(`[Scheduler] Starting scan for brand: ${brandName} (${brandId})`);
@@ -231,6 +232,16 @@ export function startScheduler() {
   cron.schedule(probeSchedule, () => {
     runWebProbes().catch((err) => {
       console.error('[Scheduler] Web probe error:', err);
+    });
+  });
+
+  // Twitter monitoring schedule: every 4 hours (offset from main scan)
+  const twitterSchedule = process.env.TWITTER_CRON || '0 1,5,9,13,17,21 * * *';
+  console.log(`[Scheduler] Twitter monitor schedule: ${twitterSchedule}`);
+
+  cron.schedule(twitterSchedule, () => {
+    monitorTwitter().catch((err) => {
+      console.error('[Scheduler] Twitter monitor error:', err);
     });
   });
 

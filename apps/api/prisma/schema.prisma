@@ -56,6 +56,7 @@ model Brand {
   scanJobs         ScanJob[]
   phishingPatterns PhishingPattern[]
   brandDomains     BrandDomain[]
+  socialPosts      SocialPost[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -217,6 +218,31 @@ model PhishingPattern {
   @@index([brandId])
   @@index([status])
   @@index([domain])
+}
+
+model SocialPost {
+  id             String   @id @default(uuid())
+  platform       String   @default("twitter") // twitter, facebook, instagram, telegram, discord
+  postId         String   // platform-specific post ID
+  authorHandle   String?
+  authorName     String?
+  content        String
+  urls           String   @default("") // comma-separated detected URLs
+  matchedDomain  String?  // matched DetectedDomain
+  brandId        String
+  brand          Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  riskScore      Int      @default(0)
+  status         String   @default("new") // new, reviewed, dismissed
+  postedAt       DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([platform, postId])
+  @@index([brandId])
+  @@index([platform])
+  @@index([status])
+  @@index([matchedDomain])
+  @@index([createdAt])
 }
 
 model AlertLog {
