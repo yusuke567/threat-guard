@@ -29,10 +29,13 @@ const port = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Persistent data directory (Railway Volume mount point or cwd fallback)
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
+
 // Serve screenshots as static files
-app.use('/screenshots', express.static(path.join(process.cwd(), 'screenshots')));
+app.use('/screenshots', express.static(path.join(DATA_DIR, 'screenshots')));
 // Serve uploaded files (logos etc.)
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(DATA_DIR, 'uploads')));
 
 // Health check (public)
 app.get('/api/health', (_req, res) => {

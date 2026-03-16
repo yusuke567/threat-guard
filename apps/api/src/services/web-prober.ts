@@ -4,7 +4,8 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { prisma } from '../lib/prisma.js';
 
-const SCREENSHOTS_DIR = path.join(process.cwd(), 'screenshots');
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
+const SCREENSHOTS_DIR = path.join(DATA_DIR, 'screenshots');
 
 export interface ProbeResult {
   id: string;

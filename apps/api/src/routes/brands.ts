@@ -7,9 +7,10 @@ import fs from 'node:fs';
 import multer from 'multer';
 
 // Logo upload config
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
 const logoStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const dir = path.join(process.cwd(), 'uploads', 'logos');
+    const dir = path.join(DATA_DIR, 'uploads', 'logos');
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },

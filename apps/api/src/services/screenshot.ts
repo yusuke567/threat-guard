@@ -2,7 +2,8 @@ import { chromium } from 'playwright';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
-const SCREENSHOTS_DIR = path.join(process.cwd(), 'screenshots');
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
+const SCREENSHOTS_DIR = path.join(DATA_DIR, 'screenshots');
 
 /**
  * Capture a screenshot of a URL using Playwright
