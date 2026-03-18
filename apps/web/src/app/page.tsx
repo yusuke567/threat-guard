@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import ThreatTable from '@/components/ThreatTable';
 import Tooltip from '@/components/Tooltip';
 import { getThreats, getDashboardStats, getBrands } from '@/lib/api';
@@ -133,18 +134,18 @@ export default function Dashboard() {
             このダッシュボードでブランドのなりすまし脅威を監視・管理できます。
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-            <div className="bg-white dark:bg-gray-800/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm">① ブランドを登録</p>
+            <Link href="/brands" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">① ブランドを登録 →</p>
               <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">「ブランド管理」から監視したいブランドとドメインを登録</p>
-            </div>
-            <div className="bg-white dark:bg-gray-800/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm">② スキャンを実行</p>
+            </Link>
+            <Link href="/brands" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">② スキャンを実行 →</p>
               <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">CT監視や類似ドメインスキャンでなりすましを自動検知</p>
-            </div>
-            <div className="bg-white dark:bg-gray-800/60 rounded-lg p-3">
-              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm">③ 脅威に対応</p>
+            </Link>
+            <Link href="/threats" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">③ 脅威に対応 →</p>
               <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">リスクレベルに応じて削除申請を生成・送信</p>
-            </div>
+            </Link>
           </div>
         </div>
       )}
