@@ -133,18 +133,22 @@ export default function Dashboard() {
           <p className="text-blue-700 dark:text-blue-300 text-sm mt-2 leading-relaxed">
             このダッシュボードでブランドのなりすまし脅威を監視・管理できます。
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
             <Link href="/brands" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
               <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">① ブランドを登録 →</p>
-              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">「ブランド管理」から監視したいブランドとドメインを登録</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">監視したいブランドとドメインを登録すると自動スキャンが開始されます</p>
             </Link>
-            <Link href="/brands" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
-              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">② スキャンを実行 →</p>
-              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">CT監視や類似ドメインスキャンでなりすましを自動検知</p>
+            <Link href="/alerts" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">② 通知を設定 →</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">メールやSlackで脅威検知の通知を受け取る設定をします</p>
             </Link>
             <Link href="/threats" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
-              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">③ 脅威に対応 →</p>
-              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">リスクレベルに応じて削除申請を生成・送信</p>
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">③ 脅威を確認 →</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">自動スキャンで検知されたなりすまし脅威を確認します</p>
+            </Link>
+            <Link href="/takedown-request" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+              <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">④ 削除申請を送信 →</p>
+              <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">リスクの高い脅威に対して削除申請を生成・送信します</p>
             </Link>
           </div>
         </div>
