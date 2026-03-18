@@ -77,6 +77,8 @@ export const getBrandDomains = (brandId: string) =>
   fetchAPI<any[]>(`/brands/${brandId}/domains`);
 export const addBrandDomain = (brandId: string, domain: string, type: 'primary' | 'owned' = 'owned') =>
   fetchAPI<any>(`/brands/${brandId}/domains`, { method: 'POST', body: JSON.stringify({ domain, type }) });
+export const bulkAddBrandDomains = (brandId: string, domains: string, type: 'primary' | 'owned' = 'owned') =>
+  fetchAPI<any>(`/brands/${brandId}/domains/bulk`, { method: 'POST', body: JSON.stringify({ domains, type }) });
 export const removeBrandDomain = (brandId: string, domainId: string) =>
   fetchAPI<void>(`/brands/${brandId}/domains/${domainId}`, { method: 'DELETE' });
 

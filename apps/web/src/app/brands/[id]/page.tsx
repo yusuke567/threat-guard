@@ -12,6 +12,7 @@ import {
   deleteBrandLogo,
   getBrandDomains,
   addBrandDomain,
+  bulkAddBrandDomains,
   removeBrandDomain,
 } from '@/lib/api';
 
@@ -95,6 +96,9 @@ export default function BrandDetailPage() {
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [domainSuccess, setDomainSuccess] = useState<string | null>(null);
   const [showAllDomains, setShowAllDomains] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkDomains, setBulkDomains] = useState('');
+  const [bulkAdding, setBulkAdding] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -186,6 +190,34 @@ export default function BrandDetailPage() {
       alert(err.message || 'ドメインの追加に失敗しました');
     } finally {
       setAddingDomain(false);
+    }
+  };
+
+  const handleBulkAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkDomains.trim() || !brand) return;
+    setBulkAdding(true);
+    setScanNotice(null);
+    setDomainSuccess(null);
+    try {
+      const result = await bulkAddBrandDomains(brand.id, bulkDomains.trim(), 'owned');
+      const msgs: string[] = [];
+      if (result.added > 0) msgs.push(`${result.added}件追加`);
+      if (result.skipped > 0) msgs.push(`${result.skipped}件は既存`);
+      if (result.reclassified > 0) msgs.push(`${result.reclassified}件の検知ドメインをホワイトリスト（誤検知）に再分類`);
+      setDomainSuccess(`✅ 一括登録完了: ${msgs.join('、')}`);
+      setTimeout(() => setDomainSuccess(null), 10000);
+      if (result.added > 0) {
+        setScanNotice(`🔍 「${brand.name}」のドメイン調査を自動開始しました。`);
+        setTimeout(() => setScanNotice(null), 15000);
+      }
+      setBulkDomains('');
+      setBulkMode(false);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'ドメインの一括追加に失敗しました');
+    } finally {
+      setBulkAdding(false);
     }
   };
 
@@ -541,7 +573,42 @@ export default function BrandDetailPage() {
             追加
           </button>
         </form>
-        <p className="text-xs text-gray-400 mt-2">プライマリ = 監視対象の本体ドメイン。保有 = 自社管理ドメイン（ホワイトリスト自動登録）。</p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-gray-400">プライマリ = 監視対象の本体ドメイン。保有 = 自社管理ドメイン（ホワイトリスト自動登録）。</p>
+          <button
+            type="button"
+            onClick={() => setBulkMode(!bulkMode)}
+            className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap ml-2"
+          >
+            {bulkMode ? '閉じる' : '📋 一括登録'}
+          </button>
+        </div>
+
+        {/* Bulk add domains */}
+        {bulkMode && (
+          <form onSubmit={handleBulkAdd} className="mt-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">保有ドメインを一括登録</label>
+            <textarea
+              value={bulkDomains}
+              onChange={(e) => setBulkDomains(e.target.value)}
+              placeholder={"example.com\nexample.co.jp\nexample.net\n\nカンマ・改行・セミコロンで区切り可"}
+              rows={6}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono"
+            />
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs text-gray-400">
+                {bulkDomains.trim() ? `${bulkDomains.split(/[,;\n\r]+/).filter((d) => d.trim().length > 0 && d.trim().includes('.')).length}件のドメインを検出` : 'ドメインを入力してください'}
+              </p>
+              <button
+                type="submit"
+                disabled={bulkAdding || !bulkDomains.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {bulkAdding ? '登録中...' : '一括登録'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* Domain added success notice */}
         {domainSuccess && (

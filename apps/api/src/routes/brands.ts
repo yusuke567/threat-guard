@@ -423,6 +423,83 @@ router.delete('/:id/domains/:domainId', async (req, res) => {
   }
 });
 
+// Bulk add brand domains
+router.post('/:id/domains/bulk', async (req, res) => {
+  try {
+    const schema = z.object({
+      domains: z.string().min(1),
+      type: z.enum(['primary', 'owned']).default('owned'),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    // Parse domains from text (comma, semicolon, newline separated)
+    const domainList = parsed.data.domains
+      .split(/[,;\n\r]+/)
+      .map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
+      .filter((d) => d.length > 0 && d.includes('.'));
+
+    const unique = [...new Set(domainList)];
+    let added = 0;
+    let skipped = 0;
+    let reclassified = 0;
+
+    for (const domain of unique) {
+      try {
+        await prisma.brandDomain.upsert({
+          where: { brandId_domain: { brandId: brand.id, domain } },
+          update: {},
+          create: { brandId: brand.id, domain, type: parsed.data.type },
+        });
+
+        // Check if this was actually new (upsert doesn't tell us, so check creation)
+        const existing = await prisma.brandDomain.findUnique({
+          where: { brandId_domain: { brandId: brand.id, domain } },
+        });
+        // If created very recently (within last 2 seconds), count as added
+        if (existing && (Date.now() - new Date(existing.createdAt).getTime()) < 2000) {
+          added++;
+        } else {
+          skipped++;
+        }
+
+        // Reclassify matching detected domains as false_positive
+        const result = await prisma.detectedDomain.updateMany({
+          where: {
+            brandId: brand.id,
+            domain: { contains: domain },
+            status: { not: 'false_positive' },
+          },
+          data: { status: 'false_positive' },
+        });
+        reclassified += result.count;
+      } catch {
+        skipped++;
+      }
+    }
+
+    // Sync whitelistDomains
+    await syncWhitelistDomains(brand.id);
+
+    // Trigger scan if new domains were added
+    if (added > 0) {
+      runFullScan(brand.id, brand.name).catch((err) => {
+        console.error(`[BrandDomain Bulk] Auto-scan failed for ${brand.name}:`, err);
+      });
+    }
+
+    res.status(201).json({ added, skipped, reclassified, total: unique.length, scanTriggered: added > 0 });
+  } catch (err) {
+    console.error('Bulk add brand domains error:', err);
+    res.status(500).json({ error: 'ドメインの一括追加に失敗しました。' });
+  }
+});
+
 // Helper: sync BrandDomain → Brand.whitelistDomains for backward compatibility
 async function syncWhitelistDomains(brandId: string) {
   const domains = await prisma.brandDomain.findMany({ where: { brandId } });
