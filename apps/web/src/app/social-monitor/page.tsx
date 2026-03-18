@@ -261,12 +261,55 @@ export default function SocialMonitorPage() {
             読み込み中...
           </div>
         ) : posts.length === 0 ? (
-          <div className="p-12 text-center text-gray-500 dark:text-gray-400">
-            <p className="text-4xl mb-3">📡</p>
-            <p className="font-medium">検知されたSNS投稿はありません</p>
-            <p className="text-sm mt-1">
-              スケジューラが4時間ごとに自動スキャンします
-            </p>
+          <div className="p-8 sm:p-12">
+            <div className="text-center mb-8">
+              <p className="text-4xl mb-3">✅</p>
+              <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+                現在、フィッシングURLの拡散は検知されていません
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                4時間ごとに自動スキャンしています
+              </p>
+            </div>
+
+            {/* How it works - ステップ説明 */}
+            <div className="max-w-2xl mx-auto">
+              <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">
+                📡 SNS監視のしくみ
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
+                  <div className="text-2xl mb-2">1️⃣</div>
+                  <p className="text-sm font-bold text-blue-900 dark:text-blue-200 mb-1">
+                    偽ドメインを検知
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    ブランドを騙る危険なドメイン（リスクスコア60以上）が自動スキャンで検知されます
+                  </p>
+                </div>
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-4 border border-yellow-100 dark:border-yellow-800">
+                  <div className="text-2xl mb-2">2️⃣</div>
+                  <p className="text-sm font-bold text-yellow-900 dark:text-yellow-200 mb-1">
+                    Twitterで拡散を検索
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    検知した偽ドメインのURLがTwitter上で共有されていないか、4時間ごとに自動検索します
+                  </p>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-100 dark:border-red-800">
+                  <div className="text-2xl mb-2">3️⃣</div>
+                  <p className="text-sm font-bold text-red-900 dark:text-red-200 mb-1">
+                    拡散を検知したら通知
+                  </p>
+                  <p className="text-xs text-red-700 dark:text-red-300">
+                    フィッシングURLを含むツイートが見つかると、ここに表示され、Slack・メールで即座に通知されます
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 text-center">
+                💡 ここに何も表示されていない＝フィッシングURLの拡散が検知されていない、ということです。安全な状態です。
+              </p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
