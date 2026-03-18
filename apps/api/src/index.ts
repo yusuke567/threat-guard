@@ -42,33 +42,6 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'dfaacea-smtp465' });
 });
 
-// TEMPORARY: one-time domain sync (remove after execution)
-app.post('/api/_sync-brand-domains', async (_req, res) => {
-  try {
-    const { PrismaClient } = await import('@prisma/client');
-    const p = new PrismaClient();
-    const brands = await p.brand.findMany({ include: { brandDomains: true } });
-    const results: Array<{ brand: string; created: number; skipped: number }> = [];
-    for (const brand of brands) {
-      const existing = new Set(brand.brandDomains.map((bd: any) => bd.domain.toLowerCase()));
-      const wl = (brand.whitelistDomains || '').split(',').map((d: string) => d.trim().toLowerCase()).filter((d: string) => d.length > 0 && d.includes('.'));
-      const primary = brand.domain.toLowerCase();
-      const all = new Set([primary, ...wl]);
-      let created = 0, skipped = 0;
-      for (const domain of all) {
-        if (existing.has(domain)) { skipped++; continue; }
-        await p.brandDomain.create({ data: { brandId: brand.id, domain, type: domain === primary ? 'primary' : 'owned' } });
-        created++;
-      }
-      const ep = brand.brandDomains.find((bd: any) => bd.domain.toLowerCase() === primary);
-      if (ep && ep.type !== 'primary') await p.brandDomain.update({ where: { id: ep.id }, data: { type: 'primary' } });
-      results.push({ brand: brand.name, created, skipped });
-    }
-    await p.$disconnect();
-    res.json({ totalBrands: brands.length, totalCreated: results.reduce((s, r) => s + r.created, 0), results });
-  } catch (err: any) { console.error(err); res.status(500).json({ error: err.message }); }
-});
-
 // Auth routes (public)
 app.use('/api/auth', authRouter);
 
