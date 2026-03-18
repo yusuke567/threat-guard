@@ -192,14 +192,11 @@ export default function BrandDetailPage() {
     setAddingDomain(true);
     setScanNotice(null);
     try {
-      const result = await addBrandDomain(brand.id, newDomain.trim(), newDomainType);
+      await addBrandDomain(brand.id, newDomain.trim(), newDomainType);
       setNewDomain('');
       setNewDomainType('owned');
-      if (result?.scanTriggered) {
-        setScanNotice(`🔍 「${brand.name}」のドメイン調査を開始しました。CT監視・類似ドメイン生成・脅威分析が完了するまで数分かかります。`);
-        // Auto-dismiss after 15 seconds
-        setTimeout(() => setScanNotice(null), 15000);
-      }
+      setScanNotice(`🔍 「${brand.name}」のドメイン調査を自動開始しました。CT監視・類似ドメイン生成・脅威分析が完了するまで数分かかります。`);
+      setTimeout(() => setScanNotice(null), 15000);
       loadData();
     } catch (err: any) {
       alert(err.message || 'ドメインの追加に失敗しました');
