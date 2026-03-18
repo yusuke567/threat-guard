@@ -63,6 +63,61 @@ router.get('/', async (req, res) => {
   res.json(brands);
 });
 
+// One-time sync: Brand.whitelistDomains → BrandDomain table (superadmin only)
+// MUST be before /:id routes to avoid being caught by the param route
+router.post('/sync-domains', async (req, res) => {
+  try {
+    if (req.user?.role !== 'superadmin') {
+      return res.status(403).json({ error: 'superadmin権限が必要です。' });
+    }
+
+    const brands = await prisma.brand.findMany({
+      include: { brandDomains: true },
+    });
+
+    const results: Array<{ brand: string; created: number; skipped: number; fixes: string[] }> = [];
+
+    for (const brand of brands) {
+      const existingDomains = new Set(brand.brandDomains.map((bd) => bd.domain.toLowerCase()));
+      const whitelistDomains = (brand.whitelistDomains || '')
+        .split(',')
+        .map((d) => d.trim().toLowerCase())
+        .filter((d) => d.length > 0 && d.includes('.'));
+
+      const primaryDomain = brand.domain.toLowerCase();
+      const allDomains = new Set([primaryDomain, ...whitelistDomains]);
+      let created = 0;
+      let skipped = 0;
+      const fixes: string[] = [];
+
+      for (const domain of allDomains) {
+        if (existingDomains.has(domain)) {
+          skipped++;
+          continue;
+        }
+        const type = domain === primaryDomain ? 'primary' : 'owned';
+        await prisma.brandDomain.create({ data: { brandId: brand.id, domain, type } });
+        created++;
+        fixes.push(`+${domain} (${type})`);
+      }
+
+      const existingPrimary = brand.brandDomains.find((bd) => bd.domain.toLowerCase() === primaryDomain);
+      if (existingPrimary && existingPrimary.type !== 'primary') {
+        await prisma.brandDomain.update({ where: { id: existingPrimary.id }, data: { type: 'primary' } });
+        fixes.push(`fixed primary: ${primaryDomain}`);
+      }
+
+      results.push({ brand: brand.name, created, skipped, fixes });
+    }
+
+    const totalCreated = results.reduce((s, r) => s + r.created, 0);
+    res.json({ totalBrands: brands.length, totalCreated, results });
+  } catch (err) {
+    console.error('Sync brand domains error:', err);
+    res.status(500).json({ error: 'ドメイン同期に失敗しました。' });
+  }
+});
+
 // Get brand by ID - verify ownership (superadmin can access all)
 router.get('/:id', async (req, res) => {
   const where = req.user!.role === 'superadmin' && !req.user!.organizationId
@@ -446,61 +501,6 @@ router.delete('/:id', async (req, res) => {
 
   await prisma.brand.delete({ where: { id: req.params.id } });
   res.status(204).send();
-});
-
-// One-time sync: Brand.whitelistDomains → BrandDomain table (superadmin only)
-router.post('/sync-domains', async (req, res) => {
-  try {
-    if (req.user?.role !== 'superadmin') {
-      return res.status(403).json({ error: 'superadmin権限が必要です。' });
-    }
-
-    const brands = await prisma.brand.findMany({
-      include: { brandDomains: true },
-    });
-
-    const results: Array<{ brand: string; created: number; skipped: number; fixes: string[] }> = [];
-
-    for (const brand of brands) {
-      const existingDomains = new Set(brand.brandDomains.map((bd) => bd.domain.toLowerCase()));
-      const whitelistDomains = (brand.whitelistDomains || '')
-        .split(',')
-        .map((d) => d.trim().toLowerCase())
-        .filter((d) => d.length > 0 && d.includes('.'));
-
-      const primaryDomain = brand.domain.toLowerCase();
-      const allDomains = new Set([primaryDomain, ...whitelistDomains]);
-      let created = 0;
-      let skipped = 0;
-      const fixes: string[] = [];
-
-      for (const domain of allDomains) {
-        if (existingDomains.has(domain)) {
-          skipped++;
-          continue;
-        }
-        const type = domain === primaryDomain ? 'primary' : 'owned';
-        await prisma.brandDomain.create({ data: { brandId: brand.id, domain, type } });
-        created++;
-        fixes.push(`+${domain} (${type})`);
-      }
-
-      // Ensure primary domain has type="primary"
-      const existingPrimary = brand.brandDomains.find((bd) => bd.domain.toLowerCase() === primaryDomain);
-      if (existingPrimary && existingPrimary.type !== 'primary') {
-        await prisma.brandDomain.update({ where: { id: existingPrimary.id }, data: { type: 'primary' } });
-        fixes.push(`fixed primary: ${primaryDomain}`);
-      }
-
-      results.push({ brand: brand.name, created, skipped, fixes });
-    }
-
-    const totalCreated = results.reduce((s, r) => s + r.created, 0);
-    res.json({ totalBrands: brands.length, totalCreated, results });
-  } catch (err) {
-    console.error('Sync brand domains error:', err);
-    res.status(500).json({ error: 'ドメイン同期に失敗しました。' });
-  }
 });
 
 export default router;
