@@ -12,6 +12,7 @@ export default function BrandsPage() {
   const [editingBrand, setEditingBrand] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '', managedDomains: '', senderEmail: '', smtpHost: '', smtpPort: '', smtpUser: '', smtpPass: '' });
   const [smtpOpen, setSmtpOpen] = useState(false);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     domain: '',
@@ -60,6 +61,8 @@ export default function BrandsPage() {
         keywords: form.keywords,
         whitelistDomains: uniqueDomains.join(','),
       });
+      setScanNotice(`🔍 「${form.name}」を登録しました。初回ドメイン調査を自動開始します。`);
+      setTimeout(() => setScanNotice(null), 15000);
       setShowForm(false);
       setForm({ name: '', domain: '', organizationId: '', newOrgName: '', keywords: '', managedDomains: '' });
       loadBrands();
@@ -110,17 +113,28 @@ export default function BrandsPage() {
       const allDomains = [editForm.domain, ...managed].filter(Boolean);
       const uniqueDomains = [...new Set(allDomains)];
 
+      // Check if managed domains changed
+      const oldDomains = editingBrand.whitelistDomains || '';
+      const newDomains = uniqueDomains.join(',');
+      const domainsChanged = oldDomains !== newDomains;
+
       await updateBrand(editingBrand.id, {
         name: editForm.name,
         domain: editForm.domain,
         keywords: editForm.keywords,
-        whitelistDomains: uniqueDomains.join(','),
+        whitelistDomains: newDomains,
         senderEmail: editForm.senderEmail || null,
         smtpHost: editForm.smtpHost || null,
         smtpPort: editForm.smtpPort ? Number(editForm.smtpPort) : null,
         smtpUser: editForm.smtpUser || null,
         smtpPass: editForm.smtpPass || null,
       });
+
+      if (domainsChanged) {
+        setScanNotice(`🔍 「${editForm.name}」のドメイン調査を自動開始しました。CT監視・類似ドメイン生成・脅威分析が完了するまで数分かかります。`);
+        setTimeout(() => setScanNotice(null), 15000);
+      }
+
       setEditingBrand(null);
       loadBrands();
     } catch (e) {
@@ -148,6 +162,14 @@ export default function BrandsPage() {
           + ブランド追加
         </button>
       </div>
+
+      {/* Scan triggered notice */}
+      {scanNotice && (
+        <div className="flex items-start gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300">{scanNotice}</p>
+        </div>
+      )}
 
       {/* Create Form */}
       {showForm && (

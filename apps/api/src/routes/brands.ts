@@ -94,6 +94,12 @@ router.post('/', async (req, res) => {
   const brand = await prisma.brand.create({
     data: { ...parsed.data, organizationId: orgId },
   });
+
+  // Trigger initial scan for newly created brand
+  runFullScan(brand.id, brand.name).catch((err) => {
+    console.error(`[Brand Create] Auto-scan failed for ${brand.name}:`, err);
+  });
+
   res.status(201).json(brand);
 });
 
@@ -107,11 +113,23 @@ router.put('/:id', async (req, res) => {
   const existing = await prisma.brand.findFirst({ where: isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: orgId! } });
   if (!existing) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
+  // Detect if whitelistDomains (managed domains) changed
+  const domainsChanged = parsed.data.whitelistDomains !== undefined
+    && parsed.data.whitelistDomains !== existing.whitelistDomains;
+
   const brand = await prisma.brand.update({
     where: { id: req.params.id },
     data: parsed.data,
   });
-  res.json(brand);
+
+  // Trigger background scan if domains changed
+  if (domainsChanged) {
+    runFullScan(brand.id, brand.name).catch((err) => {
+      console.error(`[Brand Update] Auto-scan failed for ${brand.name}:`, err);
+    });
+  }
+
+  res.json({ ...brand, scanTriggered: domainsChanged });
 });
 
 // Brand stats — threat summary
