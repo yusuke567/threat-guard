@@ -20,6 +20,7 @@ export default function NavBar() {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-6">
           <a href="/" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">脅威一覧</a>
+          <a href="/social-monitor" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">SNS監視</a>
           <a href="/takedowns" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">削除申請</a>
           <a href="/brands" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">ブランド管理</a>
           <a href="/reports" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">レポート</a>
@@ -65,6 +66,7 @@ export default function NavBar() {
       {open && (
         <div className="md:hidden mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
           <a href="/" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">脅威一覧</a>
+          <a href="/social-monitor" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">SNS監視</a>
           <a href="/takedowns" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">削除申請</a>
           <a href="/brands" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">ブランド管理</a>
           <a href="/reports" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">レポート</a>

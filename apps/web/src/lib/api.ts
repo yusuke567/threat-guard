@@ -206,3 +206,14 @@ export const createOrgUser = (orgId: string, data: { email: string; name?: strin
   fetchAPI<any>(`/organizations/${orgId}/users`, { method: 'POST', body: JSON.stringify(data) });
 export const deleteOrgUser = (orgId: string, userId: string) =>
   fetchAPI<void>(`/organizations/${orgId}/users/${userId}`, { method: 'DELETE' });
+
+// Social Monitor
+export const getSocialPosts = (params?: Record<string, string>) => {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return fetchAPI<any>(`/social-posts${query}`);
+};
+export const getSocialPostStats = () => fetchAPI<any>('/social-posts/stats');
+export const updateSocialPostStatus = (id: string, status: string) =>
+  fetchAPI<any>(`/social-posts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+export const triggerSocialScan = () =>
+  fetchAPI<any>('/social-posts/scan', { method: 'POST' });
