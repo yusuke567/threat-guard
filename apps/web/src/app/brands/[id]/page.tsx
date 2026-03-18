@@ -94,6 +94,7 @@ export default function BrandDetailPage() {
   const [newDomainType, setNewDomainType] = useState<'primary' | 'owned'>('owned');
   const [addingDomain, setAddingDomain] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [showAllDomains, setShowAllDomains] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -500,8 +501,12 @@ export default function BrandDetailPage() {
 
         {/* Primary Domains */}
         {(() => {
+          const INITIAL_SHOW = 5;
           const primaryDomains = brand.brandDomains?.filter((d) => d.type === 'primary') || [];
           const ownedDomains = brand.brandDomains?.filter((d) => d.type === 'owned') || [];
+          const totalDomains = primaryDomains.length + ownedDomains.length;
+          const visibleOwned = showAllDomains ? ownedDomains : ownedDomains.slice(0, Math.max(0, INITIAL_SHOW - primaryDomains.length));
+          const hiddenCount = totalDomains - primaryDomains.length - visibleOwned.length;
           return (
             <>
               <div className="mb-4">
@@ -524,10 +529,13 @@ export default function BrandDetailPage() {
               </div>
 
               <div className="mb-4">
-                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">🏢 保有ドメイン（ホワイトリスト）</h3>
+                <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">
+                  🏢 保有ドメイン（ホワイトリスト）
+                  {ownedDomains.length > 0 && <span className="ml-1 text-gray-400 normal-case">— {ownedDomains.length}件</span>}
+                </h3>
                 {ownedDomains.length > 0 ? (
                   <div className="space-y-1">
-                    {ownedDomains.map((d) => (
+                    {visibleOwned.map((d) => (
                       <div key={d.id} className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                         <div className="flex items-center gap-2">
                           <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded text-[10px] font-medium">OWNED</span>
@@ -536,6 +544,22 @@ export default function BrandDetailPage() {
                         <button onClick={() => handleRemoveDomain(d.id)} className="text-xs text-red-500 hover:text-red-600">✕</button>
                       </div>
                     ))}
+                    {hiddenCount > 0 && !showAllDomains && (
+                      <button
+                        onClick={() => setShowAllDomains(true)}
+                        className="w-full px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      >
+                        他 {hiddenCount}件を表示 ▼
+                      </button>
+                    )}
+                    {showAllDomains && ownedDomains.length > INITIAL_SHOW && (
+                      <button
+                        onClick={() => setShowAllDomains(false)}
+                        className="w-full px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors"
+                      >
+                        折りたたむ ▲
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-400 px-3">保有ドメインが登録されていません</p>

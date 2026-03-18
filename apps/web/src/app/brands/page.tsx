@@ -10,8 +10,7 @@ export default function BrandsPage() {
   const [showForm, setShowForm] = useState(false);
   const [scanning, setScanning] = useState<string | null>(null);
   const [editingBrand, setEditingBrand] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '', managedDomains: '', senderEmail: '', smtpHost: '', smtpPort: '', smtpUser: '', smtpPass: '' });
-  const [smtpOpen, setSmtpOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '' });
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
@@ -19,7 +18,6 @@ export default function BrandsPage() {
     organizationId: '',
     newOrgName: '',
     keywords: '',
-    managedDomains: '',
   });
 
   const loadBrands = () => {
@@ -46,25 +44,17 @@ export default function BrandsPage() {
       }
       if (!orgId) return alert('組織を選択するか、新しい組織名を入力してください');
 
-      // Merge primary domain + managed domains into whitelistDomains
-      const managed = form.managedDomains
-        .split(/[,;\n\r]+/)
-        .map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
-        .filter((d) => d.length > 0 && d.includes('.'));
-      const allDomains = [form.domain, ...managed].filter(Boolean);
-      const uniqueDomains = [...new Set(allDomains)];
-
       await createBrand({
         name: form.name,
         domain: form.domain,
         organizationId: orgId,
         keywords: form.keywords,
-        whitelistDomains: uniqueDomains.join(','),
+        whitelistDomains: form.domain, // Primary domain as initial whitelist
       });
-      setScanNotice(`🔍 「${form.name}」を登録しました。初回ドメイン調査を自動開始します。`);
+      setScanNotice(`🔍 「${form.name}」を登録しました。初回ドメイン調査を自動開始します。保有ドメインはブランド詳細ページで追加できます。`);
       setTimeout(() => setScanNotice(null), 15000);
       setShowForm(false);
-      setForm({ name: '', domain: '', organizationId: '', newOrgName: '', keywords: '', managedDomains: '' });
+      setForm({ name: '', domain: '', organizationId: '', newOrgName: '', keywords: '' });
       loadBrands();
     } catch (e) {
       console.error(e);
@@ -85,20 +75,10 @@ export default function BrandsPage() {
 
   const startEdit = (brand: any) => {
     setEditingBrand(brand);
-    setSmtpOpen(false);
-    const wl = brand.whitelistDomains
-      ? brand.whitelistDomains.split(',').filter((d: string) => d.trim() !== brand.domain).join('\n')
-      : '';
     setEditForm({
       name: brand.name,
       domain: brand.domain,
       keywords: Array.isArray(brand.keywords) ? brand.keywords.join(', ') : (brand.keywords || ''),
-      managedDomains: wl,
-      senderEmail: brand.senderEmail || '',
-      smtpHost: brand.smtpHost || '',
-      smtpPort: brand.smtpPort ? String(brand.smtpPort) : '',
-      smtpUser: brand.smtpUser || '',
-      smtpPass: brand.smtpPass || '',
     });
   };
 
@@ -106,35 +86,11 @@ export default function BrandsPage() {
     e.preventDefault();
     if (!editingBrand) return;
     try {
-      const managed = editForm.managedDomains
-        .split(/[,;\n\r]+/)
-        .map((d) => d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, ''))
-        .filter((d) => d.length > 0 && d.includes('.'));
-      const allDomains = [editForm.domain, ...managed].filter(Boolean);
-      const uniqueDomains = [...new Set(allDomains)];
-
-      // Check if managed domains changed
-      const oldDomains = editingBrand.whitelistDomains || '';
-      const newDomains = uniqueDomains.join(',');
-      const domainsChanged = oldDomains !== newDomains;
-
       await updateBrand(editingBrand.id, {
         name: editForm.name,
         domain: editForm.domain,
         keywords: editForm.keywords,
-        whitelistDomains: newDomains,
-        senderEmail: editForm.senderEmail || null,
-        smtpHost: editForm.smtpHost || null,
-        smtpPort: editForm.smtpPort ? Number(editForm.smtpPort) : null,
-        smtpUser: editForm.smtpUser || null,
-        smtpPass: editForm.smtpPass || null,
       });
-
-      if (domainsChanged) {
-        setScanNotice(`🔍 「${editForm.name}」のドメイン調査を自動開始しました。CT監視・類似ドメイン生成・脅威分析が完了するまで数分かかります。`);
-        setTimeout(() => setScanNotice(null), 15000);
-      }
-
       setEditingBrand(null);
       loadBrands();
     } catch (e) {
@@ -236,19 +192,9 @@ export default function BrandsPage() {
               </p>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">管理ドメイン（任意）</label>
-            <textarea
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-              rows={3}
-              value={form.managedDomains}
-              onChange={(e) => setForm({ ...form, managedDomains: e.target.value })}
-              placeholder={"例:\nmybrand.jp\nmybrand.co.jp\nmybrand.net"}
-            />
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-              自社で管理しているドメインを入力（カンマ・改行区切り）。ホワイトリストに自動登録され、誤検知を防ぎます。
-            </p>
-          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500">
+            保有ドメイン・メール送信設定は、ブランド登録後に詳細ページで設定できます。
+          </p>
           <div className="flex gap-2">
             <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
               登録
@@ -307,88 +253,9 @@ export default function BrandsPage() {
                       onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">管理ドメイン（任意）</label>
-                    <textarea
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                      rows={3}
-                      value={editForm.managedDomains}
-                      onChange={(e) => setEditForm({ ...editForm, managedDomains: e.target.value })}
-                    />
-                  </div>
-                  {/* SMTP Settings - Collapsible */}
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setSmtpOpen(!smtpOpen)}
-                      className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white dark:text-gray-100 w-full text-left"
-                    >
-                      <svg
-                        className={`w-4 h-4 transition-transform ${smtpOpen ? 'rotate-90' : ''}`}
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      📧 メール送信設定（通知・削除申請共通）
-                    </button>
-                    {smtpOpen && (
-                    <>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 mt-2">未設定の場合、システムデフォルトのSMTP設定が使用されます</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">送信元メールアドレス</label>
-                        <input
-                          type="email"
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                          value={editForm.senderEmail}
-                          onChange={(e) => setEditForm({ ...editForm, senderEmail: e.target.value })}
-                          placeholder="abuse@yourcompany.com"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPホスト</label>
-                        <input
-                          type="text"
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                          value={editForm.smtpHost}
-                          onChange={(e) => setEditForm({ ...editForm, smtpHost: e.target.value })}
-                          placeholder="smtp.yourcompany.com"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPポート</label>
-                        <input
-                          type="number"
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                          value={editForm.smtpPort}
-                          onChange={(e) => setEditForm({ ...editForm, smtpPort: e.target.value })}
-                          placeholder="587"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPユーザー</label>
-                        <input
-                          type="text"
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                          value={editForm.smtpUser}
-                          onChange={(e) => setEditForm({ ...editForm, smtpUser: e.target.value })}
-                          placeholder="user@yourcompany.com"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPパスワード</label>
-                        <input
-                          type="password"
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-                          value={editForm.smtpPass}
-                          onChange={(e) => setEditForm({ ...editForm, smtpPass: e.target.value })}
-                          placeholder="••••••••"
-                        />
-                      </div>
-                    </div>
-                    </>
-                    )}
-                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    保有ドメイン・メール送信設定は<a href={`/brands/${brand.id}`} className="text-blue-600 hover:underline">ブランド詳細ページ</a>で管理できます。
+                  </p>
                   <div className="flex gap-2">
                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
                       保存
