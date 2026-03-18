@@ -94,6 +94,7 @@ export default function BrandDetailPage() {
   const [newDomainType, setNewDomainType] = useState<'primary' | 'owned'>('owned');
   const [addingDomain, setAddingDomain] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const [domainSuccess, setDomainSuccess] = useState<string | null>(null);
   const [showAllDomains, setShowAllDomains] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -192,10 +193,15 @@ export default function BrandDetailPage() {
     if (!newDomain.trim() || !brand) return;
     setAddingDomain(true);
     setScanNotice(null);
+    setDomainSuccess(null);
     try {
-      await addBrandDomain(brand.id, newDomain.trim(), newDomainType);
+      const addedDomain = newDomain.trim();
+      const result = await addBrandDomain(brand.id, addedDomain, newDomainType);
       setNewDomain('');
       setNewDomainType('owned');
+      const reclassMsg = result?.reclassified > 0 ? ` ${result.reclassified}件の検知ドメインをホワイトリスト（誤検知）に再分類しました。` : '';
+      setDomainSuccess(`✅ 「${addedDomain}」を${newDomainType === 'primary' ? 'プライマリドメイン' : '保有ドメイン（ホワイトリスト）'}として追加しました。${reclassMsg}`);
+      setTimeout(() => setDomainSuccess(null), 10000);
       setScanNotice(`🔍 「${brand.name}」のドメイン調査を自動開始しました。CT監視・類似ドメイン生成・脅威分析が完了するまで数分かかります。`);
       setTimeout(() => setScanNotice(null), 15000);
       loadData();
@@ -595,6 +601,13 @@ export default function BrandDetailPage() {
           </button>
         </form>
         <p className="text-xs text-gray-400 mt-2">プライマリ = 監視対象の本体ドメイン。保有 = 自社管理ドメイン（ホワイトリスト自動登録）。</p>
+
+        {/* Domain added success notice */}
+        {domainSuccess && (
+          <div className="mt-3 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <p className="text-sm text-green-700 dark:text-green-300">{domainSuccess}</p>
+          </div>
+        )}
 
         {/* Scan triggered notice */}
         {scanNotice && (

@@ -374,12 +374,26 @@ router.post('/:id/domains', async (req, res) => {
     // Sync whitelistDomains field for backward compatibility
     await syncWhitelistDomains(brand.id);
 
+    // Reclassify any existing detected domains matching this domain as false_positive
+    let reclassified = 0;
+    if (parsed.data.type === 'owned') {
+      const result = await prisma.detectedDomain.updateMany({
+        where: {
+          brandId: brand.id,
+          domain: { contains: domain },
+          status: { not: 'false_positive' },
+        },
+        data: { status: 'false_positive' },
+      });
+      reclassified = result.count;
+    }
+
     // Trigger background scan for the brand on domain addition
     runFullScan(brand.id, brand.name).catch((err) => {
       console.error(`[BrandDomain] Auto-scan failed for ${brand.name}:`, err);
     });
 
-    res.status(201).json({ ...bd, scanTriggered: true });
+    res.status(201).json({ ...bd, scanTriggered: true, reclassified });
   } catch (err) {
     console.error('Add brand domain error:', err);
     res.status(500).json({ error: 'ドメインの追加に失敗しました。' });
