@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { captureScreenshot } from '../services/screenshot.js';
+import { runFullScan } from '../services/scheduler.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import multer from 'multer';
@@ -299,6 +300,11 @@ router.post('/:id/domains', async (req, res) => {
 
     // Sync whitelistDomains field for backward compatibility
     await syncWhitelistDomains(brand.id);
+
+    // Trigger background scan for the brand on domain addition
+    runFullScan(brand.id, brand.name).catch((err) => {
+      console.error(`[BrandDomain] Auto-scan failed for ${brand.name}:`, err);
+    });
 
     res.status(201).json(bd);
   } catch (err) {

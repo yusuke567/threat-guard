@@ -10,7 +10,7 @@ import { probeDomain } from './web-prober.js';
 import { analyzeContent } from './content-analyzer.js';
 import { monitorTwitter } from './twitter-monitor.js';
 
-async function runFullScan(brandId: string, brandName: string) {
+export async function runFullScan(brandId: string, brandName: string) {
   console.log(`[Scheduler] Starting scan for brand: ${brandName} (${brandId})`);
 
   for (const type of ['ct_monitor', 'domain_generation'] as const) {
