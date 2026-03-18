@@ -28,10 +28,14 @@ function riskEmoji(score: number): string {
 }
 
 /**
- * Resolve webhook URLs for a brand — returns org-level + global fallback.
+ * Resolve webhook URLs for a brand.
+ * - Org webhook: only if slackNotifyEnabled is ON
+ * - Global webhook: always included if configured (internal monitoring)
+ * Returns { orgEnabled, urls } so callers can skip org-specific checks when toggle is off.
  */
-async function resolveWebhookUrls(brandId: string): Promise<string[]> {
+async function resolveWebhookUrls(brandId: string): Promise<{ orgEnabled: boolean; urls: string[] }> {
   const urls: string[] = [];
+  let orgEnabled = false;
 
   try {
     const brand = await prisma.brand.findUnique({
@@ -48,19 +52,21 @@ async function resolveWebhookUrls(brandId: string): Promise<string[]> {
       },
     });
 
-    if (brand?.organization?.slackNotifyEnabled && brand.organization.slackWebhookUrl) {
+    orgEnabled = brand?.organization?.slackNotifyEnabled ?? false;
+
+    if (orgEnabled && brand?.organization?.slackWebhookUrl) {
       urls.push(brand.organization.slackWebhookUrl);
     }
   } catch (err) {
     console.error('[Slack] Failed to resolve org webhook:', err);
   }
 
-  // Global fallback (always send to internal channel if configured)
+  // Global webhook for internal monitoring (independent of org toggle)
   if (GLOBAL_SLACK_WEBHOOK_URL) {
     urls.push(GLOBAL_SLACK_WEBHOOK_URL);
   }
 
-  return [...new Set(urls)]; // dedupe
+  return { orgEnabled, urls: [...new Set(urls)] };
 }
 
 /**
@@ -150,16 +156,18 @@ export async function notifyNewThreat(alert: ThreatAlert & { brandId?: string })
   };
 
   if (alert.brandId) {
-    const orgAllowed = await shouldNotifyOrg(alert.brandId, 'new_threat', alert.riskScore);
-    const urls = await resolveWebhookUrls(alert.brandId);
+    const { orgEnabled, urls } = await resolveWebhookUrls(alert.brandId);
+
+    if (urls.length === 0) return; // No webhooks configured at all
+
+    const orgAllowed = orgEnabled && await shouldNotifyOrg(alert.brandId, 'new_threat', alert.riskScore);
 
     for (const url of urls) {
-      // Skip org webhook if org settings don't allow this notification
+      // Org webhook: only if toggle is ON and notification type/threshold passes
       if (url !== GLOBAL_SLACK_WEBHOOK_URL && !orgAllowed) continue;
       await sendToWebhook(url, payload);
     }
   } else {
-    // Legacy fallback: global webhook only
     if (GLOBAL_SLACK_WEBHOOK_URL) {
       await sendToWebhook(GLOBAL_SLACK_WEBHOOK_URL, payload);
     }
@@ -190,8 +198,11 @@ export async function notifySiteChange(alert: SiteChangeAlert & { brandId?: stri
   };
 
   if (alert.brandId) {
-    const orgAllowed = await shouldNotifyOrg(alert.brandId, 'site_change');
-    const urls = await resolveWebhookUrls(alert.brandId);
+    const { orgEnabled, urls } = await resolveWebhookUrls(alert.brandId);
+
+    if (urls.length === 0) return;
+
+    const orgAllowed = orgEnabled && await shouldNotifyOrg(alert.brandId, 'site_change');
 
     for (const url of urls) {
       if (url !== GLOBAL_SLACK_WEBHOOK_URL && !orgAllowed) continue;
@@ -225,8 +236,11 @@ export async function notifyScanSummary(
   };
 
   if (brandId) {
-    const orgAllowed = await shouldNotifyOrg(brandId, 'scan_summary');
-    const urls = await resolveWebhookUrls(brandId);
+    const { orgEnabled, urls } = await resolveWebhookUrls(brandId);
+
+    if (urls.length === 0) return;
+
+    const orgAllowed = orgEnabled && await shouldNotifyOrg(brandId, 'scan_summary');
 
     for (const url of urls) {
       if (url !== GLOBAL_SLACK_WEBHOOK_URL && !orgAllowed) continue;
