@@ -10,6 +10,7 @@ import {
   triggerScan,
   uploadBrandLogo,
   deleteBrandLogo,
+  getBrandScans,
   getBrandDomains,
   addBrandDomain,
   bulkAddBrandDomains,
@@ -99,6 +100,8 @@ export default function BrandDetailPage() {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkDomains, setBulkDomains] = useState('');
   const [bulkAdding, setBulkAdding] = useState(false);
+  const [scanHistory, setScanHistory] = useState<{ scans: any[]; total: number; page: number; totalPages: number } | null>(null);
+  const [scanPage, setScanPage] = useState(1);
 
   const loadData = useCallback(async () => {
     try {
@@ -112,7 +115,15 @@ export default function BrandDetailPage() {
     }
   }, [brandId]);
 
+  const loadScans = useCallback(async (page: number) => {
+    try {
+      const data = await getBrandScans(brandId, page, 20);
+      setScanHistory(data);
+    } catch (e) { console.error(e); }
+  }, [brandId]);
+
   useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadScans(scanPage); }, [loadScans, scanPage]);
 
   const handleScan = async (type: string) => {
     setScanning(true);
@@ -626,10 +637,14 @@ export default function BrandDetailPage() {
         )}
       </div>
 
-      {/* Recent Scans */}
-      {stats && stats.recentScans.length > 0 && (
+      {/* Scan History */}
+      {scanHistory && scanHistory.scans.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">スキャン履歴</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+              スキャン履歴 <span className="text-gray-400 font-normal">（{scanHistory.total}件）</span>
+            </h2>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -642,7 +657,7 @@ export default function BrandDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                {stats.recentScans.map((scan: any) => (
+                {scanHistory.scans.map((scan: any) => (
                   <tr key={scan.id}>
                     <td className="py-2">{SCAN_TYPE_LABELS[scan.type] || scan.type}</td>
                     <td className="py-2">
@@ -663,6 +678,32 @@ export default function BrandDetailPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {scanHistory.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <p className="text-xs text-gray-400">
+                {(scanHistory.page - 1) * 20 + 1}〜{Math.min(scanHistory.page * 20, scanHistory.total)}件 / 全{scanHistory.total}件
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setScanPage((p) => Math.max(1, p - 1))}
+                  disabled={scanHistory.page <= 1}
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  ← 前へ
+                </button>
+                <span className="px-3 py-1.5 text-xs text-gray-500">{scanHistory.page} / {scanHistory.totalPages}</span>
+                <button
+                  onClick={() => setScanPage((p) => Math.min(scanHistory.totalPages, p + 1))}
+                  disabled={scanHistory.page >= scanHistory.totalPages}
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  次へ →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

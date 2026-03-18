@@ -54,6 +54,7 @@ export const deleteBrand = (id: string) =>
 export const captureBrandScreenshot = (id: string) =>
   fetchAPI<{ screenshotUrl: string }>(`/brands/${id}/capture-screenshot`, { method: 'POST' });
 export const getBrandStats = (id: string) => fetchAPI<any>(`/brands/${id}/stats`);
+export const getBrandScans = (id: string, page = 1, limit = 20) => fetchAPI<any>(`/brands/${id}/scans?page=${page}&limit=${limit}`);
 export const uploadBrandLogo = async (id: string, file: File): Promise<{ logoUrl: string }> => {
   const token = getToken();
   const formData = new FormData();

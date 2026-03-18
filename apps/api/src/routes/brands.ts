@@ -261,6 +261,41 @@ router.get('/:id/stats', async (req, res) => {
   }
 });
 
+// Scan history with pagination
+router.get('/:id/scans', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const skip = (page - 1) * limit;
+
+    const [scans, total] = await Promise.all([
+      prisma.scanJob.findMany({
+        where: { brandId: brand.id },
+        orderBy: { startedAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.scanJob.count({ where: { brandId: brand.id } }),
+    ]);
+
+    res.json({
+      scans,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (err) {
+    console.error('Scan history error:', err);
+    res.status(500).json({ error: 'スキャン履歴の取得に失敗しました。' });
+  }
+});
+
 // Upload brand logo
 router.post('/:id/logo', logoUpload.single('logo'), async (req, res) => {
   try {
