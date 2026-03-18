@@ -1,6 +1,10 @@
 import { prisma } from '../lib/prisma.js';
 
-const GLOBAL_SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+const GLOBAL_SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || '';
+
+// Track failed webhook URLs to avoid log spam (URL → failure timestamp)
+const failedWebhooks = new Map<string, number>();
+const WEBHOOK_COOLDOWN_MS = 30 * 60 * 1000; // 30 min cooldown after failure
 
 interface ThreatAlert {
   brandName: string;
@@ -95,6 +99,12 @@ async function shouldNotifyOrg(
 }
 
 async function sendToWebhook(url: string, payload: object): Promise<void> {
+  if (!url) return;
+
+  // Skip if this URL recently failed (avoid log spam)
+  const lastFail = failedWebhooks.get(url);
+  if (lastFail && Date.now() - lastFail < WEBHOOK_COOLDOWN_MS) return;
+
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -102,10 +112,16 @@ async function sendToWebhook(url: string, payload: object): Promise<void> {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      console.error(`[Slack] Webhook failed: ${res.status} ${await res.text()}`);
+      const body = await res.text();
+      console.error(`[Slack] Webhook failed: ${res.status} ${body} — suppressing retries for 30min`);
+      failedWebhooks.set(url, Date.now());
+    } else {
+      // Clear cooldown on success (e.g. URL was fixed)
+      failedWebhooks.delete(url);
     }
   } catch (err) {
-    console.error('[Slack] Webhook error:', err);
+    console.error('[Slack] Webhook error:', err, '— suppressing retries for 30min');
+    failedWebhooks.set(url, Date.now());
   }
 }
 
