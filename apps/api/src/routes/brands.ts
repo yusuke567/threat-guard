@@ -306,7 +306,7 @@ router.post('/:id/domains', async (req, res) => {
       console.error(`[BrandDomain] Auto-scan failed for ${brand.name}:`, err);
     });
 
-    res.status(201).json(bd);
+    res.status(201).json({ ...bd, scanTriggered: true });
   } catch (err) {
     console.error('Add brand domain error:', err);
     res.status(500).json({ error: 'ドメインの追加に失敗しました。' });
