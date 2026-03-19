@@ -245,6 +245,17 @@ model SocialPost {
   @@index([createdAt])
 }
 
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+}
+
 model AlertLog {
   id               String         @id @default(uuid())
   userId           String

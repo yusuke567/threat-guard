@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 
 export default function LoginPage() {
@@ -90,6 +91,21 @@ export default function LoginPage() {
           >
             {loading ? 'ログイン中...' : 'ログイン'}
           </button>
+
+          <div className="flex items-center justify-between text-sm">
+            <Link
+              href="/forgot-password"
+              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            >
+              パスワードを忘れた方
+            </Link>
+            <Link
+              href="/register"
+              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            >
+              アカウントを作成
+            </Link>
+          </div>
         </form>
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-4">
