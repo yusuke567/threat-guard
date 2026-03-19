@@ -47,39 +47,6 @@ router.post('/login', async (req, res) => {
   });
 });
 
-// Register
-router.post('/register', async (req, res) => {
-  const schema = z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
-    name: z.string().optional(),
-    organizationId: z.string().uuid().optional(),
-  });
-
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-
-  const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  if (existing) return res.status(409).json({ error: 'このメールアドレスはすでに登録されています。' });
-
-  const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
-
-  const user = await prisma.user.create({
-    data: {
-      email: parsed.data.email,
-      hashedPassword,
-      name: parsed.data.name,
-      organizationId: parsed.data.organizationId,
-    },
-  });
-
-  res.status(201).json({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-  });
-});
-
 // Forgot password - send reset email
 router.post('/forgot-password', async (req, res) => {
   try {

@@ -92,18 +92,12 @@ export default function LoginPage() {
             {loading ? 'ログイン中...' : 'ログイン'}
           </button>
 
-          <div className="flex items-center justify-between text-sm">
+          <div className="text-center text-sm">
             <Link
               href="/forgot-password"
               className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
             >
               パスワードを忘れた方
-            </Link>
-            <Link
-              href="/register"
-              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-            >
-              アカウントを作成
             </Link>
           </div>
         </form>
