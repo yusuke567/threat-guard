@@ -132,6 +132,10 @@ export default function BrandDetailPage() {
   const [bulkAdding, setBulkAdding] = useState(false);
   const [scanHistory, setScanHistory] = useState<{ scans: any[]; total: number; page: number; totalPages: number } | null>(null);
   const [scanPage, setScanPage] = useState(1);
+  const [showEmailSettings, setShowEmailSettings] = useState(false);
+  const [emailForm, setEmailForm] = useState({ senderEmail: '', smtpHost: '', smtpPort: '587', smtpUser: '', smtpPass: '' });
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -270,6 +274,41 @@ export default function BrandDetailPage() {
     } catch (e) { console.error(e); }
   };
 
+  const startEmailEdit = () => {
+    if (!brand) return;
+    setEmailForm({
+      senderEmail: brand.senderEmail || '',
+      smtpHost: brand.smtpHost || '',
+      smtpPort: String(brand.smtpPort || 587),
+      smtpUser: brand.smtpUser || '',
+      smtpPass: brand.smtpPass || '',
+    });
+    setShowEmailSettings(true);
+  };
+
+  const handleEmailSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!brand) return;
+    setSavingEmail(true);
+    try {
+      await updateBrand(brand.id, {
+        senderEmail: emailForm.senderEmail || null,
+        smtpHost: emailForm.smtpHost || null,
+        smtpPort: emailForm.smtpPort ? parseInt(emailForm.smtpPort) : null,
+        smtpUser: emailForm.smtpUser || null,
+        smtpPass: emailForm.smtpPass || null,
+      });
+      setShowEmailSettings(false);
+      setEmailSuccess('✅ メール送信設定を保存しました');
+      setTimeout(() => setEmailSuccess(null), 5000);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'メール設定の保存に失敗しました');
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
   const handleLogoDelete = async () => {
     if (!brand || !confirm('ロゴを削除しますか？')) return;
     try {
@@ -320,6 +359,10 @@ export default function BrandDetailPage() {
                 <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
               </label>
             </div>
+            <label className={`mt-2 flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${brand.logoUrl ? 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100'}`}>
+              <span>{brand.logoUrl ? '📷 変更' : '📷 ロゴを設定'}</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
+            </label>
             {brand.logoUrl && (
               <button onClick={handleLogoDelete} className="text-xs text-red-500 hover:text-red-600 mt-1 w-full text-center">
                 削除
@@ -727,6 +770,117 @@ export default function BrandDetailPage() {
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent flex-shrink-0 mt-0.5" />
             <p className="text-sm text-blue-700 dark:text-blue-300">{scanNotice}</p>
           </div>
+        )}
+      </div>
+
+      {/* Email Settings */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+            📧 メール送信設定
+          </h2>
+          {!showEmailSettings && (
+            <button
+              onClick={startEmailEdit}
+              className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              {brand.senderEmail ? '✏️ 編集' : '⚙️ 設定する'}
+            </button>
+          )}
+        </div>
+
+        {emailSuccess && (
+          <div className="mb-4 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <p className="text-sm text-green-700 dark:text-green-300">{emailSuccess}</p>
+          </div>
+        )}
+
+        {!showEmailSettings ? (
+          brand.senderEmail ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 dark:text-gray-400 w-28">送信元メール:</span>
+                <span className="text-gray-900 dark:text-gray-100 font-mono">{brand.senderEmail}</span>
+              </div>
+              {brand.smtpHost && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 dark:text-gray-400 w-28">SMTPサーバー:</span>
+                  <span className="text-gray-900 dark:text-gray-100 font-mono">{brand.smtpHost}:{brand.smtpPort || 587}</span>
+                </div>
+              )}
+              {!brand.smtpHost && (
+                <p className="text-xs text-gray-400">SMTP未設定 — 共有メールサーバー（Resend）を使用</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">テイクダウン通知メールの送信元を設定できます。未設定の場合はシステム共有のメールサーバーを使用します。</p>
+          )
+        ) : (
+          <form onSubmit={handleEmailSave} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">送信元メールアドレス</label>
+              <input
+                type="email"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                value={emailForm.senderEmail}
+                onChange={(e) => setEmailForm({ ...emailForm, senderEmail: e.target.value })}
+                placeholder="noreply@mybrand.com"
+              />
+            </div>
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">独自SMTPサーバー（任意。未設定の場合は共有メールサーバーを使用）</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">SMTPホスト</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    value={emailForm.smtpHost}
+                    onChange={(e) => setEmailForm({ ...emailForm, smtpHost: e.target.value })}
+                    placeholder="smtp.example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">ポート</label>
+                  <input
+                    type="number"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    value={emailForm.smtpPort}
+                    onChange={(e) => setEmailForm({ ...emailForm, smtpPort: e.target.value })}
+                    placeholder="587"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">ユーザー名</label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    value={emailForm.smtpUser}
+                    onChange={(e) => setEmailForm({ ...emailForm, smtpUser: e.target.value })}
+                    placeholder="user@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">パスワード</label>
+                  <input
+                    type="password"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    value={emailForm.smtpPass}
+                    onChange={(e) => setEmailForm({ ...emailForm, smtpPass: e.target.value })}
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" disabled={savingEmail} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                {savingEmail ? '保存中...' : '保存'}
+              </button>
+              <button type="button" onClick={() => setShowEmailSettings(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm">
+                キャンセル
+              </button>
+            </div>
+          </form>
         )}
       </div>
 
