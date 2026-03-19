@@ -1,10 +1,20 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import LoginPage from '@/app/login/LoginPage';
 
+// Public pages that don't require authentication
+const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password', '/register'];
+
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const pathname = usePathname();
+
+  // Skip auth check for public pages
+  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
