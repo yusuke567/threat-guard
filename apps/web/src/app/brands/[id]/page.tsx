@@ -480,7 +480,7 @@ export default function BrandDetailPage() {
                     {c.label}
                   </span>
                   {!c.done && (
-                    <span className="ml-auto text-xs text-blue-600 dark:text-blue-400">↓ 下で設定</span>
+                    <span className="ml-auto text-xs text-blue-600 dark:text-blue-400">{c.key === 'logo' ? '↑ 上で設定' : '↓ 下で設定'}</span>
                   )}
                 </div>
               ))}
