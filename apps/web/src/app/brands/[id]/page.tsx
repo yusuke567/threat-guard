@@ -45,6 +45,35 @@ interface BrandStats {
   recentScans: any[];
 }
 
+/* ──────────────────────── monitoring status ──────────────────────── */
+const MONITORING_STATUS: Record<string, { label: string; color: string; dot: string }> = {
+  active: { label: '監視中', color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', dot: 'bg-green-500' },
+  running: { label: 'スキャン中', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', dot: 'bg-blue-500 animate-pulse' },
+  error: { label: 'エラー', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', dot: 'bg-red-500' },
+  inactive: { label: '未監視', color: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', dot: 'bg-gray-400' },
+};
+
+function getMonitoringStatus(recentScans: any[]): string {
+  if (!recentScans || recentScans.length === 0) return 'inactive';
+  const latest = recentScans[0];
+  if (latest.status === 'running' || latest.status === 'pending') return 'running';
+  if (latest.status === 'failed') return 'error';
+  const daysSince = (Date.now() - new Date(latest.startedAt).getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince <= 7 ? 'active' : 'inactive';
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'たった今';
+  if (minutes < 60) return `${minutes}分前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}時間前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}日前`;
+  return new Date(dateStr).toLocaleDateString('ja-JP');
+}
+
 /* ──────────────────────── helpers ──────────────────────── */
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   new_domain: { label: '新規', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
@@ -303,13 +332,32 @@ export default function BrandDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{brand.name}</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{brand.name}</h1>
+                  {/* Monitoring Status Badge */}
+                  {stats && (() => {
+                    const mStatus = getMonitoringStatus(stats.recentScans);
+                    const info = MONITORING_STATUS[mStatus];
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${info.color}`}>
+                        <span className={`w-2 h-2 rounded-full ${info.dot}`} />
+                        {info.label}
+                      </span>
+                    );
+                  })()}
+                </div>
                 <p className="text-gray-500 dark:text-gray-400 font-mono text-sm mt-1">{brand.domain}</p>
                 {brand.organization && (
                   <p className="text-xs text-gray-400 mt-1">🏢 {brand.organization.name}</p>
                 )}
                 {brand.senderEmail && (
                   <p className="text-xs text-green-600 mt-1">📧 {brand.senderEmail}</p>
+                )}
+                {/* Last scan time */}
+                {stats && stats.recentScans.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    🕐 最終スキャン: {formatRelativeTime(stats.recentScans[0].completedAt || stats.recentScans[0].startedAt)}
+                  </p>
                 )}
               </div>
               <div className="flex gap-2">

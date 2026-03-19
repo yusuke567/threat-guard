@@ -3,6 +3,26 @@
 import { useEffect, useState } from 'react';
 import { getBrands, createBrand, updateBrand, deleteBrand, triggerScan, getOrganizations, createOrganization } from '@/lib/api';
 
+/* ──── Monitoring status helpers ──── */
+const MONITORING_STATUS: Record<string, { label: string; color: string; dot: string }> = {
+  active: { label: '監視中', color: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', dot: 'bg-green-500' },
+  running: { label: 'スキャン中', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', dot: 'bg-blue-500 animate-pulse' },
+  error: { label: 'エラー', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', dot: 'bg-red-500' },
+  inactive: { label: '未監視', color: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', dot: 'bg-gray-400' },
+};
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'たった今';
+  if (minutes < 60) return `${minutes}分前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}時間前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}日前`;
+  return new Date(dateStr).toLocaleDateString('ja-JP');
+}
+
 export default function BrandsPage() {
   const [brands, setBrands] = useState<any[]>([]);
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -289,13 +309,34 @@ export default function BrandsPage() {
                           ))}
                         </div>
                       )}
+                      {/* Last scan info */}
+                      {brand.lastScan && (
+                        <p className="text-xs text-gray-400 mt-2">
+                          🕐 最終スキャン: {formatRelativeTime(brand.lastScan.completedAt || brand.lastScan.startedAt)}
+                          {brand.lastScan.findingsCount > 0 && (
+                            <span className="ml-1 text-orange-500">（{brand.lastScan.findingsCount}件検出）</span>
+                          )}
+                        </p>
+                      )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {brand._count?.detectedDomains ?? 0}
+                    <div className="text-right space-y-2">
+                      <div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {brand._count?.detectedDomains ?? 0}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">検知数</div>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">検知数</div>
+                      {/* Monitoring Status Badge */}
+                      {(() => {
+                        const status = MONITORING_STATUS[brand.monitoringStatus] || MONITORING_STATUS.inactive;
+                        return (
+                          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${status.color}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                            {status.label}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">

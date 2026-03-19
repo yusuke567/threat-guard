@@ -57,10 +57,38 @@ router.get('/', async (req, res) => {
     : { organizationId: req.user!.organizationId! };
   const brands = await prisma.brand.findMany({
     where,
-    include: { organization: true, _count: { select: { detectedDomains: true } } },
+    include: {
+      organization: true,
+      _count: { select: { detectedDomains: true } },
+      scanJobs: {
+        orderBy: { startedAt: 'desc' },
+        take: 1,
+        select: { id: true, type: true, status: true, startedAt: true, completedAt: true, findingsCount: true },
+      },
+    },
     orderBy: { createdAt: 'desc' },
   });
-  res.json(brands);
+
+  // Flatten: add lastScan and monitoringStatus to each brand
+  const enriched = brands.map((b) => {
+    const lastScan = b.scanJobs[0] || null;
+    let monitoringStatus: 'active' | 'inactive' | 'running' | 'error' = 'inactive';
+    if (lastScan) {
+      if (lastScan.status === 'running' || lastScan.status === 'pending') {
+        monitoringStatus = 'running';
+      } else if (lastScan.status === 'failed') {
+        monitoringStatus = 'error';
+      } else {
+        // Active if scanned within last 7 days
+        const daysSince = (Date.now() - new Date(lastScan.startedAt).getTime()) / (1000 * 60 * 60 * 24);
+        monitoringStatus = daysSince <= 7 ? 'active' : 'inactive';
+      }
+    }
+    const { scanJobs, ...rest } = b;
+    return { ...rest, lastScan, monitoringStatus };
+  });
+
+  res.json(enriched);
 });
 
 // One-time sync: Brand.whitelistDomains → BrandDomain table (superadmin only)
