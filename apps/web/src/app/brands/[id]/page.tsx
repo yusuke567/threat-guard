@@ -344,7 +344,7 @@ export default function BrandDetailPage() {
       </div>
 
       {/* Brand Info Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div id="section-logo" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex flex-col sm:flex-row sm:items-start gap-6">
           {/* Logo */}
           <div className="flex-shrink-0">
@@ -448,11 +448,11 @@ export default function BrandDetailPage() {
       {/* Setup Checklist */}
       {(() => {
         const checks = [
-          { key: 'logo', label: 'ロゴを設定', done: !!brand.logoUrl, anchor: 'logo' },
-          { key: 'primary', label: 'プライマリドメインを追加', done: (brand.brandDomains?.filter(d => d.type === 'primary').length ?? 0) > 0, anchor: 'domains' },
-          { key: 'owned', label: '保有ドメインを登録', done: (brand.brandDomains?.filter(d => d.type === 'owned').length ?? 0) > 0, anchor: 'domains' },
-          { key: 'keywords', label: '検知キーワードを設定', done: !!brand.keywords && brand.keywords.trim().length > 0, anchor: 'info' },
-          { key: 'email', label: 'メール送信設定', done: !!brand.senderEmail, anchor: 'email' },
+          { key: 'logo', label: 'ロゴを設定', done: !!brand.logoUrl, href: '#section-logo', direction: '↑' },
+          { key: 'primary', label: 'プライマリドメインを追加', done: (brand.brandDomains?.filter(d => d.type === 'primary').length ?? 0) > 0, href: '#section-domains', direction: '↓' },
+          { key: 'owned', label: '保有ドメインを登録', done: (brand.brandDomains?.filter(d => d.type === 'owned').length ?? 0) > 0, href: '#section-domains', direction: '↓' },
+          { key: 'keywords', label: '検知キーワードを設定', done: !!brand.keywords && brand.keywords.trim().length > 0, href: '#section-logo', direction: '↑' },
+          { key: 'email', label: 'メール送信設定', done: !!brand.senderEmail, href: '#section-email', direction: '↓' },
         ];
         const doneCount = checks.filter(c => c.done).length;
         const allDone = doneCount === checks.length;
@@ -480,7 +480,7 @@ export default function BrandDetailPage() {
                     {c.label}
                   </span>
                   {!c.done && (
-                    <span className="ml-auto text-xs text-blue-600 dark:text-blue-400">{c.key === 'logo' ? '↑ 上で設定' : '↓ 下で設定'}</span>
+                    <a href={c.href} className="ml-auto text-xs text-blue-600 dark:text-blue-400 hover:underline">{c.direction === '↑' ? '↑ 上で設定' : '↓ 下で設定'}</a>
                   )}
                 </div>
               ))}
@@ -620,7 +620,7 @@ export default function BrandDetailPage() {
       )}
 
       {/* Domain 2-layer Management */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div id="section-domains" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">
           ドメイン管理 <span className="text-gray-400 font-normal">({brand.brandDomains?.length || 0})</span>
         </h2>
@@ -774,7 +774,7 @@ export default function BrandDetailPage() {
       </div>
 
       {/* Email Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <div id="section-email" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
             📧 メール送信設定
