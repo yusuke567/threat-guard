@@ -52,6 +52,7 @@ model Brand {
   smtpPort         Int?
   smtpUser         String?
   smtpPass         String?
+  trademarkCertUrl String?
   detectedDomains  DetectedDomain[]
   scanJobs         ScanJob[]
   phishingPatterns PhishingPattern[]

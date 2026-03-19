@@ -10,6 +10,8 @@ import {
   triggerScan,
   uploadBrandLogo,
   deleteBrandLogo,
+  uploadTrademarkCert,
+  deleteTrademarkCert,
   getBrandScans,
   getBrandDomains,
   addBrandDomain,
@@ -24,6 +26,7 @@ interface BrandData {
   domain: string;
   logoUrl?: string | null;
   screenshotUrl?: string | null;
+  trademarkCertUrl?: string | null;
   keywords: string;
   whitelistDomains: string;
   senderEmail?: string | null;
@@ -121,6 +124,7 @@ export default function BrandDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', domain: '', keywords: '' });
   const [logoUploading, setLogoUploading] = useState(false);
+  const [trademarkUploading, setTrademarkUploading] = useState(false);
   const [newDomain, setNewDomain] = useState('');
   const [newDomainType, setNewDomainType] = useState<'primary' | 'owned'>('owned');
   const [addingDomain, setAddingDomain] = useState(false);
@@ -212,6 +216,29 @@ export default function BrandDetailPage() {
       setLogoUploading(false);
       e.target.value = '';
     }
+  };
+
+  const handleTrademarkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !brand) return;
+    setTrademarkUploading(true);
+    try {
+      await uploadTrademarkCert(brand.id, file);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || '商標登録証明のアップロードに失敗しました');
+    } finally {
+      setTrademarkUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleTrademarkDelete = async () => {
+    if (!brand || !confirm('商標登録証明を削除しますか？')) return;
+    try {
+      await deleteTrademarkCert(brand.id);
+      loadData();
+    } catch (e) { console.error(e); }
   };
 
   const handleAddDomain = async (e: React.FormEvent) => {
@@ -452,6 +479,7 @@ export default function BrandDetailPage() {
           { key: 'primary', label: 'プライマリドメインを追加', done: (brand.brandDomains?.filter(d => d.type === 'primary').length ?? 0) > 0, href: '#section-domains', direction: '↓' },
           { key: 'owned', label: '保有ドメインを登録', done: (brand.brandDomains?.filter(d => d.type === 'owned').length ?? 0) > 0, href: '#section-domains', direction: '↓' },
           { key: 'keywords', label: '検知キーワードを設定', done: !!brand.keywords && brand.keywords.trim().length > 0, href: '#section-logo', direction: '↑' },
+          { key: 'trademark', label: '商標登録証明をアップロード', done: !!brand.trademarkCertUrl, href: '#section-trademark', direction: '↓' },
           { key: 'email', label: 'メール送信設定', done: !!brand.senderEmail, href: '#section-email', direction: '↓' },
         ];
         const doneCount = checks.filter(c => c.done).length;
@@ -771,6 +799,65 @@ export default function BrandDetailPage() {
             <p className="text-sm text-blue-700 dark:text-blue-300">{scanNotice}</p>
           </div>
         )}
+      </div>
+
+      {/* Trademark Certificate */}
+      <div id="section-trademark" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-4">📄 商標登録証明</h2>
+        {brand.trademarkCertUrl ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 px-4 py-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+              <span className="text-green-600 text-lg">✅</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-green-700 dark:text-green-300">アップロード済み</p>
+                <p className="text-xs text-green-600 dark:text-green-400 truncate font-mono">{brand.trademarkCertUrl.split('/').pop()}</p>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={brand.trademarkCertUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-gray-600"
+                >
+                  👁️ プレビュー
+                </a>
+                <a
+                  href={brand.trademarkCertUrl}
+                  download
+                  className="px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs hover:bg-gray-50 dark:hover:bg-gray-600"
+                >
+                  ⬇️ DL
+                </a>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <label className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer">
+                🔄 差し替え
+                <input type="file" accept=".pdf,image/png,image/jpeg,image/webp" className="hidden" onChange={handleTrademarkUpload} disabled={trademarkUploading} />
+              </label>
+              <button onClick={handleTrademarkDelete} className="px-3 py-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-xs">
+                🗑️ 削除
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-6 border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-lg">
+            <p className="text-3xl mb-2">📄</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">商標登録証明書をアップロードしてください</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">対応形式: PDF, PNG, JPEG（5MB以下）</p>
+            <label className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 cursor-pointer">
+              📎 ファイルを選択
+              <input type="file" accept=".pdf,image/png,image/jpeg,image/webp" className="hidden" onChange={handleTrademarkUpload} disabled={trademarkUploading} />
+            </label>
+          </div>
+        )}
+        {trademarkUploading && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent" />
+            アップロード中...
+          </div>
+        )}
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">テイクダウン申請時に商標権の証拠として使用されます。</p>
       </div>
 
       {/* Email Settings */}

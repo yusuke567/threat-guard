@@ -32,6 +32,30 @@ const logoUpload = multer({
   },
 });
 
+// Trademark certificate upload config
+const trademarkStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const dir = path.join(DATA_DIR, 'uploads', 'trademark-certs');
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.pdf';
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+const trademarkUpload = multer({
+  storage: trademarkStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (_req, file, cb) => {
+    if (/^(image\/(png|jpe?g|webp)|application\/pdf)$/.test(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('PDF または画像ファイル（PNG, JPEG, WebP）のみアップロードできます'));
+    }
+  },
+});
+
 const router = Router();
 
 const createBrandSchema = z.object({
@@ -379,6 +403,64 @@ router.delete('/:id/logo', async (req, res) => {
   } catch (err) {
     console.error('Logo delete error:', err);
     res.status(500).json({ error: 'ロゴの削除に失敗しました。' });
+  }
+});
+
+// Upload trademark certificate
+router.post('/:id/trademark-cert', trademarkUpload.single('file'), async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin
+      ? { id: req.params.id }
+      : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    if (!req.file) return res.status(400).json({ error: 'ファイルが選択されていません。' });
+
+    // Delete old file if exists
+    if (brand.trademarkCertUrl) {
+      const oldPath = path.join(DATA_DIR, brand.trademarkCertUrl.replace(/^\//, ''));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    const trademarkCertUrl = `/uploads/trademark-certs/${req.file.filename}`;
+    await prisma.brand.update({
+      where: { id: brand.id },
+      data: { trademarkCertUrl },
+    });
+
+    res.json({ trademarkCertUrl, originalName: req.file.originalname });
+  } catch (err) {
+    console.error('Trademark cert upload error:', err);
+    res.status(500).json({ error: '商標登録証明のアップロードに失敗しました。' });
+  }
+});
+
+// Delete trademark certificate
+router.delete('/:id/trademark-cert', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin
+      ? { id: req.params.id }
+      : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    if (brand.trademarkCertUrl) {
+      const oldPath = path.join(DATA_DIR, brand.trademarkCertUrl.replace(/^\//, ''));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    await prisma.brand.update({
+      where: { id: brand.id },
+      data: { trademarkCertUrl: null },
+    });
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Trademark cert delete error:', err);
+    res.status(500).json({ error: '商標登録証明の削除に失敗しました。' });
   }
 });
 

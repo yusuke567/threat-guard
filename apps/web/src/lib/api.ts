@@ -73,6 +73,25 @@ export const uploadBrandLogo = async (id: string, file: File): Promise<{ logoUrl
 export const deleteBrandLogo = (id: string) =>
   fetchAPI<void>(`/brands/${id}/logo`, { method: 'DELETE' });
 
+// Trademark certificate
+export const uploadTrademarkCert = async (id: string, file: File): Promise<{ trademarkCertUrl: string; originalName: string }> => {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/brands/${id}/trademark-cert`, {
+    method: 'POST',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(error.error || `エラーが発生しました (${res.status})`);
+  }
+  return res.json();
+};
+export const deleteTrademarkCert = (id: string) =>
+  fetchAPI<void>(`/brands/${id}/trademark-cert`, { method: 'DELETE' });
+
 // Brand Domains (2-layer)
 export const getBrandDomains = (brandId: string) =>
   fetchAPI<any[]>(`/brands/${brandId}/domains`);
