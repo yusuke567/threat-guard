@@ -402,6 +402,50 @@ export default function BrandDetailPage() {
         </div>
       </div>
 
+      {/* Setup Checklist */}
+      {(() => {
+        const checks = [
+          { key: 'logo', label: 'ロゴを設定', done: !!brand.logoUrl, anchor: 'logo' },
+          { key: 'primary', label: 'プライマリドメインを追加', done: (brand.brandDomains?.filter(d => d.type === 'primary').length ?? 0) > 0, anchor: 'domains' },
+          { key: 'owned', label: '保有ドメインを登録', done: (brand.brandDomains?.filter(d => d.type === 'owned').length ?? 0) > 0, anchor: 'domains' },
+          { key: 'keywords', label: '検知キーワードを設定', done: !!brand.keywords && brand.keywords.trim().length > 0, anchor: 'info' },
+          { key: 'email', label: 'メール送信設定', done: !!brand.senderEmail, anchor: 'email' },
+        ];
+        const doneCount = checks.filter(c => c.done).length;
+        const allDone = doneCount === checks.length;
+        if (allDone) return null;
+        const pct = Math.round((doneCount / checks.length) * 100);
+        return (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">🚀 セットアップ</h2>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{doneCount}/{checks.length} 完了</span>
+            </div>
+            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mb-4">
+              <div
+                className="h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-blue-500 to-blue-600"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="space-y-2">
+              {checks.map(c => (
+                <div key={c.key} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${c.done ? 'bg-green-50 dark:bg-green-900/10' : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-blue-50 dark:hover:bg-blue-900/10'}`}>
+                  <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs ${c.done ? 'bg-green-500 text-white' : 'border-2 border-gray-300 dark:border-gray-500 text-gray-400'}`}>
+                    {c.done ? '✓' : ''}
+                  </span>
+                  <span className={`text-sm ${c.done ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-700 dark:text-gray-200'}`}>
+                    {c.label}
+                  </span>
+                  {!c.done && (
+                    <span className="ml-auto text-xs text-blue-600 dark:text-blue-400">↓ 下で設定</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Edit Form */}
       {editing && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
