@@ -325,7 +325,7 @@ export default function DiagnosisResultPage() {
         <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-white font-semibold mb-1">🗑️ 削除申請（テイクダウン）</h3>
+              <h3 className="text-white font-semibold mb-1">🗑️ 削除申請</h3>
               <p className="text-slate-400 text-sm">
                 このドメインのホスティング事業者・レジストラに削除申請を自動生成・送信します
               </p>
@@ -350,7 +350,7 @@ export default function DiagnosisResultPage() {
             ブランドを24時間365日守りませんか？
           </h2>
           <p className="text-slate-300 text-sm mb-6 max-w-lg mx-auto">
-            ThreatGuardの有料プランなら、自動スキャン・テイクダウン申請・チーム管理・
+            ThreatGuardの有料プランなら、自動スキャン・削除申請・チーム管理・
             Slack通知・詳細レポートなど、本格的なブランド保護を実現します。
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
