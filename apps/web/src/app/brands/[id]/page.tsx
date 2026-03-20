@@ -203,9 +203,29 @@ export default function BrandDetailPage() {
     router.push('/brands');
   };
 
+  const LOGO_ACCEPTED_TYPES = '.png,.jpg,.jpeg,.gif,.svg,.webp';
+  const LOGO_MAX_SIZE_MB = 2;
+  const LOGO_MIN_RESOLUTION = 200;
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !brand) return;
+
+    // Client-side file type validation
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('対応形式: PNG, JPG, GIF, SVG, WebP');
+      e.target.value = '';
+      return;
+    }
+
+    // Client-side file size validation
+    if (file.size > LOGO_MAX_SIZE_MB * 1024 * 1024) {
+      alert(`ファイルサイズは${LOGO_MAX_SIZE_MB}MB以下にしてください。`);
+      e.target.value = '';
+      return;
+    }
+
     setLogoUploading(true);
     try {
       await uploadBrandLogo(brand.id, file);
@@ -383,12 +403,12 @@ export default function BrandDetailPage() {
               )}
               <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                 <span className="text-white text-xs font-medium">{brand.logoUrl ? '変更' : 'アップロード'}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
+                <input type="file" accept={LOGO_ACCEPTED_TYPES} className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
               </label>
             </div>
             <label className={`mt-2 flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${brand.logoUrl ? 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100'}`}>
               <span>{brand.logoUrl ? '📷 変更' : '📷 ロゴを設定'}</span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
+              <input type="file" accept={LOGO_ACCEPTED_TYPES} className="hidden" onChange={handleLogoUpload} disabled={logoUploading} />
             </label>
             {brand.logoUrl && (
               <button onClick={handleLogoDelete} className="text-xs text-red-500 hover:text-red-600 mt-1 w-full text-center">
@@ -396,6 +416,10 @@ export default function BrandDetailPage() {
               </button>
             )}
             {logoUploading && <p className="text-xs text-gray-400 mt-1 text-center">アップロード中...</p>}
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 text-center leading-tight">
+              PNG / JPG / GIF / SVG / WebP<br />
+              {LOGO_MIN_RESOLUTION}×{LOGO_MIN_RESOLUTION}px以上 / {LOGO_MAX_SIZE_MB}MB以下
+            </p>
           </div>
 
           {/* Info */}

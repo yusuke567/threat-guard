@@ -6,6 +6,7 @@ import { runFullScan } from '../services/scheduler.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import multer from 'multer';
+import sharp from 'sharp';
 
 // Logo upload config
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
@@ -359,6 +360,23 @@ router.post('/:id/logo', logoUpload.single('logo'), async (req, res) => {
     if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
 
     if (!req.file) return res.status(400).json({ error: 'ファイルが選択されていません。' });
+
+    // Validate minimum resolution (200x200px) — skip for SVG
+    if (!/\.svg$/i.test(req.file.filename)) {
+      try {
+        const metadata = await sharp(req.file.path).metadata();
+        if (!metadata.width || !metadata.height || metadata.width < 200 || metadata.height < 200) {
+          // Remove uploaded file
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({
+            error: `画像の解像度が不足しています。最小 200×200px 必要です（現在: ${metadata.width || 0}×${metadata.height || 0}px）。`,
+          });
+        }
+      } catch (imgErr) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: '画像ファイルの読み取りに失敗しました。' });
+      }
+    }
 
     // Delete old logo if exists
     if (brand.logoUrl) {
