@@ -257,6 +257,33 @@ model PasswordResetToken {
   @@index([email])
 }
 
+model FreeDiagnosis {
+  id            String   @id @default(uuid())
+  email         String
+  targetUrl     String
+  domain        String   // extracted from targetUrl
+  riskScore     Int?
+  category      String?  // phishing, brand_abuse, parked, legitimate, unknown
+  confidence    Float?
+  reasoning     String?
+  screenshotUrl String?
+  htmlSnippet   String?
+  dnsResolved   Boolean  @default(false)
+  httpStatus    Int?
+  finalUrl      String?
+  ip            String?
+  sslInfo       String?
+  whoisData     String?
+  status        String   @default("pending") // pending, scanning, completed, failed
+  error         String?
+  expiresAt     DateTime // created_at + 7 days
+  createdAt     DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+  @@index([status])
+}
+
 model AlertLog {
   id               String         @id @default(uuid())
   userId           String

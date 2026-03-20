@@ -14,7 +14,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   'use client';
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const isPublicPage = ['/login', '/forgot-password', '/reset-password'].some(
+  const isPublicPage = ['/login', '/forgot-password', '/reset-password', '/diagnose'].some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   );
 

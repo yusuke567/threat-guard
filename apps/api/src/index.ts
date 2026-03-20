@@ -15,6 +15,7 @@ import phishingPatternsRouter from './routes/phishing-patterns.js';
 import alertsRouter from './routes/alerts.js';
 import takedownBatchRouter from './routes/takedown-batch.js';
 import socialMonitorRouter from './routes/social-monitor.js';
+import publicDiagnoseRouter from './routes/public-diagnose.js';
 import { startScheduler } from './services/scheduler.js';
 import { authMiddleware, requireOrg } from './lib/auth-middleware.js';
 
@@ -44,6 +45,9 @@ app.get('/api/health', (_req, res) => {
 
 // Auth routes (public)
 app.use('/api/auth', authRouter);
+
+// Free diagnosis (public — no auth required)
+app.use('/api/public/diagnose', publicDiagnoseRouter);
 
 // All routes below require authentication + organization
 app.use('/api/organizations', authMiddleware, organizationsRouter);

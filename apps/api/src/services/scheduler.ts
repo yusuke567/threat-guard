@@ -245,5 +245,52 @@ export function startScheduler() {
     });
   });
 
+  // Purge expired free diagnoses: daily at 4 AM
+  cron.schedule('0 4 * * *', () => {
+    purgeExpiredDiagnoses().catch((err) => {
+      console.error('[Scheduler] Free diagnosis purge error:', err);
+    });
+  });
+
   console.log('[Scheduler] ✅ Cron scheduler active');
+}
+
+/**
+ * Delete expired free diagnosis records and their screenshots.
+ */
+async function purgeExpiredDiagnoses() {
+  console.log(`[Scheduler] Purging expired free diagnoses at ${new Date().toISOString()}`);
+
+  const expired = await prisma.freeDiagnosis.findMany({
+    where: { expiresAt: { lt: new Date() } },
+    select: { id: true, screenshotUrl: true },
+  });
+
+  if (expired.length === 0) {
+    console.log('[Scheduler] No expired free diagnoses to purge.');
+    return;
+  }
+
+  // Delete screenshot files
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const DATA_DIR = process.env.DATA_DIR || process.cwd();
+
+  for (const d of expired) {
+    if (d.screenshotUrl) {
+      try {
+        const filepath = path.join(DATA_DIR, d.screenshotUrl);
+        await fs.unlink(filepath);
+      } catch {
+        // File may already be gone
+      }
+    }
+  }
+
+  // Delete DB records
+  const result = await prisma.freeDiagnosis.deleteMany({
+    where: { expiresAt: { lt: new Date() } },
+  });
+
+  console.log(`[Scheduler] Purged ${result.count} expired free diagnoses.`);
 }
