@@ -887,9 +887,12 @@ export default function BrandDetailPage() {
       {/* Email Settings */}
       <div id="section-email" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-            📧 メール送信設定
-          </h2>
+          <div>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+              📧 メール送信設定 <span className="text-xs font-normal text-gray-400">（任意）</span>
+            </h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">未設定の場合、ThreatGuard共有メールサーバーからテイクダウン通知を送信します</p>
+          </div>
           {!showEmailSettings && (
             <button
               onClick={startEmailEdit}
