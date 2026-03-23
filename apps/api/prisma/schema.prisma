@@ -151,6 +151,8 @@ model TakedownRequest {
   detectedDomain   DetectedDomain  @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
   batchId          String?
   batch            TakedownBatch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  recipientType    String          @default("registrar") // registrar, police
+  recipientName    String?         // e.g. "警視庁 サイバー犯罪対策課"
   registrar        String
   abuseEmail       String?
   template         String
@@ -165,6 +167,7 @@ model TakedownRequest {
   @@index([detectedDomainId])
   @@index([batchId])
   @@index([status])
+  @@index([recipientType])
 }
 
 model ScanJob {

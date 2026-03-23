@@ -19,10 +19,18 @@ interface ThreatInfo {
   screenshotUrl: string | null;
 }
 
+interface PoliceRecipient {
+  type: 'police';
+  name: string;
+  email: string;
+}
+
 interface AbuseGroup {
   abuseEmail: string | null;
   registrar: string;
   threats: ThreatInfo[];
+  recipientType?: 'registrar' | 'police';
+  recipientName?: string;
   // Step 2 fields
   template?: string;
   language?: string;
@@ -58,6 +66,8 @@ export default function TakedownRequestPage() {
   const [threats, setThreats] = useState<ThreatInfo[]>([]);
   const [groups, setGroups] = useState<AbuseGroup[]>([]);
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+  const [policeRecipient, setPoliceRecipient] = useState<PoliceRecipient | null>(null);
+  const [sendToPolice, setSendToPolice] = useState(false);
 
   // Step 3 result
   const [result, setResult] = useState<any>(null);
@@ -80,29 +90,67 @@ export default function TakedownRequestPage() {
         setThreats(data.threats);
         setGroups(data.groups.map((g: any) => ({
           ...g,
+          recipientType: 'registrar' as const,
           language: 'ja',
           evidenceTypes: ['screenshot'],
           template: '',
           manualEmail: '',
         })));
+        if (data.policeRecipient) {
+          setPoliceRecipient(data.policeRecipient);
+        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [router]);
 
   const activeThreats = threats.filter((t) => !excludedIds.has(t.threatId));
-  const activeGroups = groups
+
+  // Build groups: registrar groups + optional police group
+  const registrarGroups = groups
     .map((g, originalIndex) => ({
       ...g,
       originalIndex,
+      recipientType: 'registrar' as const,
       threats: g.threats.filter((t) => !excludedIds.has(t.threatId)),
     }))
     .filter((g) => g.threats.length > 0);
 
-  const unresolvedCount = activeGroups.filter((g) => !g.abuseEmail && !g.manualEmail).length;
+  // Police group: all active threats combined into one group
+  const policeGroup: AbuseGroup & { originalIndex: number } | null =
+    sendToPolice && policeRecipient && activeThreats.length > 0
+      ? {
+          abuseEmail: policeRecipient.email,
+          registrar: '',
+          recipientType: 'police' as const,
+          recipientName: policeRecipient.name,
+          threats: activeThreats,
+          language: 'ja',
+          evidenceTypes: ['screenshot', 'whois'],
+          template: '',
+          manualEmail: '',
+          originalIndex: -1, // sentinel for police group
+        }
+      : null;
+
+  const activeGroups = [
+    ...registrarGroups,
+    ...(policeGroup ? [policeGroup] : []),
+  ];
+
+  const unresolvedCount = registrarGroups.filter((g) => !g.abuseEmail && !g.manualEmail).length;
+
+  // Police group state (separate from registrar groups since it's virtual)
+  const [policeGroupState, setPoliceGroupState] = useState<{
+    template: string;
+    loading: boolean;
+    language: string;
+    evidenceTypes: string[];
+  }>({ template: '', loading: false, language: 'ja', evidenceTypes: ['screenshot', 'whois'] });
 
   // Step 2: Generate templates for all groups
   const generateTemplates = useCallback(async () => {
+    // Generate registrar templates
     const updated = [...groups];
     for (let i = 0; i < updated.length; i++) {
       const g = updated[i];
@@ -121,6 +169,7 @@ export default function TakedownRequestPage() {
           abuseEmail: email,
           registrar: g.registrar,
           language: g.language || 'ja',
+          recipientType: 'registrar',
         });
         updated[i] = { ...updated[i], template: res.template, loading: false };
       } catch {
@@ -128,7 +177,28 @@ export default function TakedownRequestPage() {
       }
       setGroups([...updated]);
     }
-  }, [groups, excludedIds]);
+
+    // Generate police template if enabled
+    if (sendToPolice && policeRecipient && activeThreats.length > 0) {
+      setPoliceGroupState((prev) => ({ ...prev, loading: true }));
+      try {
+        const res = await generateBatchTemplate({
+          threatIds: activeThreats.map((t) => t.threatId),
+          abuseEmail: policeRecipient.email,
+          registrar: '',
+          language: 'ja',
+          recipientType: 'police',
+        });
+        setPoliceGroupState((prev) => ({ ...prev, template: res.template, loading: false }));
+      } catch {
+        setPoliceGroupState((prev) => ({
+          ...prev,
+          template: '(テンプレート生成に失敗しました。手動で入力してください。)',
+          loading: false,
+        }));
+      }
+    }
+  }, [groups, excludedIds, sendToPolice, policeRecipient, activeThreats]);
 
   // Move to step 2
   const goToStep2 = async () => {
@@ -141,8 +211,10 @@ export default function TakedownRequestPage() {
     setSending(true);
     setError(null);
     try {
-      const items: Array<{ threatId: string; abuseEmail: string; template: string; language: string; evidenceTypes: string }> = [];
-      for (const g of activeGroups) {
+      const items: Array<{ threatId: string; abuseEmail: string; template: string; language: string; evidenceTypes: string; recipientType?: string; recipientName?: string }> = [];
+
+      // Registrar items
+      for (const g of registrarGroups) {
         const email = g.abuseEmail || g.manualEmail;
         if (!email || !g.template) continue;
         for (const t of g.threats) {
@@ -152,6 +224,22 @@ export default function TakedownRequestPage() {
             template: g.template,
             language: g.language || 'en',
             evidenceTypes: (g.evidenceTypes || []).join(','),
+            recipientType: 'registrar',
+          });
+        }
+      }
+
+      // Police items
+      if (sendToPolice && policeRecipient && policeGroupState.template) {
+        for (const t of activeThreats) {
+          items.push({
+            threatId: t.threatId,
+            abuseEmail: policeRecipient.email,
+            template: policeGroupState.template,
+            language: 'ja',
+            evidenceTypes: policeGroupState.evidenceTypes.join(','),
+            recipientType: 'police',
+            recipientName: policeRecipient.name,
           });
         }
       }
@@ -300,9 +388,11 @@ export default function TakedownRequestPage() {
 
           {/* 送信先まとめ */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">送信先まとめ</h3>
-            {activeGroups.map((g, i) => (
-              <div key={i} className="flex items-center gap-3 py-2">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">送信先を選択</h3>
+
+            {/* Registrar groups */}
+            {registrarGroups.map((g, i) => (
+              <div key={`reg-${i}`} className="flex items-center gap-3 py-2">
                 <span>📧</span>
                 <span className="font-medium text-sm">{g.registrar}</span>
                 {g.abuseEmail ? (
@@ -316,7 +406,7 @@ export default function TakedownRequestPage() {
                       value={g.manualEmail || ''}
                       onChange={(e) => {
                         const updated = [...groups];
-                        const idx = g.originalIndex ?? groups.indexOf(g);
+                        const idx = g.originalIndex;
                         if (idx >= 0) {
                           updated[idx] = { ...updated[idx], manualEmail: e.target.value };
                           setGroups(updated);
@@ -326,9 +416,32 @@ export default function TakedownRequestPage() {
                     />
                   </div>
                 )}
-                <span className="text-xs text-gray-400 dark:text-gray-500">— {g.threats.filter((t) => !excludedIds.has(t.threatId)).length}件</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">— {g.threats.length}件</span>
               </div>
             ))}
+
+            {/* Police recipient checkbox */}
+            {policeRecipient && (
+              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                <label className="flex items-center gap-3 py-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendToPolice}
+                    onChange={(e) => setSendToPolice(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 w-4 h-4"
+                  />
+                  <span>🚔</span>
+                  <div>
+                    <span className="font-medium text-sm">{policeRecipient.name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({policeRecipient.email})</span>
+                  </div>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">— {activeThreats.length}件</span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 ml-10">
+                  レジストラへの申請とは別に、警視庁サイバー犯罪対策課にも情報提供します
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between">
@@ -356,25 +469,26 @@ export default function TakedownRequestPage() {
             送信先ごとに文面を自動生成しました。内容を確認・編集してください。
           </div>
 
-          {activeGroups.map((g, i) => {
+          {/* Registrar groups */}
+          {registrarGroups.map((g, i) => {
             const email = g.abuseEmail || g.manualEmail;
             return (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+              <div key={`reg-${i}`} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       📧 {g.registrar}
-                      <span className="text-sm font-normal text-gray-500 dark:text-gray-400 dark:text-gray-500">({g.threats.length}件)</span>
+                      <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({g.threats.length}件)</span>
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">送信先: {email || '未設定'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">送信先: {email || '未設定'}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <label className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">言語:</label>
+                    <label className="text-xs text-gray-500 dark:text-gray-400">言語:</label>
                     <select
                       value={g.language || 'ja'}
                       onChange={(e) => {
                         const updated = [...groups];
-                        const idx = g.originalIndex ?? groups.indexOf(g);
+                        const idx = g.originalIndex;
                         if (idx >= 0) {
                           updated[idx] = { ...updated[idx], language: e.target.value };
                           setGroups(updated);
@@ -388,14 +502,12 @@ export default function TakedownRequestPage() {
                   </div>
                 </div>
 
-                {/* Domain list */}
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                   対象: {g.threats.map((t) => t.domain).join(' / ')}
                 </div>
 
-                {/* Template */}
                 {g.loading ? (
-                  <div className="flex items-center gap-2 py-8 justify-center text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                  <div className="flex items-center gap-2 py-8 justify-center text-gray-500 dark:text-gray-400">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
                     <span className="text-sm">文面を生成中...</span>
                   </div>
@@ -404,7 +516,7 @@ export default function TakedownRequestPage() {
                     value={g.template || ''}
                     onChange={(e) => {
                       const updated = [...groups];
-                      const idx = g.originalIndex ?? groups.indexOf(g);
+                      const idx = g.originalIndex;
                       if (idx >= 0) {
                         updated[idx] = { ...updated[idx], template: e.target.value };
                         setGroups(updated);
@@ -420,7 +532,7 @@ export default function TakedownRequestPage() {
                     onClick={async () => {
                       if (!email) return;
                       const updated = [...groups];
-                      const idx = g.originalIndex ?? groups.indexOf(g);
+                      const idx = g.originalIndex;
                       if (idx < 0) return;
                       updated[idx] = { ...updated[idx], loading: true };
                       setGroups([...updated]);
@@ -431,6 +543,7 @@ export default function TakedownRequestPage() {
                           abuseEmail: email,
                           registrar: g.registrar,
                           language: g.language || 'ja',
+                          recipientType: 'registrar',
                         });
                         updated[idx] = { ...updated[idx], template: res.template, loading: false };
                       } catch {
@@ -444,7 +557,6 @@ export default function TakedownRequestPage() {
                   </button>
                 </div>
 
-                {/* Evidence */}
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">添付エビデンス:</h4>
                   <div className="flex flex-wrap gap-3">
@@ -459,7 +571,7 @@ export default function TakedownRequestPage() {
                           checked={(g.evidenceTypes || []).includes(key)}
                           onChange={(e) => {
                             const updated = [...groups];
-                            const idx = g.originalIndex ?? groups.indexOf(g);
+                            const idx = g.originalIndex;
                             if (idx < 0) return;
                             const types = [...(g.evidenceTypes || [])];
                             if (e.target.checked) types.push(key);
@@ -481,6 +593,93 @@ export default function TakedownRequestPage() {
             );
           })}
 
+          {/* Police group */}
+          {sendToPolice && policeRecipient && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-blue-300 dark:border-blue-700 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    🚔 {policeRecipient.name}
+                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({activeThreats.length}件)</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">送信先: {policeRecipient.email}</p>
+                </div>
+                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-bold">警察通報</span>
+              </div>
+
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                対象: {activeThreats.map((t) => t.domain).join(' / ')}
+              </div>
+
+              {policeGroupState.loading ? (
+                <div className="flex items-center gap-2 py-8 justify-center text-gray-500 dark:text-gray-400">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                  <span className="text-sm">警察向け通報文を生成中...</span>
+                </div>
+              ) : (
+                <textarea
+                  value={policeGroupState.template}
+                  onChange={(e) => setPoliceGroupState((prev) => ({ ...prev, template: e.target.value }))}
+                  rows={14}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm font-mono resize-y"
+                />
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    setPoliceGroupState((prev) => ({ ...prev, loading: true }));
+                    try {
+                      const res = await generateBatchTemplate({
+                        threatIds: activeThreats.map((t) => t.threatId),
+                        abuseEmail: policeRecipient.email,
+                        registrar: '',
+                        language: 'ja',
+                        recipientType: 'police',
+                      });
+                      setPoliceGroupState((prev) => ({ ...prev, template: res.template, loading: false }));
+                    } catch {
+                      setPoliceGroupState((prev) => ({ ...prev, loading: false }));
+                    }
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  🔄 再生成
+                </button>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">添付エビデンス:</h4>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { key: 'screenshot', label: 'スクリーンショット' },
+                    { key: 'whois', label: 'WHOIS情報' },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={policeGroupState.evidenceTypes.includes(key)}
+                        onChange={(e) => {
+                          setPoliceGroupState((prev) => {
+                            const types = [...prev.evidenceTypes];
+                            if (e.target.checked) types.push(key);
+                            else {
+                              const ti = types.indexOf(key);
+                              if (ti >= 0) types.splice(ti, 1);
+                            }
+                            return { ...prev, evidenceTypes: types };
+                          });
+                        }}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <button
               onClick={() => setStep(1)}
@@ -490,7 +689,10 @@ export default function TakedownRequestPage() {
             </button>
             <button
               onClick={() => setStep(3)}
-              disabled={activeGroups.some((g) => !g.template || g.loading)}
+              disabled={
+                registrarGroups.some((g) => !g.template || g.loading) ||
+                (sendToPolice && (!policeGroupState.template || policeGroupState.loading))
+              }
               className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               次へ: 確認・送信 →
@@ -505,10 +707,11 @@ export default function TakedownRequestPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">以下の内容で削除申請を送信します</h2>
 
-            {activeGroups.map((g, i) => {
+            {/* Registrar groups */}
+            {registrarGroups.map((g, i) => {
               const email = g.abuseEmail || g.manualEmail;
               return (
-                <div key={i} className="border-b border-gray-100 dark:border-gray-700 py-4 last:border-0">
+                <div key={`reg-${i}`} className="border-b border-gray-100 dark:border-gray-700 py-4 last:border-0">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-gray-900 dark:text-gray-100">
                       📧 {g.registrar} — {g.threats.length}件
@@ -528,8 +731,30 @@ export default function TakedownRequestPage() {
               );
             })}
 
+            {/* Police group */}
+            {sendToPolice && policeRecipient && (
+              <div className="border-b border-gray-100 dark:border-gray-700 py-4 last:border-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                    🚔 {policeRecipient.name} — {activeThreats.length}件
+                  </h3>
+                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-bold">警察通報</span>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                  <div>送信先: <span className="font-mono">{policeRecipient.email}</span></div>
+                  <div>文面: 日本語</div>
+                  <div>添付: {policeGroupState.evidenceTypes.map((t) =>
+                    t === 'screenshot' ? 'スクショ' : t === 'whois' ? 'WHOIS' : t
+                  ).join(' + ') || 'なし'}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    対象: {activeThreats.map((t) => t.domain).join(', ')}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 font-medium">
-              合計: {activeThreats.length}件の脅威 → {activeGroups.length}通のメールを送信
+              合計: {activeThreats.length}件の脅威 → {registrarGroups.length + (sendToPolice ? 1 : 0)}通のメールを送信
             </div>
           </div>
 

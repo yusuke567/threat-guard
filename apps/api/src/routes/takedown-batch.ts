@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getAbuseContacts } from '../services/whois-abuse.js';
-import { generateTakedownTemplate } from '../services/takedown.js';
+import { generateTakedownTemplate, generatePoliceTemplateBatch, POLICE_RECIPIENT, type RecipientType } from '../services/takedown.js';
 import { sendTakedownEmail } from '../services/takedown-export.js';
 
 const router = Router();
@@ -65,7 +65,11 @@ router.post('/abuse-contacts', async (req, res) => {
       groups[key].threats.push(r);
     }
 
-    res.json({ threats: results, groups: Object.values(groups) });
+    res.json({
+      threats: results,
+      groups: Object.values(groups),
+      policeRecipient: POLICE_RECIPIENT,
+    });
   } catch (err: any) {
     console.error('Abuse contacts lookup failed:', err);
     res.status(500).json({ error: '送信先の取得に失敗しました。' });
@@ -82,6 +86,8 @@ router.post('/', async (req, res) => {
       template: z.string().min(1),
       language: z.string().default('en'),
       evidenceTypes: z.string().default(''),
+      recipientType: z.enum(['registrar', 'police']).default('registrar'),
+      recipientName: z.string().optional(),
     });
     const schema = z.object({
       items: z.array(itemSchema).min(1).max(100),
@@ -120,6 +126,10 @@ router.post('/', async (req, res) => {
         data: {
           detectedDomainId: item.threatId,
           batchId: batch.id,
+          recipientType: item.recipientType,
+          recipientName: item.recipientType === 'police'
+            ? (item.recipientName || POLICE_RECIPIENT.name)
+            : registrar,
           registrar,
           abuseEmail: item.abuseEmail,
           template: item.template,
@@ -215,6 +225,8 @@ router.get('/', async (req, res) => {
           batchId: td.batchId,
           abuseEmail: td.abuseEmail,
           registrar: td.registrar,
+          recipientType: td.recipientType,
+          recipientName: td.recipientName,
           createdAt: td.createdAt,
           items: [],
         };
@@ -312,6 +324,7 @@ router.post('/generate-template', async (req, res) => {
       abuseEmail: z.string().email(),
       registrar: z.string(),
       language: z.enum(['ja', 'en']).default('en'),
+      recipientType: z.enum(['registrar', 'police']).default('registrar'),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -331,6 +344,13 @@ router.post('/generate-template', async (req, res) => {
 
     const brand = threats[0].brand;
     const org = brand.organization;
+
+    // Police template uses a separate generation path
+    if (parsed.data.recipientType === 'police') {
+      const policeTemplate = await generatePoliceTemplateBatch(threats as any);
+      return res.json({ template: policeTemplate, language: 'ja' });
+    }
+
     const useJapanese = parsed.data.language === 'ja';
 
     let template = '';
