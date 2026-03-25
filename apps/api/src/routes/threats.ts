@@ -78,6 +78,7 @@ router.get('/:id', async (req, res) => {
         brand: { include: { organization: true } },
         analyses: { orderBy: { analyzedAt: 'desc' } },
         takedowns: { orderBy: { createdAt: 'desc' } },
+        browserReports: { orderBy: { createdAt: 'desc' } },
         webProbes: { orderBy: { probeAt: 'desc' }, take: 5 },
         statusLogs: { orderBy: { createdAt: 'desc' } },
       },

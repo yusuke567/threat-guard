@@ -16,6 +16,7 @@ import alertsRouter from './routes/alerts.js';
 import takedownBatchRouter from './routes/takedown-batch.js';
 import socialMonitorRouter from './routes/social-monitor.js';
 import publicDiagnoseRouter from './routes/public-diagnose.js';
+import browserReportsRouter from './routes/browser-reports.js';
 import { startScheduler } from './services/scheduler.js';
 import { authMiddleware, requireOrg } from './lib/auth-middleware.js';
 
@@ -62,6 +63,7 @@ app.use('/api', authMiddleware, requireOrg, phishingPatternsRouter);
 app.use('/api/alerts', authMiddleware, alertsRouter);
 app.use('/api/takedown-batches', authMiddleware, requireOrg, takedownBatchRouter);
 app.use('/api/social-posts', authMiddleware, requireOrg, socialMonitorRouter);
+app.use('/api/browser-reports', authMiddleware, requireOrg, browserReportsRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -96,9 +96,10 @@ model DetectedDomain {
   takedowns     TakedownRequest[]
   webProbes     WebProbe[]
   statusLogs    ThreatStatusLog[]
-  alertLogs     AlertLog[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  alertLogs      AlertLog[]
+  browserReports BrowserReport[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([brandId])
   @@index([status])
@@ -284,6 +285,26 @@ model FreeDiagnosis {
 
   @@index([email])
   @@index([expiresAt])
+  @@index([status])
+}
+
+model BrowserReport {
+  id               String         @id @default(uuid())
+  detectedDomainId String
+  detectedDomain   DetectedDomain @relation(fields: [detectedDomainId], references: [id], onDelete: Cascade)
+  provider         String         // GOOGLE_SAFE_BROWSING | MICROSOFT_SMARTSCREEN
+  status           String         @default("pending") // pending, submitted, confirmed, rejected, error
+  submittedUrl     String
+  operationId      String?        // Google Web Risk long-running operation ID
+  submittedAt      DateTime?
+  confirmedAt      DateTime?
+  errorMessage     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([detectedDomainId, provider])
+  @@index([detectedDomainId])
+  @@index([provider])
   @@index([status])
 }
 
