@@ -6,6 +6,7 @@ import {
   getThreat, getThreats, generateTakedown, getAbuseContacts,
   sendTakedownEmail, downloadTakedownPdf, getContentAnalysis,
   triggerProbe, updateThreatStatus, captureBrandScreenshot,
+  getBrowserReports, submitGoogleReport, submitMicrosoftReport,
 } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 import GlossaryTerm from '@/components/GlossaryTerm';
@@ -563,6 +564,185 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
           <InfoItem label="初回検知" value={formatDate(threat.firstSeen)} />
         </dl>
       </div>
+
+      {/* ブラウザ削除申請 */}
+      <BrowserReportSection threat={threat} />
+    </div>
+  );
+}
+
+// ─── Browser Report Section ─────────────────────────────────────────────────
+
+function BrowserReportSection({ threat }: { threat: any }) {
+  const [reports, setReports] = useState<any[]>([]);
+  const [manualUrls, setManualUrls] = useState<{ google?: string; microsoft?: string }>({});
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [submittingGoogle, setSubmittingGoogle] = useState(false);
+  const [submittingMicrosoft, setSubmittingMicrosoft] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const fetchReports = useCallback(async () => {
+    setLoadingReports(true);
+    try {
+      const data = await getBrowserReports(threat.id);
+      setReports(data.reports || []);
+      setManualUrls(data.manualUrls || {});
+    } catch {
+      // silently fail — section will show empty state
+    } finally {
+      setLoadingReports(false);
+    }
+  }, [threat.id]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  const googleReport = reports.find((r: any) => r.provider === 'GOOGLE_SAFE_BROWSING');
+  const microsoftReport = reports.find((r: any) => r.provider === 'MICROSOFT_SMARTSCREEN');
+
+  const handleSubmitGoogle = async () => {
+    setSubmittingGoogle(true);
+    setError('');
+    setSuccess('');
+    try {
+      await submitGoogleReport(threat.id);
+      setSuccess('Google Safe Browsingへの申請が完了しました');
+      await fetchReports();
+    } catch (e: any) {
+      setError(e.message || 'Google Safe Browsingへの申請に失敗しました');
+    } finally {
+      setSubmittingGoogle(false);
+    }
+  };
+
+  const handleSubmitMicrosoft = async () => {
+    setSubmittingMicrosoft(true);
+    setError('');
+    setSuccess('');
+    try {
+      await submitMicrosoftReport(threat.id);
+      setSuccess('Microsoft SmartScreenへの申請が完了しました');
+      await fetchReports();
+    } catch (e: any) {
+      setError(e.message || 'Microsoft SmartScreenへの申請に失敗しました');
+    } finally {
+      setSubmittingMicrosoft(false);
+    }
+  };
+
+  const getStatusBadge = (report: any) => {
+    if (!report) {
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">未申請</span>;
+    }
+    if (report.status === 'error') {
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">エラー</span>;
+    }
+    if (report.status === 'confirmed') {
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">確認済み</span>;
+    }
+    return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">申請済み</span>;
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        🛡️ ブラウザ削除申請
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        ブラウザのフィッシング保護機能にこのURLを報告し、ユーザーがアクセスした際に警告を表示させます。
+      </p>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">{error}</div>
+      )}
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm">{success}</div>
+      )}
+
+      {loadingReports ? (
+        <div className="flex items-center gap-3 py-4 justify-center">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+          <span className="text-sm text-gray-500 dark:text-gray-400">読み込み中...</span>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Google Safe Browsing */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Google Safe Browsing</span>
+                {getStatusBadge(googleReport)}
+              </div>
+              {googleReport?.submittedAt && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">申請日: {formatDate(googleReport.submittedAt)}</p>
+              )}
+              {googleReport?.status === 'error' && googleReport.errorMessage && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{googleReport.errorMessage}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {manualUrls.google && (
+                <a
+                  href={manualUrls.google}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg"
+                >
+                  手動申請
+                </a>
+              )}
+              {(!googleReport || googleReport.status === 'error') && (
+                <button
+                  onClick={handleSubmitGoogle}
+                  disabled={submittingGoogle}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {submittingGoogle ? '申請中...' : googleReport?.status === 'error' ? '再申請' : 'Google Safe Browsingに申請'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Microsoft SmartScreen */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Microsoft SmartScreen</span>
+                {getStatusBadge(microsoftReport)}
+              </div>
+              {microsoftReport?.submittedAt && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">申請日: {formatDate(microsoftReport.submittedAt)}</p>
+              )}
+              {microsoftReport?.status === 'error' && microsoftReport.errorMessage && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{microsoftReport.errorMessage}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {manualUrls.microsoft && (
+                <a
+                  href={manualUrls.microsoft}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg"
+                >
+                  手動申請
+                </a>
+              )}
+              {(!microsoftReport || microsoftReport.status === 'error') && (
+                <button
+                  onClick={handleSubmitMicrosoft}
+                  disabled={submittingMicrosoft}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  {submittingMicrosoft ? '申請中...' : microsoftReport?.status === 'error' ? '再申請' : 'SmartScreenに申請'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

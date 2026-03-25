@@ -236,3 +236,15 @@ export const updateSocialPostStatus = (id: string, status: string) =>
   fetchAPI<any>(`/social-posts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 export const triggerSocialScan = () =>
   fetchAPI<any>('/social-posts/scan', { method: 'POST' });
+
+// Browser Reports
+export const getBrowserReports = (threatId: string) =>
+  fetchAPI<any>(`/browser-reports/threat/${threatId}`);
+export const checkSafeBrowsing = (threatId: string) =>
+  fetchAPI<any>(`/browser-reports/check/${threatId}`);
+export const submitGoogleReport = (detectedDomainId: string) =>
+  fetchAPI<any>('/browser-reports/google', { method: 'POST', body: JSON.stringify({ detectedDomainId }) });
+export const submitMicrosoftReport = (detectedDomainId: string) =>
+  fetchAPI<any>('/browser-reports/microsoft', { method: 'POST', body: JSON.stringify({ detectedDomainId }) });
+export const submitBulkBrowserReports = (detectedDomainIds: string[], providers: string[]) =>
+  fetchAPI<any>('/browser-reports/bulk', { method: 'POST', body: JSON.stringify({ detectedDomainIds, providers }) });
