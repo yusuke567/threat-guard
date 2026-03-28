@@ -20,12 +20,15 @@ export async function captureScreenshot(url: string): Promise<string> {
       viewport: { width: 1280, height: 720 },
     });
 
-    await page.goto(url.startsWith('http') ? url : `https://${url}`, {
+    // Extract domain from URL (remove protocol and path)
+    const domain = url.replace(/^https?:\/\//, '').split('/')[0];
+
+    await page.goto(`https://${domain}`, {
       waitUntil: 'networkidle',
       timeout: 15000,
     }).catch(() => {
       // Try http if https fails
-      return page.goto(`http://${url}`, {
+      return page.goto(`http://${domain}`, {
         waitUntil: 'networkidle',
         timeout: 15000,
       });
