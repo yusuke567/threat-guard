@@ -26,39 +26,14 @@ const CHROMIUM_ARGS = [
   '--no-zygote',
 ];
 
+// Realistic browser user agent to avoid bot detection
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
 /**
  * Get Chromium executable path for the current environment
  */
 async function getChromiumPath(): Promise<string | undefined> {
-  try {
-    // First try Playwright's built-in path
-    const execPath = chromium.executablePath();
-    if (execPath) {
-      await fs.access(execPath);
-      console.log(`[Screenshot] Using Playwright Chromium: ${execPath}`);
-      return execPath;
-    }
-  } catch {
-    // Playwright path not accessible
-  }
-
-  // Check common Docker/Linux paths
-  const commonPaths = [
-    '/app/.playwright-browsers/chromium-*/chrome-linux/chrome',
-    '/root/.cache/ms-playwright/chromium-*/chrome-linux/chrome',
-    '/home/node/.cache/ms-playwright/chromium-*/chrome-linux/chrome',
-  ];
-
-  for (const pattern of commonPaths) {
-    try {
-      const { glob } = await import('node:fs/promises');
-      // Node 22+ has glob, but for compatibility, just check the env var path
-    } catch {
-      // glob not available
-    }
-  }
-
-  // Check PLAYWRIGHT_BROWSERS_PATH
+  // 1. Check PLAYWRIGHT_BROWSERS_PATH first (most reliable in Docker)
   const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
   if (browserPath) {
     try {
@@ -72,6 +47,40 @@ async function getChromiumPath(): Promise<string | undefined> {
       }
     } catch (err) {
       console.log(`[Screenshot] Could not find Chromium in PLAYWRIGHT_BROWSERS_PATH: ${err}`);
+    }
+  }
+
+  // 2. Try Playwright's built-in path
+  try {
+    const execPath = chromium.executablePath();
+    if (execPath) {
+      await fs.access(execPath);
+      console.log(`[Screenshot] Using Playwright Chromium: ${execPath}`);
+      return execPath;
+    }
+  } catch {
+    // Playwright path not accessible
+  }
+
+  // 3. Check common Docker/Linux paths manually
+  const commonPaths = [
+    '/app/.playwright-browsers',
+    '/root/.cache/ms-playwright',
+    '/home/node/.cache/ms-playwright',
+  ];
+
+  for (const basePath of commonPaths) {
+    try {
+      const entries = await fs.readdir(basePath);
+      const chromiumDir = entries.find(e => e.startsWith('chromium-'));
+      if (chromiumDir) {
+        const chromePath = path.join(basePath, chromiumDir, 'chrome-linux', 'chrome');
+        await fs.access(chromePath);
+        console.log(`[Screenshot] Found Chromium at: ${chromePath}`);
+        return chromePath;
+      }
+    } catch {
+      // Path not accessible, continue
     }
   }
 
@@ -111,6 +120,11 @@ export async function captureScreenshot(url: string): Promise<string> {
     page = await browser.newPage({
       viewport: { width: 1280, height: 720 },
       ignoreHTTPSErrors: true,
+      userAgent: USER_AGENT,
+      extraHTTPHeaders: {
+        'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      },
     });
 
     // Extract domain from URL (remove protocol and path)
@@ -125,17 +139,42 @@ export async function captureScreenshot(url: string): Promise<string> {
       if (navigated) break;
       console.log(`[Screenshot] Attempting to navigate to: ${targetUrl}`);
       try {
-        await page.goto(targetUrl, {
+        const response = await page.goto(targetUrl, {
           waitUntil: 'domcontentloaded',
           timeout: 45000,
         });
-        // Wait additional time for rendering
-        await page.waitForTimeout(3000);
-        console.log(`[Screenshot] Successfully navigated to: ${targetUrl}`);
-        navigated = true;
+
+        // Check if we got a valid response
+        const status = response?.status() || 0;
+        console.log(`[Screenshot] Response status: ${status}`);
+
+        if (status >= 200 && status < 400) {
+          // Wait additional time for rendering
+          await page.waitForTimeout(3000);
+          console.log(`[Screenshot] Successfully navigated to: ${targetUrl}`);
+          navigated = true;
+        } else if (status >= 400) {
+          console.log(`[Screenshot] Got error status ${status}, trying next URL...`);
+          lastError = new Error(`HTTP ${status}`);
+        }
       } catch (err: any) {
         lastError = err;
         console.error(`[Screenshot] Failed to navigate to ${targetUrl}:`, err.message);
+      }
+    }
+
+    if (!navigated) {
+      // Even if navigation failed, try to take a screenshot of whatever is displayed
+      console.log('[Screenshot] Navigation failed but attempting screenshot anyway...');
+      try {
+        const currentUrl = page.url();
+        if (currentUrl && currentUrl !== 'about:blank') {
+          await page.waitForTimeout(2000);
+          navigated = true;
+          console.log(`[Screenshot] Using partial page at: ${currentUrl}`);
+        }
+      } catch {
+        // ignore
       }
     }
 
