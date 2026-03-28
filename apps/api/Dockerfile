@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Install dependencies for Playwright and image processing
+# Install dependencies for Playwright, sharp, and image processing
 RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
@@ -23,6 +23,15 @@ RUN apt-get update && apt-get install -y \
     libxrandr2 \
     xdg-utils \
     wget \
+    # Additional libraries for sharp/libvips
+    libvips-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libgif-dev \
+    # Additional Playwright dependencies
+    libpango-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
