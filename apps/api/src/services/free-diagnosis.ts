@@ -29,20 +29,14 @@ const CHROMIUM_ARGS = [
   '--no-zygote',
 ];
 
+// Realistic browser user agent to avoid bot detection
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
 /**
  * Get Chromium executable path for the current environment
  */
 async function getChromiumPath(): Promise<string | undefined> {
-  try {
-    const execPath = chromium.executablePath();
-    if (execPath) {
-      await fs.access(execPath);
-      return execPath;
-    }
-  } catch {
-    // Playwright path not accessible
-  }
-
+  // 1. Check PLAYWRIGHT_BROWSERS_PATH first (most reliable in Docker)
   const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
   if (browserPath) {
     try {
@@ -51,10 +45,45 @@ async function getChromiumPath(): Promise<string | undefined> {
       if (chromiumDir) {
         const chromePath = path.join(browserPath, chromiumDir, 'chrome-linux', 'chrome');
         await fs.access(chromePath);
+        console.log(`[FreeDiagnosis] Using Chromium from PLAYWRIGHT_BROWSERS_PATH: ${chromePath}`);
         return chromePath;
       }
     } catch {
       // Could not find in PLAYWRIGHT_BROWSERS_PATH
+    }
+  }
+
+  // 2. Try Playwright's built-in path
+  try {
+    const execPath = chromium.executablePath();
+    if (execPath) {
+      await fs.access(execPath);
+      console.log(`[FreeDiagnosis] Using Playwright Chromium: ${execPath}`);
+      return execPath;
+    }
+  } catch {
+    // Playwright path not accessible
+  }
+
+  // 3. Check common Docker/Linux paths manually
+  const commonPaths = [
+    '/app/.playwright-browsers',
+    '/root/.cache/ms-playwright',
+    '/home/node/.cache/ms-playwright',
+  ];
+
+  for (const basePath of commonPaths) {
+    try {
+      const entries = await fs.readdir(basePath);
+      const chromiumDir = entries.find(e => e.startsWith('chromium-'));
+      if (chromiumDir) {
+        const chromePath = path.join(basePath, chromiumDir, 'chrome-linux', 'chrome');
+        await fs.access(chromePath);
+        console.log(`[FreeDiagnosis] Found Chromium at: ${chromePath}`);
+        return chromePath;
+      }
+    } catch {
+      // Path not accessible, continue
     }
   }
 
@@ -106,6 +135,11 @@ export async function runFreeDiagnosis(diagnosisId: string): Promise<void> {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 720 },
         ignoreHTTPSErrors: true,
+        userAgent: USER_AGENT,
+        extraHTTPHeaders: {
+          'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        },
       });
 
       let response;

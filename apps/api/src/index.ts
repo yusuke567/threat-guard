@@ -48,25 +48,67 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/health/browser', async (_req, res) => {
   const { chromium } = await import('playwright');
   const fs = await import('node:fs/promises');
-  const path = await import('node:path');
+  const pathModule = await import('node:path');
+
+  // Same args as used in screenshot services
+  const CHROMIUM_ARGS = [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-software-rasterizer',
+    '--single-process',
+    '--no-zygote',
+  ];
 
   const checks: Record<string, any> = {
     timestamp: new Date().toISOString(),
     PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || 'not set',
+    DATA_DIR: process.env.DATA_DIR || 'not set',
   };
+
+  // Helper to find Chromium path (same logic as screenshot services)
+  async function getChromiumPath(): Promise<string | undefined> {
+    const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+    if (browserPath) {
+      try {
+        const entries = await fs.readdir(browserPath);
+        const chromiumDir = entries.find((e: string) => e.startsWith('chromium-'));
+        if (chromiumDir) {
+          const chromePath = pathModule.join(browserPath, chromiumDir, 'chrome-linux', 'chrome');
+          await fs.access(chromePath);
+          return chromePath;
+        }
+      } catch {
+        // Could not find in PLAYWRIGHT_BROWSERS_PATH
+      }
+    }
+
+    try {
+      const execPath = chromium.executablePath();
+      if (execPath) {
+        await fs.access(execPath);
+        return execPath;
+      }
+    } catch {
+      // Playwright path not accessible
+    }
+
+    return undefined;
+  }
 
   // Check Playwright executable path
   try {
     const execPath = chromium.executablePath();
-    checks.executablePath = execPath;
+    checks.playwrightExecPath = execPath;
     try {
       await fs.access(execPath);
-      checks.executableExists = true;
+      checks.playwrightExecExists = true;
     } catch {
-      checks.executableExists = false;
+      checks.playwrightExecExists = false;
     }
   } catch (err: any) {
-    checks.executablePathError = err.message;
+    checks.playwrightExecError = err.message;
   }
 
   // Check PLAYWRIGHT_BROWSERS_PATH contents
@@ -80,21 +122,40 @@ app.get('/api/health/browser', async (_req, res) => {
     }
   }
 
-  // Try to launch browser
+  // Get actual executable path that will be used
+  const executablePath = await getChromiumPath();
+  checks.resolvedExecutablePath = executablePath || 'default (playwright resolution)';
+
+  // Try to launch browser with same config as screenshot services
   try {
     const browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'],
+      executablePath,
+      args: CHROMIUM_ARGS,
     });
     checks.browserLaunch = 'success';
     checks.browserVersion = browser.version();
+
+    // Try to create a page and navigate (more comprehensive test)
+    try {
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 720 },
+      });
+      await page.setContent('<html><body>Test</body></html>');
+      checks.pageCreate = 'success';
+      await page.close();
+    } catch (pageErr: any) {
+      checks.pageCreate = 'failed';
+      checks.pageCreateError = pageErr.message;
+    }
+
     await browser.close();
   } catch (err: any) {
     checks.browserLaunch = 'failed';
     checks.browserLaunchError = err.message;
   }
 
-  const allOk = checks.executableExists && checks.browserLaunch === 'success';
+  const allOk = checks.browserLaunch === 'success' && checks.pageCreate === 'success';
   res.status(allOk ? 200 : 500).json({ status: allOk ? 'ok' : 'error', checks });
 });
 

@@ -30,19 +30,32 @@ const CHROMIUM_ARGS = [
 ];
 
 /**
+ * Convert a screenshot URL path to a base64 data URI for embedding in HTML
+ */
+async function getScreenshotAsBase64(screenshotUrl: string): Promise<string | null> {
+  try {
+    // Convert URL path to filesystem path
+    let filepath = screenshotUrl;
+    if (screenshotUrl.startsWith('/screenshots/')) {
+      filepath = path.join(DATA_DIR, screenshotUrl.slice(1));
+    } else if (!path.isAbsolute(screenshotUrl)) {
+      filepath = path.join(DATA_DIR, screenshotUrl);
+    }
+
+    const buffer = await fs.readFile(filepath);
+    const base64 = buffer.toString('base64');
+    return `data:image/png;base64,${base64}`;
+  } catch (err) {
+    console.error(`[TakedownExport] Failed to read screenshot: ${screenshotUrl}`, err);
+    return null;
+  }
+}
+
+/**
  * Get Chromium executable path for the current environment
  */
 async function getChromiumPath(): Promise<string | undefined> {
-  try {
-    const execPath = chromium.executablePath();
-    if (execPath) {
-      await fs.access(execPath);
-      return execPath;
-    }
-  } catch {
-    // Playwright path not accessible
-  }
-
+  // 1. Check PLAYWRIGHT_BROWSERS_PATH first (most reliable in Docker)
   const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
   if (browserPath) {
     try {
@@ -51,10 +64,45 @@ async function getChromiumPath(): Promise<string | undefined> {
       if (chromiumDir) {
         const chromePath = path.join(browserPath, chromiumDir, 'chrome-linux', 'chrome');
         await fs.access(chromePath);
+        console.log(`[TakedownExport] Using Chromium from PLAYWRIGHT_BROWSERS_PATH: ${chromePath}`);
         return chromePath;
       }
     } catch {
       // Could not find in PLAYWRIGHT_BROWSERS_PATH
+    }
+  }
+
+  // 2. Try Playwright's built-in path
+  try {
+    const execPath = chromium.executablePath();
+    if (execPath) {
+      await fs.access(execPath);
+      console.log(`[TakedownExport] Using Playwright Chromium: ${execPath}`);
+      return execPath;
+    }
+  } catch {
+    // Playwright path not accessible
+  }
+
+  // 3. Check common Docker/Linux paths manually
+  const commonPaths = [
+    '/app/.playwright-browsers',
+    '/root/.cache/ms-playwright',
+    '/home/node/.cache/ms-playwright',
+  ];
+
+  for (const basePath of commonPaths) {
+    try {
+      const entries = await fs.readdir(basePath);
+      const chromiumDir = entries.find(e => e.startsWith('chromium-'));
+      if (chromiumDir) {
+        const chromePath = path.join(basePath, chromiumDir, 'chrome-linux', 'chrome');
+        await fs.access(chromePath);
+        console.log(`[TakedownExport] Found Chromium at: ${chromePath}`);
+        return chromePath;
+      }
+    } catch {
+      // Path not accessible, continue
     }
   }
 
@@ -94,7 +142,7 @@ async function loadTakedownWithEvidence(takedownId: string) {
 /**
  * Build evidence HTML section
  */
-function buildEvidenceHtml(dd: any, whois: Record<string, any>, ssl: Record<string, any>): string {
+async function buildEvidenceHtml(dd: any, whois: Record<string, any>, ssl: Record<string, any>): Promise<string> {
   const analysis = dd.analyses?.[0];
   const sections: string[] = [];
 
@@ -158,15 +206,25 @@ function buildEvidenceHtml(dd: any, whois: Record<string, any>, ssl: Record<stri
     `);
   }
 
-  // 4. Screenshot
+  // 4. Screenshot (convert to base64 for embedding in PDF)
   if (dd.screenshotUrl) {
-    sections.push(`
-      <div class="evidence-section">
-        <h3>${ssl && Object.keys(ssl).length > 0 ? '4' : '3'}. Screenshot Evidence</h3>
-        <img src="${escapeHtml(dd.screenshotUrl)}" style="max-width:100%;border:1px solid #ddd;border-radius:8px;" />
-        <p class="caption">Screenshot captured on ${new Date(dd.lastSeen).toISOString().split('T')[0]}</p>
-      </div>
-    `);
+    const screenshotBase64 = await getScreenshotAsBase64(dd.screenshotUrl);
+    if (screenshotBase64) {
+      sections.push(`
+        <div class="evidence-section">
+          <h3>${ssl && Object.keys(ssl).length > 0 ? '4' : '3'}. Screenshot Evidence</h3>
+          <img src="${screenshotBase64}" style="max-width:100%;border:1px solid #ddd;border-radius:8px;" />
+          <p class="caption">Screenshot captured on ${new Date(dd.lastSeen).toISOString().split('T')[0]}</p>
+        </div>
+      `);
+    } else {
+      sections.push(`
+        <div class="evidence-section">
+          <h3>${ssl && Object.keys(ssl).length > 0 ? '4' : '3'}. Screenshot Evidence</h3>
+          <p style="color:#999;">Screenshot not available</p>
+        </div>
+      `);
+    }
   }
 
   return sections.join('\n');
@@ -177,7 +235,7 @@ function buildEvidenceHtml(dd: any, whois: Record<string, any>, ssl: Record<stri
  */
 export async function generateTakedownPdf(takedownId: string): Promise<Buffer> {
   const { takedown, dd, whois, ssl } = await loadTakedownWithEvidence(takedownId);
-  const evidenceHtml = buildEvidenceHtml(dd, whois, ssl);
+  const evidenceHtml = await buildEvidenceHtml(dd, whois, ssl);
 
   const html = `<!DOCTYPE html>
 <html>
