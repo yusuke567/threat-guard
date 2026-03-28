@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import Tooltip from './Tooltip';
 import { RiskBadgeCompact } from './RiskBadge';
 import { triggerProbe } from '@/lib/api';
@@ -187,9 +187,8 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
         </thead>
         <tbody>
           {threats.map((threat) => (
-            <>
+            <Fragment key={threat.id}>
               <tr
-                key={threat.id}
                 className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 cursor-pointer ${
                   expandedRowId === threat.id ? 'bg-gray-50 dark:bg-gray-900' : ''
                 }`}
@@ -239,7 +238,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
 
               {/* Layer 2: Expanded Detail Panel */}
               {expandable && expandedRowId === threat.id && (
-                <tr key={`${threat.id}-detail`}>
+                <tr>
                   <td colSpan={selectable ? 8 : 7} className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                     <div className="p-5 space-y-4">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -367,7 +366,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                   </td>
                 </tr>
               )}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>
