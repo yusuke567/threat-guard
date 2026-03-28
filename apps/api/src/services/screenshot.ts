@@ -14,7 +14,15 @@ export async function captureScreenshot(url: string): Promise<string> {
   const filename = `${Date.now()}-${url.replace(/[^a-z0-9]/gi, '_').slice(0, 50)}.png`;
   const filepath = path.join(SCREENSHOTS_DIR, filename);
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
+  });
   try {
     const page = await browser.newPage({
       viewport: { width: 1280, height: 720 },
@@ -23,16 +31,27 @@ export async function captureScreenshot(url: string): Promise<string> {
     // Extract domain from URL (remove protocol and path)
     const domain = url.replace(/^https?:\/\//, '').split('/')[0];
 
-    await page.goto(`https://${domain}`, {
-      waitUntil: 'networkidle',
-      timeout: 15000,
-    }).catch(() => {
-      // Try http if https fails
-      return page.goto(`http://${domain}`, {
-        waitUntil: 'networkidle',
-        timeout: 15000,
-      });
-    });
+    let navigated = false;
+    const urls = [`https://${domain}`, `http://${domain}`];
+
+    for (const targetUrl of urls) {
+      if (navigated) break;
+      try {
+        await page.goto(targetUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 30000,
+        });
+        // Wait additional time for rendering
+        await page.waitForTimeout(2000);
+        navigated = true;
+      } catch (err) {
+        console.error(`[Screenshot] Failed to navigate to ${targetUrl}:`, err);
+      }
+    }
+
+    if (!navigated) {
+      throw new Error(`Failed to navigate to any URL for domain: ${domain}`);
+    }
 
     await page.screenshot({ path: filepath, fullPage: false });
     return filepath;
