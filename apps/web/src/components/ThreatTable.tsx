@@ -73,6 +73,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
   const [capturingScreenshot, setCapturingScreenshot] = useState<Set<string>>(new Set());
 
   const handleCaptureScreenshot = async (threatId: string, e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     setCapturingScreenshot(prev => new Set(prev).add(threatId));
     try {
@@ -247,6 +248,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200">📸 スクリーンショット</h4>
                             <button
+                              type="button"
                               onClick={(e) => handleCaptureScreenshot(threat.id, e)}
                               disabled={capturingScreenshot.has(threat.id)}
                               className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -270,6 +272,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                             <div className="flex flex-col items-center justify-center h-32 bg-gray-100 dark:bg-gray-700 rounded text-gray-400 dark:text-gray-500 text-sm gap-2">
                               <span>スクリーンショット未取得</span>
                               <button
+                                type="button"
                                 onClick={(e) => handleCaptureScreenshot(threat.id, e)}
                                 disabled={capturingScreenshot.has(threat.id)}
                                 className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
