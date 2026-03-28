@@ -201,6 +201,7 @@ function RegulatoryReport({ data }: { data: any }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
+                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">スクリーンショット</th>
                 <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ドメイン</th>
                 <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ブランド</th>
                 <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">リスク</th>
@@ -213,6 +214,19 @@ function RegulatoryReport({ data }: { data: any }) {
             <tbody>
               {data.threats.map((t: any, i: number) => (
                 <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
+                  <td className="py-2 pr-3">
+                    {t.screenshotUrl ? (
+                      <img
+                        src={t.screenshotUrl}
+                        alt={`${t.domain} のスクリーンショット`}
+                        className="w-24 h-16 object-cover rounded border border-gray-200 dark:border-gray-700"
+                      />
+                    ) : (
+                      <div className="w-24 h-16 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
+                        未取得
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2 pr-3 font-mono text-xs">{t.domain}</td>
                   <td className="py-2 pr-3">{t.brandName}</td>
                   <td className="py-2 pr-3">
