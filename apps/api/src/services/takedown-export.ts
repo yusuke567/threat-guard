@@ -1,11 +1,12 @@
-import { chromium } from 'playwright';
+import { chromium, Browser } from 'playwright';
 import nodemailer from 'nodemailer';
 import { prisma } from '../lib/prisma.js';
 import path from 'path';
 import fs from 'fs/promises';
 import { sendMail, isMailConfigured } from './mail.js';
 
-const EXPORT_DIR = path.resolve('exports');
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
+const EXPORT_DIR = path.join(DATA_DIR, 'exports');
 
 /**
  * Load full takedown data with evidence
@@ -218,26 +219,44 @@ export async function generateTakedownPdf(takedownId: string): Promise<Buffer> {
 </body>
 </html>`;
 
-  const browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-    ],
-  });
+  let browser: Browser | null = null;
   try {
+    console.log('[TakedownExport] Launching browser for PDF generation');
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+        '--single-process',
+        '--no-zygote',
+      ],
+    });
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle' });
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1000);
     const pdf = await page.pdf({
       format: 'A4',
       margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
       printBackground: true,
     });
+    await page.close();
+    console.log('[TakedownExport] PDF generated successfully');
     return Buffer.from(pdf);
+  } catch (err: any) {
+    console.error('[TakedownExport] PDF generation failed:', err.message);
+    throw err;
   } finally {
-    await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error('[TakedownExport] Error closing browser:', closeErr);
+      }
+    }
   }
 }
 

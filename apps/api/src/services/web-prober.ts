@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium, Browser } from 'playwright';
 import { resolve4 } from 'node:dns/promises';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -28,6 +28,8 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     where: { id: detectedDomainId },
   });
 
+  console.log(`[WebProber] Starting probe for domain: ${domain.domain}`);
+
   let ip: string | null = null;
   let dnsResolved = false;
   let httpStatus: number | null = null;
@@ -43,44 +45,58 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     if (addresses.length > 0) {
       ip = addresses[0];
       dnsResolved = true;
+      console.log(`[WebProber] DNS resolved: ${domain.domain} -> ${ip}`);
     }
   } catch (e: any) {
+    console.log(`[WebProber] DNS resolution failed for ${domain.domain}: ${e.message}`);
     // DNS failed — domain may not resolve, continue anyway
   }
 
   // 2. Playwright probe
-  const browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-    ],
-  });
+  let browser: Browser | null = null;
   try {
+    console.log(`[WebProber] Launching browser for ${domain.domain}`);
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+        '--single-process',
+        '--no-zygote',
+      ],
+    });
     const page = await browser.newPage({
       viewport: { width: 1280, height: 720 },
+      ignoreHTTPSErrors: true,
     });
 
     let response;
     try {
+      console.log(`[WebProber] Trying HTTPS for ${domain.domain}`);
       response = await page.goto(`https://${domain.domain}`, {
-        waitUntil: 'networkidle',
-        timeout: 30000,
+        waitUntil: 'domcontentloaded',
+        timeout: 45000,
       });
-    } catch {
+      // Wait for additional rendering
+      await page.waitForTimeout(2000);
+    } catch (httpsErr: any) {
+      console.log(`[WebProber] HTTPS failed: ${httpsErr.message}, trying HTTP...`);
       // HTTPS failed or timed out, try HTTP
       try {
         response = await page.goto(`http://${domain.domain}`, {
-          waitUntil: 'networkidle',
-          timeout: 30000,
+          waitUntil: 'domcontentloaded',
+          timeout: 45000,
         });
+        await page.waitForTimeout(2000);
       } catch (e: any) {
         error = `Navigation failed: ${e.message}`;
+        console.log(`[WebProber] HTTP also failed: ${e.message}`);
         // Capture partial page info even on timeout
         try {
-          httpStatus = (await page.evaluate(() => document.readyState)) ? null : null;
           finalUrl = page.url();
           const html = await page.content();
           if (html && html.length > 100) htmlSnippet = html.slice(0, 5000);
@@ -94,6 +110,7 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
       headers = JSON.stringify(Object.fromEntries(
         Object.entries(response.headers())
       ));
+      console.log(`[WebProber] Got response: status=${httpStatus}, url=${finalUrl}`);
 
       // Get HTML snippet (first 5000 chars)
       try {
@@ -109,10 +126,24 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     try {
       await page.screenshot({ path: filepath, fullPage: false });
       screenshotPath = `/screenshots/${filename}`;
-    } catch { /* ignore */ }
+      console.log(`[WebProber] Screenshot saved: ${screenshotPath}`);
+    } catch (screenshotErr: any) {
+      console.error(`[WebProber] Screenshot failed: ${screenshotErr.message}`);
+    }
 
+    await page.close();
+  } catch (browserErr: any) {
+    console.error(`[WebProber] Browser error: ${browserErr.message}`);
+    error = error || browserErr.message;
   } finally {
-    await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+        console.log(`[WebProber] Browser closed for ${domain.domain}`);
+      } catch (closeErr) {
+        console.error(`[WebProber] Error closing browser:`, closeErr);
+      }
+    }
   }
 
   // 3. Save to DB
