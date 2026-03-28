@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium, Browser } from 'playwright';
 import { resolve4 } from 'node:dns/promises';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -40,35 +40,47 @@ export async function runFreeDiagnosis(diagnosisId: string): Promise<void> {
     }
 
     // 2. Web probe + screenshot with Playwright
-    const browser = await chromium.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-      ],
-    });
+    let browser: Browser | null = null;
     try {
+      console.log(`[FreeDiagnosis] Launching browser for ${diagnosis.targetUrl}`);
+      browser = await chromium.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions',
+          '--single-process',
+          '--no-zygote',
+        ],
+      });
+
       const page = await browser.newPage({
         viewport: { width: 1280, height: 720 },
+        ignoreHTTPSErrors: true,
       });
 
       let response;
       try {
         response = await page.goto(diagnosis.targetUrl, {
-          waitUntil: 'networkidle',
-          timeout: 20000,
+          waitUntil: 'domcontentloaded',
+          timeout: 45000,
         });
-      } catch {
+        await page.waitForTimeout(2000);
+      } catch (httpsErr: any) {
+        console.log(`[FreeDiagnosis] Primary URL failed: ${httpsErr.message}`);
         // HTTPS might fail, try HTTP
         try {
           const httpUrl = diagnosis.targetUrl.replace('https://', 'http://');
           response = await page.goto(httpUrl, {
-            waitUntil: 'networkidle',
-            timeout: 20000,
+            waitUntil: 'domcontentloaded',
+            timeout: 45000,
           });
-        } catch {
+          await page.waitForTimeout(2000);
+        } catch (httpErr: any) {
+          console.log(`[FreeDiagnosis] HTTP fallback also failed: ${httpErr.message}`);
           // Both failed
         }
       }
@@ -78,6 +90,7 @@ export async function runFreeDiagnosis(diagnosisId: string): Promise<void> {
         finalUrl = page.url();
         const html = await page.content();
         if (html) htmlSnippet = html.slice(0, 5000);
+        console.log(`[FreeDiagnosis] Got response: status=${httpStatus}`);
 
         // Extract SSL info from security details
         try {
@@ -103,11 +116,22 @@ export async function runFreeDiagnosis(diagnosisId: string): Promise<void> {
         const filepath = path.join(SCREENSHOTS_DIR, filename);
         await page.screenshot({ path: filepath, fullPage: false });
         screenshotUrl = `/screenshots/${filename}`;
-      } catch {
-        // Screenshot failed — not critical
+        console.log(`[FreeDiagnosis] Screenshot saved: ${screenshotUrl}`);
+      } catch (screenshotErr: any) {
+        console.error(`[FreeDiagnosis] Screenshot failed: ${screenshotErr.message}`);
       }
+
+      await page.close();
+    } catch (browserErr: any) {
+      console.error(`[FreeDiagnosis] Browser error: ${browserErr.message}`);
     } finally {
-      await browser.close();
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (closeErr) {
+          console.error(`[FreeDiagnosis] Error closing browser:`, closeErr);
+        }
+      }
     }
 
     // 3. AI analysis with Claude
