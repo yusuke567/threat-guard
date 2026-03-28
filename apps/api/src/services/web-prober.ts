@@ -49,7 +49,15 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
   }
 
   // 2. Playwright probe
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ],
+  });
   try {
     const page = await browser.newPage({
       viewport: { width: 1280, height: 720 },
