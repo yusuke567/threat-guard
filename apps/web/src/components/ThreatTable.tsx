@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Tooltip from './Tooltip';
 import { RiskBadgeCompact } from './RiskBadge';
+import { triggerProbe } from '@/lib/api';
 
 interface BrowserReport {
   provider: string;
@@ -64,10 +65,29 @@ interface ThreatTableProps {
   selectable?: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  onScreenshotCaptured?: () => void;
 }
 
-export default function ThreatTable({ threats, onSelect, expandable = false, selectable = false, selectedIds, onSelectionChange }: ThreatTableProps) {
+export default function ThreatTable({ threats, onSelect, expandable = false, selectable = false, selectedIds, onSelectionChange, onScreenshotCaptured }: ThreatTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [capturingScreenshot, setCapturingScreenshot] = useState<Set<string>>(new Set());
+
+  const handleCaptureScreenshot = async (threatId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCapturingScreenshot(prev => new Set(prev).add(threatId));
+    try {
+      await triggerProbe(threatId);
+      onScreenshotCaptured?.();
+    } catch (err: any) {
+      alert(`スクリーンショット取得に失敗しました: ${err.message}`);
+    } finally {
+      setCapturingScreenshot(prev => {
+        const next = new Set(prev);
+        next.delete(threatId);
+        return next;
+      });
+    }
+  };
 
   const toggleSelect = (id: string, e: React.MouseEvent | React.ChangeEvent) => {
     e.stopPropagation();
@@ -224,7 +244,22 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Screenshot */}
                         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                          <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">📸 スクリーンショット</h4>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200">📸 スクリーンショット</h4>
+                            <button
+                              onClick={(e) => handleCaptureScreenshot(threat.id, e)}
+                              disabled={capturingScreenshot.has(threat.id)}
+                              className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {capturingScreenshot.has(threat.id) ? (
+                                <span className="flex items-center gap-1">
+                                  <span className="animate-spin">⟳</span> 取得中...
+                                </span>
+                              ) : (
+                                '🔄 再取得'
+                              )}
+                            </button>
+                          </div>
                           {threat.screenshotUrl ? (
                             <img
                               src={threat.screenshotUrl}
@@ -232,8 +267,15 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                               className="w-full rounded border border-gray-200 dark:border-gray-700"
                             />
                           ) : (
-                            <div className="flex items-center justify-center h-32 bg-gray-100 dark:bg-gray-700 rounded text-gray-400 dark:text-gray-500 text-sm">
-                              スクリーンショット未取得
+                            <div className="flex flex-col items-center justify-center h-32 bg-gray-100 dark:bg-gray-700 rounded text-gray-400 dark:text-gray-500 text-sm gap-2">
+                              <span>スクリーンショット未取得</span>
+                              <button
+                                onClick={(e) => handleCaptureScreenshot(threat.id, e)}
+                                disabled={capturingScreenshot.has(threat.id)}
+                                className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {capturingScreenshot.has(threat.id) ? '取得中...' : '📷 スクリーンショットを取得'}
+                              </button>
                             </div>
                           )}
                         </div>
