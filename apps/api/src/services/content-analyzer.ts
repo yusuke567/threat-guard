@@ -54,6 +54,23 @@ async function getImageSimilarity(
   probeScreenshotPath: string,
   brandDomain: string
 ): Promise<number | null> {
+  // Convert URL path to filesystem path
+  // probeScreenshotPath is stored as '/screenshots/...' in DB but we need actual file path
+  let actualProbePath = probeScreenshotPath;
+  if (probeScreenshotPath.startsWith('/screenshots/')) {
+    actualProbePath = path.join(DATA_DIR, probeScreenshotPath.slice(1));
+  } else if (!path.isAbsolute(probeScreenshotPath)) {
+    actualProbePath = path.join(DATA_DIR, probeScreenshotPath);
+  }
+
+  // Verify probe screenshot exists
+  try {
+    await fs.access(actualProbePath);
+  } catch {
+    console.error(`[ImageSimilarity] Probe screenshot not found: ${actualProbePath}`);
+    return null;
+  }
+
   // Look for a cached reference screenshot for the brand
   const refDir = path.join(DATA_DIR, 'screenshots', 'reference');
   const refPath = path.join(refDir, `${brandDomain.replace(/[^a-z0-9]/gi, '_')}.png`);
@@ -77,9 +94,12 @@ async function getImageSimilarity(
   }
 
   try {
-    const similarity = await calculateSimilarity(probeScreenshotPath, refPath);
+    console.log(`[ImageSimilarity] Comparing: ${actualProbePath} vs ${refPath}`);
+    const similarity = await calculateSimilarity(actualProbePath, refPath);
+    console.log(`[ImageSimilarity] Similarity score: ${similarity}`);
     return similarity;
-  } catch {
+  } catch (err) {
+    console.error(`[ImageSimilarity] Comparison failed:`, err);
     return null;
   }
 }
