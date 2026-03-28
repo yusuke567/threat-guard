@@ -8,6 +8,59 @@ import { sendMail, isMailConfigured } from './mail.js';
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
 const EXPORT_DIR = path.join(DATA_DIR, 'exports');
 
+// Standard Docker/containerized Chromium flags
+const CHROMIUM_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-software-rasterizer',
+  '--disable-extensions',
+  '--disable-background-networking',
+  '--disable-default-apps',
+  '--disable-sync',
+  '--disable-translate',
+  '--hide-scrollbars',
+  '--metrics-recording-only',
+  '--mute-audio',
+  '--no-first-run',
+  '--safebrowsing-disable-auto-update',
+  '--single-process',
+  '--no-zygote',
+];
+
+/**
+ * Get Chromium executable path for the current environment
+ */
+async function getChromiumPath(): Promise<string | undefined> {
+  try {
+    const execPath = chromium.executablePath();
+    if (execPath) {
+      await fs.access(execPath);
+      return execPath;
+    }
+  } catch {
+    // Playwright path not accessible
+  }
+
+  const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (browserPath) {
+    try {
+      const entries = await fs.readdir(browserPath);
+      const chromiumDir = entries.find(e => e.startsWith('chromium-'));
+      if (chromiumDir) {
+        const chromePath = path.join(browserPath, chromiumDir, 'chrome-linux', 'chrome');
+        await fs.access(chromePath);
+        return chromePath;
+      }
+    } catch {
+      // Could not find in PLAYWRIGHT_BROWSERS_PATH
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Load full takedown data with evidence
  */
@@ -208,7 +261,7 @@ export async function generateTakedownPdf(takedownId: string): Promise<Buffer> {
   <div class="content">${escapeHtml(takedown.template)}</div>
 
   <div class="evidence-divider">
-    <h2>📎 Supporting Evidence</h2>
+    <h2>Supporting Evidence</h2>
     <p>The following evidence supports this takedown request.</p>
   </div>
   ${evidenceHtml}
@@ -221,19 +274,12 @@ export async function generateTakedownPdf(takedownId: string): Promise<Buffer> {
 
   let browser: Browser | null = null;
   try {
+    const executablePath = await getChromiumPath();
     console.log('[TakedownExport] Launching browser for PDF generation');
     browser = await chromium.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--disable-extensions',
-        '--single-process',
-        '--no-zygote',
-      ],
+      executablePath,
+      args: CHROMIUM_ARGS,
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'domcontentloaded' });
@@ -248,6 +294,7 @@ export async function generateTakedownPdf(takedownId: string): Promise<Buffer> {
     return Buffer.from(pdf);
   } catch (err: any) {
     console.error('[TakedownExport] PDF generation failed:', err.message);
+    console.error('[TakedownExport] PDF generation error stack:', err.stack);
     throw err;
   } finally {
     if (browser) {

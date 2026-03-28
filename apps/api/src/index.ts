@@ -41,7 +41,61 @@ app.use('/uploads', express.static(path.join(DATA_DIR, 'uploads')));
 
 // Health check (public)
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'dfaacea-smtp465' });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'playwright-fix-v2' });
+});
+
+// Playwright/Browser health check (public)
+app.get('/api/health/browser', async (_req, res) => {
+  const { chromium } = await import('playwright');
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+
+  const checks: Record<string, any> = {
+    timestamp: new Date().toISOString(),
+    PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH || 'not set',
+  };
+
+  // Check Playwright executable path
+  try {
+    const execPath = chromium.executablePath();
+    checks.executablePath = execPath;
+    try {
+      await fs.access(execPath);
+      checks.executableExists = true;
+    } catch {
+      checks.executableExists = false;
+    }
+  } catch (err: any) {
+    checks.executablePathError = err.message;
+  }
+
+  // Check PLAYWRIGHT_BROWSERS_PATH contents
+  const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (browserPath) {
+    try {
+      const entries = await fs.readdir(browserPath);
+      checks.browserPathContents = entries;
+    } catch (err: any) {
+      checks.browserPathError = err.message;
+    }
+  }
+
+  // Try to launch browser
+  try {
+    const browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--single-process', '--no-zygote'],
+    });
+    checks.browserLaunch = 'success';
+    checks.browserVersion = browser.version();
+    await browser.close();
+  } catch (err: any) {
+    checks.browserLaunch = 'failed';
+    checks.browserLaunchError = err.message;
+  }
+
+  const allOk = checks.executableExists && checks.browserLaunch === 'success';
+  res.status(allOk ? 200 : 500).json({ status: allOk ? 'ok' : 'error', checks });
 });
 
 // Auth routes (public)

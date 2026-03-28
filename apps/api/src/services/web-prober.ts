@@ -7,6 +7,59 @@ import { prisma } from '../lib/prisma.js';
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
 const SCREENSHOTS_DIR = path.join(DATA_DIR, 'screenshots');
 
+// Standard Docker/containerized Chromium flags
+const CHROMIUM_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-software-rasterizer',
+  '--disable-extensions',
+  '--disable-background-networking',
+  '--disable-default-apps',
+  '--disable-sync',
+  '--disable-translate',
+  '--hide-scrollbars',
+  '--metrics-recording-only',
+  '--mute-audio',
+  '--no-first-run',
+  '--safebrowsing-disable-auto-update',
+  '--single-process',
+  '--no-zygote',
+];
+
+/**
+ * Get Chromium executable path for the current environment
+ */
+async function getChromiumPath(): Promise<string | undefined> {
+  try {
+    const execPath = chromium.executablePath();
+    if (execPath) {
+      await fs.access(execPath);
+      return execPath;
+    }
+  } catch {
+    // Playwright path not accessible
+  }
+
+  const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (browserPath) {
+    try {
+      const entries = await fs.readdir(browserPath);
+      const chromiumDir = entries.find(e => e.startsWith('chromium-'));
+      if (chromiumDir) {
+        const chromePath = path.join(browserPath, chromiumDir, 'chrome-linux', 'chrome');
+        await fs.access(chromePath);
+        return chromePath;
+      }
+    } catch {
+      // Could not find in PLAYWRIGHT_BROWSERS_PATH
+    }
+  }
+
+  return undefined;
+}
+
 export interface ProbeResult {
   id: string;
   httpStatus: number | null;
@@ -55,19 +108,12 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
   // 2. Playwright probe
   let browser: Browser | null = null;
   try {
+    const executablePath = await getChromiumPath();
     console.log(`[WebProber] Launching browser for ${domain.domain}`);
     browser = await chromium.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--disable-extensions',
-        '--single-process',
-        '--no-zygote',
-      ],
+      executablePath,
+      args: CHROMIUM_ARGS,
     });
     const page = await browser.newPage({
       viewport: { width: 1280, height: 720 },
@@ -134,6 +180,7 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     await page.close();
   } catch (browserErr: any) {
     console.error(`[WebProber] Browser error: ${browserErr.message}`);
+    console.error(`[WebProber] Browser error stack: ${browserErr.stack}`);
     error = error || browserErr.message;
   } finally {
     if (browser) {
