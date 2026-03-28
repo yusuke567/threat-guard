@@ -1,0 +1,7 @@
+.next/
+node_modules/
+screenshots/
+*.db
+*.db-journal
+*.db.bak.*
+apps/api/
