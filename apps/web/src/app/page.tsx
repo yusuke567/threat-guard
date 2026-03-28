@@ -46,9 +46,8 @@ export default function Dashboard() {
     getBrands().then(setBrands).catch(console.error);
   }, []);
 
-  // Fetch threats when filters change
-  useEffect(() => {
-    setLoading(true);
+  // Build query params from current filters and summaryFilter
+  const buildQueryParams = () => {
     const params: Record<string, string> = {};
 
     // Apply filters
@@ -88,6 +87,14 @@ export default function Dashboard() {
         params.fromDate = from.toISOString();
       }
     }
+
+    return params;
+  };
+
+  // Fetch threats when filters change
+  useEffect(() => {
+    setLoading(true);
+    const params = buildQueryParams();
 
     Promise.all([
       getThreats(params),
@@ -330,16 +337,8 @@ export default function Dashboard() {
               selectedIds={selectedIds}
               onSelectionChange={setSelectedIds}
               onScreenshotCaptured={() => {
-                // Refresh threat data when screenshot is captured
-                const params: Record<string, string> = {};
-                if (filters.brandId) params.brandId = filters.brandId;
-                if (filters.status) params.status = filters.status;
-                if (filters.minRiskScore) params.minRiskScore = filters.minRiskScore;
-                if (filters.sortBy) params.sortBy = filters.sortBy;
-                if (filters.order) params.order = filters.order;
-                if (filters.page) params.page = filters.page;
-                if (filters.pageSize) params.pageSize = filters.pageSize;
-                getThreats(params).then(setThreats).catch(console.error);
+                // Refresh threat data when screenshot is captured (use same filter logic as useEffect)
+                getThreats(buildQueryParams()).then(setThreats).catch(console.error);
               }}
             />
             {/* Pagination */}
