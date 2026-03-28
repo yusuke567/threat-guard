@@ -3,6 +3,8 @@ import { calculateSimilarity } from './image-similarity.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 
+const DATA_DIR = process.env.DATA_DIR || process.cwd();
+
 export interface ContentAnalysisResult {
   keywordMatches: string[];
   hasLoginForm: boolean;
@@ -53,7 +55,7 @@ async function getImageSimilarity(
   brandDomain: string
 ): Promise<number | null> {
   // Look for a cached reference screenshot for the brand
-  const refDir = path.join(process.cwd(), 'screenshots', 'reference');
+  const refDir = path.join(DATA_DIR, 'screenshots', 'reference');
   const refPath = path.join(refDir, `${brandDomain.replace(/[^a-z0-9]/gi, '_')}.png`);
 
   try {
@@ -63,9 +65,13 @@ async function getImageSimilarity(
     try {
       const { captureScreenshot } = await import('./screenshot.js');
       await fs.mkdir(refDir, { recursive: true });
+      console.log(`[ImageSimilarity] Capturing reference screenshot for: ${brandDomain}`);
       const captured = await captureScreenshot(brandDomain);
+      console.log(`[ImageSimilarity] Captured screenshot at: ${captured}`);
       await fs.copyFile(captured, refPath);
-    } catch {
+      console.log(`[ImageSimilarity] Reference saved to: ${refPath}`);
+    } catch (err) {
+      console.error(`[ImageSimilarity] Failed to capture reference for ${brandDomain}:`, err);
       return null; // Can't capture reference
     }
   }
