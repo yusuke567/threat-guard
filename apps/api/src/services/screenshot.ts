@@ -5,12 +5,88 @@ import fs from 'node:fs/promises';
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
 const SCREENSHOTS_DIR = path.join(DATA_DIR, 'screenshots');
 
+// Standard Docker/containerized Chromium flags
+const CHROMIUM_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-software-rasterizer',
+  '--disable-extensions',
+  '--disable-background-networking',
+  '--disable-default-apps',
+  '--disable-sync',
+  '--disable-translate',
+  '--hide-scrollbars',
+  '--metrics-recording-only',
+  '--mute-audio',
+  '--no-first-run',
+  '--safebrowsing-disable-auto-update',
+  '--single-process',
+  '--no-zygote',
+];
+
+/**
+ * Get Chromium executable path for the current environment
+ */
+async function getChromiumPath(): Promise<string | undefined> {
+  try {
+    // First try Playwright's built-in path
+    const execPath = chromium.executablePath();
+    if (execPath) {
+      await fs.access(execPath);
+      console.log(`[Screenshot] Using Playwright Chromium: ${execPath}`);
+      return execPath;
+    }
+  } catch {
+    // Playwright path not accessible
+  }
+
+  // Check common Docker/Linux paths
+  const commonPaths = [
+    '/app/.playwright-browsers/chromium-*/chrome-linux/chrome',
+    '/root/.cache/ms-playwright/chromium-*/chrome-linux/chrome',
+    '/home/node/.cache/ms-playwright/chromium-*/chrome-linux/chrome',
+  ];
+
+  for (const pattern of commonPaths) {
+    try {
+      const { glob } = await import('node:fs/promises');
+      // Node 22+ has glob, but for compatibility, just check the env var path
+    } catch {
+      // glob not available
+    }
+  }
+
+  // Check PLAYWRIGHT_BROWSERS_PATH
+  const browserPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (browserPath) {
+    try {
+      const entries = await fs.readdir(browserPath);
+      const chromiumDir = entries.find(e => e.startsWith('chromium-'));
+      if (chromiumDir) {
+        const chromePath = path.join(browserPath, chromiumDir, 'chrome-linux', 'chrome');
+        await fs.access(chromePath);
+        console.log(`[Screenshot] Using Chromium from PLAYWRIGHT_BROWSERS_PATH: ${chromePath}`);
+        return chromePath;
+      }
+    } catch (err) {
+      console.log(`[Screenshot] Could not find Chromium in PLAYWRIGHT_BROWSERS_PATH: ${err}`);
+    }
+  }
+
+  // Return undefined to let Playwright try its default
+  console.log('[Screenshot] Using Playwright default browser resolution');
+  return undefined;
+}
+
 /**
  * Capture a screenshot of a URL using Playwright
  */
 export async function captureScreenshot(url: string): Promise<string> {
   console.log(`[Screenshot] Starting capture for: ${url}`);
   console.log(`[Screenshot] DATA_DIR: ${DATA_DIR}, SCREENSHOTS_DIR: ${SCREENSHOTS_DIR}`);
+  console.log(`[Screenshot] PLAYWRIGHT_BROWSERS_PATH: ${process.env.PLAYWRIGHT_BROWSERS_PATH || 'not set'}`);
 
   await fs.mkdir(SCREENSHOTS_DIR, { recursive: true });
 
@@ -21,20 +97,14 @@ export async function captureScreenshot(url: string): Promise<string> {
   let page: Page | null = null;
 
   try {
+    // Get Chromium executable path
+    const executablePath = await getChromiumPath();
+
     console.log('[Screenshot] Launching Chromium browser...');
     browser = await chromium.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-software-rasterizer',
-        '--disable-extensions',
-        '--disable-background-networking',
-        '--single-process',
-        '--no-zygote',
-      ],
+      executablePath,
+      args: CHROMIUM_ARGS,
     });
     console.log('[Screenshot] Browser launched successfully');
 
@@ -84,6 +154,7 @@ export async function captureScreenshot(url: string): Promise<string> {
     return filepath;
   } catch (err: any) {
     console.error('[Screenshot] Fatal error:', err);
+    console.error('[Screenshot] Error stack:', err.stack);
     throw err;
   } finally {
     if (page) {
