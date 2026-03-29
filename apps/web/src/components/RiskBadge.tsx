@@ -19,7 +19,7 @@ function getRiskLevel(score: number): RiskLevel {
     bgColor: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800',
     barColor: 'bg-red-500',
     action: '即座に削除申請を送信してください。フィッシング被害が発生する前に、ドメインの停止が必要です。',
-    actionLabel: '🚨 削除申請',
+    actionLabel: '削除申請',
   };
   if (score >= 60) return {
     label: '高',
@@ -35,7 +35,7 @@ function getRiskLevel(score: number): RiskLevel {
     bgColor: 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800',
     barColor: 'bg-yellow-500',
     action: '現時点では監視を継続してください。状況が変わればリスクが上昇する可能性があります。',
-    actionLabel: '👁 監視継続',
+    actionLabel: '監視継続',
   };
   return {
     label: '低',
