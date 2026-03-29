@@ -26,6 +26,8 @@ router.get('/', async (req, res) => {
     status,
     category,
     minRiskScore,
+    maxRiskScore,
+    excludeResolved,
     brandId,
     sortBy = 'riskScore',
     order = 'desc',
@@ -34,11 +36,34 @@ router.get('/', async (req, res) => {
   } = req.query;
 
   const where: Record<string, unknown> = { brandId: { in: brandIds } };
-  if (status) where.status = String(status);
+
+  // Support multiple statuses (comma-separated) or single status
+  if (status) {
+    const statuses = String(status).split(',').map(s => s.trim());
+    if (statuses.length === 1) {
+      where.status = statuses[0];
+    } else {
+      where.status = { in: statuses };
+    }
+  }
+
   if (brandId && brandIds.includes(String(brandId))) {
     where.brandId = String(brandId);
   }
-  if (minRiskScore) where.riskScore = { gte: Number(minRiskScore) };
+
+  // Support range filtering with minRiskScore and maxRiskScore
+  if (minRiskScore || maxRiskScore) {
+    const scoreFilter: Record<string, number> = {};
+    if (minRiskScore) scoreFilter.gte = Number(minRiskScore);
+    if (maxRiskScore) scoreFilter.lt = Number(maxRiskScore);
+    where.riskScore = scoreFilter;
+  }
+
+  // Exclude resolved/false_positive if requested
+  if (excludeResolved === 'true') {
+    where.status = { notIn: ['resolved', 'false_positive'] };
+  }
+
   if (category) {
     where.analyses = { some: { category: String(category) } };
   }
