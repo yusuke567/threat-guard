@@ -239,12 +239,12 @@ Evaluate this domain for:
 4. SSL certificate validity and issuer reputation
 5. Overall risk assessment
 
-Respond in JSON format:
+Respond in JSON format. The reasoning MUST be written in Japanese:
 {
   "riskScore": 0-100 (0=safe, 100=extremely dangerous),
   "category": "safe|suspicious|phishing|brand_abuse|malware|parked|unknown",
   "confidence": 0.0-1.0,
-  "reasoning": "Brief explanation in Japanese (2-3 sentences)"
+  "reasoning": "日本語でリスク分析の説明（2-3文）"
 }`;
 
       const aiResponse = await anthropic.messages.create({

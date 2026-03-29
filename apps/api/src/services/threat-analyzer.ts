@@ -43,11 +43,11 @@ Classify this domain into one of these categories:
 - **legitimate**: Legitimately associated with the brand or not a threat
 - **unknown**: Cannot determine with available information
 
-Respond in JSON format:
+Respond in JSON format. The reasoning MUST be written in Japanese:
 {
   "category": "phishing|brand_abuse|parked|legitimate|unknown",
   "confidence": 0.0-1.0,
-  "reasoning": "Brief explanation of your analysis"
+  "reasoning": "日本語で分析結果の説明（2-3文）"
 }`;
 
   const response = await anthropic.messages.create({
