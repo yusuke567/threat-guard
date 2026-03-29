@@ -187,7 +187,6 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🔴 対応が必要</p>
               <p className="text-3xl font-bold text-red-600 mt-1">{actionNeeded}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
             </div>
-            <div className="text-4xl opacity-20"></div>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">リスクスコア60以上 — 削除申請を検討</p>
         </button>
@@ -205,7 +204,6 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🟡 確認待ち</p>
               <p className="text-3xl font-bold text-yellow-600 mt-1">{monitoring}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
             </div>
-            <div className="text-4xl opacity-20">👁</div>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">リスクスコア40〜59 — 監視継続</p>
         </button>
@@ -223,7 +221,6 @@ export default function Dashboard() {
               <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🟢 対応済み</p>
               <p className="text-3xl font-bold text-green-600 mt-1">{resolved}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
             </div>
-            <div className="text-4xl opacity-20">✅</div>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">対応不要 or 削除完了</p>
         </button>
