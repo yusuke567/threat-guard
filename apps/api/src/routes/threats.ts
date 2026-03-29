@@ -29,6 +29,7 @@ router.get('/', async (req, res) => {
     maxRiskScore,
     excludeResolved,
     brandId,
+    fromDate,
     sortBy = 'riskScore',
     order = 'desc',
     page = '1',
@@ -68,6 +69,11 @@ router.get('/', async (req, res) => {
     where.analyses = { some: { category: String(category) } };
   }
 
+  // Date range filter
+  if (fromDate) {
+    where.firstSeen = { gte: new Date(String(fromDate)) };
+  }
+
   const skip = (Number(page) - 1) * Number(pageSize);
   const take = Number(pageSize);
 
@@ -77,6 +83,7 @@ router.get('/', async (req, res) => {
       include: {
         brand: { select: { id: true, name: true, domain: true } },
         analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
+        browserReports: { select: { provider: true, status: true } },
       },
       orderBy: { [String(sortBy)]: order },
       skip,

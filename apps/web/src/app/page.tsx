@@ -122,8 +122,14 @@ export default function Dashboard() {
   const resolved = sc.resolved;
 
   const handleSummaryClick = (filter: SummaryFilter) => {
-    setSummaryFilter(summaryFilter === filter ? 'all' : filter);
-    setFilters(prev => ({ ...prev, page: '1' }));
+    const newFilter = summaryFilter === filter ? 'all' : filter;
+    setSummaryFilter(newFilter);
+    // Clear conflicting filter values when summary card is activated
+    if (newFilter !== 'all') {
+      setFilters(prev => ({ ...prev, status: '', minRiskScore: '', page: '1' }));
+    } else {
+      setFilters(prev => ({ ...prev, page: '1' }));
+    }
   };
 
   const updateFilter = (key: keyof FilterState, value: string) => {
