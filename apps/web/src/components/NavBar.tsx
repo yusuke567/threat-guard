@@ -25,11 +25,11 @@ export default function NavBar() {
           <a href="/brands" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">ブランド管理</a>
           <a href="/reports" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">レポート</a>
           <a href="/alerts" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">設定</a>
+          <a href="/phishing-patterns" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">検知ルール</a>
           {isSuperAdmin && (
             <>
               <span className="text-gray-300 dark:text-gray-600">|</span>
               <a href="/admin/organizations" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">組織管理</a>
-              <a href="/phishing-patterns" className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium text-sm">検知ルール</a>
             </>
           )}
           <ThemeToggle />
@@ -71,11 +71,11 @@ export default function NavBar() {
           <a href="/brands" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">ブランド管理</a>
           <a href="/reports" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">レポート</a>
           <a href="/alerts" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">設定</a>
+          <a href="/phishing-patterns" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">検知ルール</a>
           {isSuperAdmin && (
             <div className="pt-2 mt-2 border-t border-gray-100 dark:border-gray-700 space-y-2">
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">管理者メニュー</p>
               <a href="/admin/organizations" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">組織管理</a>
-              <a href="/phishing-patterns" className="block py-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white font-medium text-sm">検知ルール</a>
             </div>
           )}
           <div className="pt-2 mt-2 border-t border-gray-100 dark:border-gray-700">
