@@ -53,7 +53,12 @@ export default function Dashboard() {
     // Apply filters
     if (filters.brandId) params.brandId = filters.brandId;
     if (filters.status) params.status = filters.status;
-    if (filters.minRiskScore) params.minRiskScore = filters.minRiskScore;
+    if (filters.minRiskScore) {
+      // Parse "min:max" format (e.g., "60:80" means 60-79, "80:" means 80+)
+      const [min, max] = filters.minRiskScore.split(':');
+      if (min) params.minRiskScore = min;
+      if (max) params.maxRiskScore = max;
+    }
     if (filters.sortBy) params.sortBy = filters.sortBy;
     if (filters.order) params.order = filters.order;
     if (filters.page) params.page = filters.page;
@@ -269,9 +274,9 @@ export default function Dashboard() {
             onChange={(e) => updateFilter('minRiskScore', e.target.value)}
           >
             <option value="">全リスクレベル</option>
-            <option value="80">🔴 危険 (80+)</option>
-            <option value="60">🟠 高 (60+)</option>
-            <option value="40">🟡 中 (40+)</option>
+            <option value="80:">🔴 危険 (80+)</option>
+            <option value="60:80">🟠 高 (60-79)</option>
+            <option value="40:60">🟡 中 (40-59)</option>
           </select>
 
           {(filters.brandId || filters.period || filters.status || filters.minRiskScore || summaryFilter !== 'all') && (
