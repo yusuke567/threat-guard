@@ -62,13 +62,15 @@ export default function Dashboard() {
     // Apply summary filter overrides
     if (summaryFilter === 'action_needed') {
       params.minRiskScore = '60';
-      delete params.status;
+      // Exclude resolved/false_positive
+      params.excludeResolved = 'true';
     } else if (summaryFilter === 'monitoring') {
       params.minRiskScore = '40';
-      // Exclude high risk
-      if (!params.status) params.status = 'new_domain';
+      params.maxRiskScore = '59';
+      // Exclude resolved/false_positive
+      params.excludeResolved = 'true';
     } else if (summaryFilter === 'resolved') {
-      params.status = 'resolved';
+      params.status = 'resolved,false_positive';
       delete params.minRiskScore;
     }
 
@@ -114,11 +116,10 @@ export default function Dashboard() {
     );
   }
 
-  const rc = stats?.riskCounts || { danger: 0, high: 0, medium: 0, low: 0 };
-  const resolvedCount = threats?.data?.filter((t: any) => t.status === 'resolved').length || 0;
-  const actionNeeded = rc.danger + rc.high;
-  const monitoring = rc.medium;
-  const resolved = rc.low + resolvedCount;
+  const sc = stats?.statusCounts || { action_needed: 0, monitoring: 0, resolved: 0 };
+  const actionNeeded = sc.action_needed;
+  const monitoring = sc.monitoring;
+  const resolved = sc.resolved;
 
   const handleSummaryClick = (filter: SummaryFilter) => {
     setSummaryFilter(summaryFilter === filter ? 'all' : filter);

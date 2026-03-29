@@ -21,12 +21,22 @@ router.get('/stats', async (req, res) => {
     });
 
     const riskCounts = { danger: 0, high: 0, medium: 0, low: 0 };
+    const statusCounts = { resolved: 0, monitoring: 0, action_needed: 0 };
     for (const t of threats) {
       const s = t.riskScore ?? 0;
       if (s >= 80) riskCounts.danger++;
       else if (s >= 60) riskCounts.high++;
       else if (s >= 40) riskCounts.medium++;
       else riskCounts.low++;
+
+      // Status-based counts
+      if (t.status === 'resolved' || t.status === 'false_positive') {
+        statusCounts.resolved++;
+      } else if (s >= 60) {
+        statusCounts.action_needed++;
+      } else if (s >= 40) {
+        statusCounts.monitoring++;
+      }
     }
 
     // Brand breakdown
@@ -105,6 +115,7 @@ router.get('/stats', async (req, res) => {
 
     res.json({
       riskCounts,
+      statusCounts,
       brandBreakdown,
       takedownStats,
       timelineData,

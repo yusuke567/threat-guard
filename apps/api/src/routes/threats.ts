@@ -24,8 +24,10 @@ router.get('/', async (req, res) => {
 
   const {
     status,
+    excludeResolved,
     category,
     minRiskScore,
+    maxRiskScore,
     brandId,
     sortBy = 'riskScore',
     order = 'desc',
@@ -34,11 +36,26 @@ router.get('/', async (req, res) => {
   } = req.query;
 
   const where: Record<string, unknown> = { brandId: { in: brandIds } };
-  if (status) where.status = String(status);
+  if (status) {
+    const statuses = String(status).split(',');
+    if (statuses.length === 1) {
+      where.status = statuses[0];
+    } else {
+      where.status = { in: statuses };
+    }
+  }
+  if (excludeResolved === 'true') {
+    where.status = { notIn: ['resolved', 'false_positive'] };
+  }
   if (brandId && brandIds.includes(String(brandId))) {
     where.brandId = String(brandId);
   }
-  if (minRiskScore) where.riskScore = { gte: Number(minRiskScore) };
+  if (minRiskScore || maxRiskScore) {
+    const riskFilter: Record<string, number> = {};
+    if (minRiskScore) riskFilter.gte = Number(minRiskScore);
+    if (maxRiskScore) riskFilter.lte = Number(maxRiskScore);
+    where.riskScore = riskFilter;
+  }
   if (category) {
     where.analyses = { some: { category: String(category) } };
   }
