@@ -174,7 +174,6 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
             <th className="pb-3 font-medium">概要</th>
             <th className="pb-3 font-medium">リスク</th>
             <th className="pb-3 font-medium">ステータス</th>
-            <th className="pb-3 font-medium">ブラウザ申請</th>
             <th className="pb-3 font-medium">検知日</th>
             {expandable && <th className="pb-3 font-medium w-8"></th>}
           </tr>
@@ -215,9 +214,6 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                     {statusLabels[threat.status] || threat.status}
                   </span>
                 </td>
-                <td className="py-3">
-                  <BrowserReportIcons reports={threat.browserReports} />
-                </td>
                 <td className="py-3 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
                   {new Date(threat.firstSeen).toLocaleDateString('ja-JP')}
                 </td>
@@ -233,7 +229,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
               {/* Layer 2: Expanded Detail Panel */}
               {expandable && expandedRowId === threat.id && (
                 <tr>
-                  <td colSpan={selectable ? 8 : 7} className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                  <td colSpan={selectable ? 7 : 6} className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                     <div className="p-5 space-y-4">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Screenshot */}
@@ -368,32 +364,3 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
   );
 }
 
-function BrowserReportIcons({ reports }: { reports?: BrowserReport[] }) {
-  const google = reports?.find((r) => r.provider === 'GOOGLE_SAFE_BROWSING');
-  const microsoft = reports?.find((r) => r.provider === 'MICROSOFT_SMARTSCREEN');
-
-  const getIconColor = (report?: BrowserReport) => {
-    if (!report) return 'text-gray-300 dark:text-gray-600';
-    if (report.status === 'error') return 'text-red-400 dark:text-red-500';
-    if (report.status === 'confirmed') return 'text-green-500 dark:text-green-400';
-    return 'text-blue-500 dark:text-blue-400'; // submitted/pending
-  };
-
-  const getTitle = (provider: string, report?: BrowserReport) => {
-    if (!report) return `${provider}: 未申請`;
-    if (report.status === 'error') return `${provider}: エラー`;
-    if (report.status === 'confirmed') return `${provider}: 確認済み`;
-    return `${provider}: 申請済み`;
-  };
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span title={getTitle('Google', google)} className={`text-sm ${getIconColor(google)}`}>
-        <svg className="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" /></svg>
-      </span>
-      <span title={getTitle('SmartScreen', microsoft)} className={`text-sm ${getIconColor(microsoft)}`}>
-        <svg className="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-      </span>
-    </div>
-  );
-}
