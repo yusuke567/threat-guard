@@ -38,7 +38,7 @@ const statusLabels: Record<string, string> = {
   confirmed_threat: '⚠️ 脅威確認',
   false_positive: '誤検知',
   takedown_sent: '削除申請中',
-  resolved: '✅ 対応完了',
+  resolved: '対応完了',
 };
 
 const categoryLabels: Record<string, string> = {
@@ -332,7 +332,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                           className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          🚨 削除申請
+                          削除申請
                         </a>
                         <button
                           className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 transition-colors"
