@@ -71,6 +71,14 @@ router.get('/', async (req, res) => {
   const skip = (Number(page) - 1) * Number(pageSize);
   const take = Number(pageSize);
 
+  // Nullable fields need special handling to put NULLs last
+  const sortField = String(sortBy);
+  const sortOrder = order as 'asc' | 'desc';
+  const nullableFields = ['riskScore', 'resolvedAt'];
+  const orderByClause = nullableFields.includes(sortField)
+    ? { [sortField]: { sort: sortOrder, nulls: 'last' as const } }
+    : { [sortField]: sortOrder };
+
   const [data, total] = await Promise.all([
     prisma.detectedDomain.findMany({
       where,
@@ -78,7 +86,7 @@ router.get('/', async (req, res) => {
         brand: { select: { id: true, name: true, domain: true } },
         analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
       },
-      orderBy: { [String(sortBy)]: order },
+      orderBy: orderByClause,
       skip,
       take,
     }),
