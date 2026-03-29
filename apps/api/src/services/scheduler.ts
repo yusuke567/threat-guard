@@ -34,10 +34,25 @@ export async function runFullScan(brandId: string, brandName: string) {
 
       let highRiskCount = 0;
 
+      // High-risk threshold for immediate screenshot capture
+      const immediateProbeThreshold = parseInt(process.env.IMMEDIATE_PROBE_THRESHOLD || '70', 10);
+
       for (const domain of newDomains) {
         try {
           const analysis = await analyzeThreat(domain.id);
           const score = await calculateRiskScore(domain.id);
+
+          // High-risk domains: capture screenshot immediately
+          if (score >= immediateProbeThreshold) {
+            console.log(`[Scheduler] High-risk domain detected (score=${score}): ${domain.domain} - capturing screenshot immediately`);
+            try {
+              await probeDomain(domain.id);
+              // Throttle: 2s between probes to avoid overload
+              await new Promise((r) => setTimeout(r, 2000));
+            } catch (probeErr) {
+              console.error(`[Scheduler] Immediate probe failed for ${domain.domain}:`, probeErr);
+            }
+          }
 
           if (score >= 60) {
             await notifyNewThreat({
