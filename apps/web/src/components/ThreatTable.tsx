@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, Fragment } from 'react';
-import Tooltip from './Tooltip';
 import { RiskBadgeCompact } from './RiskBadge';
 import { triggerProbe } from '@/lib/api';
 
@@ -173,12 +172,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
             )}
             <th className="pb-3 font-medium">ドメイン</th>
             <th className="pb-3 font-medium">概要</th>
-            <th className="pb-3 font-medium">
-              <span className="flex items-center gap-1">
-                リスク
-                <Tooltip content="リスクスコア（0〜100）と推奨アクション。🔴危険（80+）= 即削除申請、🟠高（60-79）= 要確認、🟡中（40-59）= 監視継続、🟢低（0-39）= 対応不要。" />
-              </span>
-            </th>
+            <th className="pb-3 font-medium">リスク</th>
             <th className="pb-3 font-medium">ステータス</th>
             <th className="pb-3 font-medium">ブラウザ申請</th>
             <th className="pb-3 font-medium">検知日</th>
