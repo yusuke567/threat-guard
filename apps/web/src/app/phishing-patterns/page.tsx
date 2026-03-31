@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrands, getPhishingPatterns, createPhishingPattern, updatePhishingPattern, deletePhishingPattern, applyPhishingPattern } from '@/lib/api';
+import { getBrands, getPhishingPatterns, createPhishingPattern, updatePhishingPattern, deletePhishingPattern, applyPhishingPattern, sharePhishingPattern, getSharedPatterns, applySharedPattern } from '@/lib/api';
 
 const PATTERN_TYPES = [
   { value: 'domain_spoof', label: 'ドメイン偽装' },
@@ -30,9 +30,11 @@ export default function PhishingPatternsPage() {
   const [brands, setBrands] = useState<any[]>([]);
   const [selectedBrand, setSelectedBrand] = useState('');
   const [patterns, setPatterns] = useState<any[]>([]);
+  const [sharedPatterns, setSharedPatterns] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'own' | 'shared'>('own');
   const [form, setForm] = useState({
     reportedBy: '',
     patternType: 'domain_spoof',
@@ -59,9 +61,23 @@ export default function PhishingPatternsPage() {
       .finally(() => setLoading(false));
   }, [selectedBrand, statusFilter]);
 
+  useEffect(() => {
+    if (activeTab === 'shared') {
+      setLoading(true);
+      getSharedPatterns()
+        .then(setSharedPatterns)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [activeTab]);
+
   const reload = () => {
     if (!selectedBrand) return;
     getPhishingPatterns(selectedBrand, statusFilter || undefined).then(setPatterns);
+  };
+
+  const reloadShared = () => {
+    getSharedPatterns().then(setSharedPatterns);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -90,6 +106,30 @@ export default function PhishingPatternsPage() {
     reload();
   };
 
+  const handleShare = async (id: string) => {
+    if (!confirm('このパターンを他社にも共有しますか？共有後は登録元の会社情報は非公開となります。')) return;
+    try {
+      await sharePhishingPattern(id);
+      alert('パターンを共有しました。他の会社でも利用可能になりました。');
+      reload();
+    } catch (err: any) {
+      alert(err.message || '共有に失敗しました');
+    }
+  };
+
+  const handleApplyShared = async (sharedId: string) => {
+    if (!selectedBrand) {
+      alert('適用先のブランドを選択してください');
+      return;
+    }
+    try {
+      const result = await applySharedPattern(sharedId, selectedBrand);
+      alert(result.alreadyExisted ? '既に検知済みドメインに存在します' : '検知対象に追加しました');
+    } catch (err: any) {
+      alert(err.message || '適用に失敗しました');
+    }
+  };
+
   const getSeverityBadge = (s: string) => {
     const sev = SEVERITIES.find((x) => x.value === s);
     return sev ? <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sev.color}`}>{sev.label}</span> : s;
@@ -107,11 +147,37 @@ export default function PhishingPatternsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📋 ユーザー報告パターン</h1>
           <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">ユーザーからヒアリングしたフィッシング手口</p>
         </div>
+        {activeTab === 'own' && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            + 新規報告
+          </button>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
         <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          onClick={() => setActiveTab('own')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'own'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
         >
-          + 新規報告
+          自社パターン
+        </button>
+        <button
+          onClick={() => setActiveTab('shared')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            activeTab === 'shared'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          共有パターン
         </button>
       </div>
 
@@ -126,16 +192,18 @@ export default function PhishingPatternsPage() {
             <option key={b.id} value={b.id}>{b.name}</option>
           ))}
         </select>
-        <select
-          className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">全ステータス</option>
-          {STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
+        {activeTab === 'own' && (
+          <select
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">全ステータス</option>
+            {STATUSES.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Create form */}
@@ -230,82 +298,158 @@ export default function PhishingPatternsPage() {
         </form>
       )}
 
-      {/* Pattern list */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          </div>
-        ) : patterns.length === 0 ? (
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500">報告されたパターンはありません</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">種別</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ドメイン / URL</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">説明</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">重要度</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ステータス</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">被害</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">報告日</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {patterns.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
-                  <td className="px-4 py-3">
-                    {PATTERN_TYPES.find((t) => t.value === p.patternType)?.label || p.patternType}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs max-w-[200px] truncate">
-                    {p.domain || p.url || '-'}
-                  </td>
-                  <td className="px-4 py-3 max-w-[250px] truncate">{p.description}</td>
-                  <td className="px-4 py-3">{getSeverityBadge(p.severity)}</td>
-                  <td className="px-4 py-3">{getStatusBadge(p.status)}</td>
-                  <td className="px-4 py-3">{p.victimCount > 0 ? `${p.victimCount}名` : '-'}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(p.createdAt).toLocaleDateString('ja-JP')}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      {p.status === 'new' && (
+      {/* Pattern list - Own patterns */}
+      {activeTab === 'own' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : patterns.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500">報告されたパターンはありません</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">種別</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ドメイン / URL</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">説明</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">重要度</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ステータス</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">被害</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">報告日</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {patterns.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                    <td className="px-4 py-3">
+                      {PATTERN_TYPES.find((t) => t.value === p.patternType)?.label || p.patternType}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs max-w-[200px] truncate">
+                      {p.domain || p.url || '-'}
+                    </td>
+                    <td className="px-4 py-3 max-w-[250px] truncate">{p.description}</td>
+                    <td className="px-4 py-3">{getSeverityBadge(p.severity)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        {getStatusBadge(p.status)}
+                        {p.isShared && (
+                          <span className="px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">共有済</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">{p.victimCount > 0 ? `${p.victimCount}名` : '-'}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(p.createdAt).toLocaleDateString('ja-JP')}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 flex-wrap">
+                        {p.status === 'new' && (
+                          <button
+                            onClick={() => handleStatusChange(p.id, 'confirmed')}
+                            className="px-2 py-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100"
+                          >
+                            確認
+                          </button>
+                        )}
+                        {p.domain && p.status !== 'rule_created' && (
+                          <button
+                            onClick={() => handleApply(p.id)}
+                            className="px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded hover:bg-purple-100"
+                          >
+                            検知反映
+                          </button>
+                        )}
+                        {!p.isShared && (p.status === 'confirmed' || p.status === 'rule_created') && (
+                          <button
+                            onClick={() => handleShare(p.id)}
+                            className="px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-100"
+                            title="他社にも共有（匿名）"
+                          >
+                            共有
+                          </button>
+                        )}
+                        {p.status !== 'archived' && (
+                          <button
+                            onClick={() => handleStatusChange(p.id, 'archived')}
+                            className="px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-100 dark:bg-gray-700"
+                          >
+                            📦
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleStatusChange(p.id, 'confirmed')}
-                          className="px-2 py-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100"
+                          onClick={() => handleDelete(p.id)}
+                          className="px-2 py-1 text-xs bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100"
                         >
-                          確認
+                          🗑
                         </button>
-                      )}
-                      {p.domain && p.status !== 'rule_created' && (
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Shared patterns list */}
+      {activeTab === 'shared' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              他社から共有されたフィッシング手口パターンです。登録元の会社情報は非公開です。
+            </p>
+          </div>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          ) : sharedPatterns.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500">共有パターンはありません</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">種別</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ドメイン / URL</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">説明</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">重要度</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">被害報告</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">共有日</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {sharedPatterns.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                    <td className="px-4 py-3">
+                      {PATTERN_TYPES.find((t) => t.value === p.patternType)?.label || p.patternType}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs max-w-[200px] truncate">
+                      {p.domain || p.url || '-'}
+                    </td>
+                    <td className="px-4 py-3 max-w-[250px] truncate">{p.description}</td>
+                    <td className="px-4 py-3">{getSeverityBadge(p.severity)}</td>
+                    <td className="px-4 py-3">{p.victimCount > 0 ? `${p.victimCount}名` : '-'}</td>
+                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(p.sharedAt).toLocaleDateString('ja-JP')}</td>
+                    <td className="px-4 py-3">
+                      {p.domain && (
                         <button
-                          onClick={() => handleApply(p.id)}
+                          onClick={() => handleApplyShared(p.id)}
                           className="px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded hover:bg-purple-100"
                         >
-                          検知反映
+                          自社に適用
                         </button>
                       )}
-                      {p.status !== 'archived' && (
-                        <button
-                          onClick={() => handleStatusChange(p.id, 'archived')}
-                          className="px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-100 dark:bg-gray-700"
-                        >
-                          📦
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className="px-2 py-1 text-xs bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100"
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }

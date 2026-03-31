@@ -165,4 +165,114 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
   }
 });
 
+// Share pattern to all companies (anonymized - source company not identifiable)
+router.post('/phishing-patterns/:id/share', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
+
+    const pattern = await verifyPatternOrg(req.params.id, orgId, isSuperadmin);
+    if (!pattern) return res.status(404).json({ error: '指定されたパターンが見つかりません。' });
+
+    if (pattern.isShared) {
+      return res.status(400).json({ error: 'このパターンは既に共有されています。' });
+    }
+
+    // Create anonymized shared pattern (no brandId, no organization reference)
+    const sharedPattern = await prisma.sharedPhishingPattern.create({
+      data: {
+        patternType: pattern.patternType,
+        url: pattern.url,
+        domain: pattern.domain,
+        description: pattern.description,
+        tags: pattern.tags,
+        severity: pattern.severity,
+        victimCount: pattern.victimCount,
+      },
+    });
+
+    // Mark original pattern as shared
+    await prisma.phishingPattern.update({
+      where: { id: pattern.id },
+      data: { isShared: true },
+    });
+
+    res.status(201).json({ sharedPattern, message: 'パターンを匿名で共有しました。' });
+  } catch (err) {
+    console.error('Error sharing phishing pattern:', err);
+    res.status(500).json({ error: 'パターンの共有に失敗しました。しばらくしてからもう一度お試しください。' });
+  }
+});
+
+// List all shared patterns (available to all companies)
+router.get('/shared-patterns', async (req, res) => {
+  try {
+    const { patternType, severity } = req.query;
+
+    const where: any = {};
+    if (patternType) where.patternType = patternType as string;
+    if (severity) where.severity = severity as string;
+
+    const sharedPatterns = await prisma.sharedPhishingPattern.findMany({
+      where,
+      orderBy: { sharedAt: 'desc' },
+    });
+    res.json(sharedPatterns);
+  } catch (err) {
+    console.error('Error listing shared patterns:', err);
+    res.status(500).json({ error: '共有パターン一覧の取得に失敗しました。しばらくしてからもう一度お試しください。' });
+  }
+});
+
+// Apply shared pattern to a brand (creates DetectedDomain for the brand)
+router.post('/shared-patterns/:id/apply', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
+    const { brandId } = req.body;
+
+    if (!brandId) {
+      return res.status(400).json({ error: '適用先のブランドIDを指定してください。' });
+    }
+
+    const brand = await verifyBrandOrg(brandId, orgId, isSuperadmin);
+    if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
+
+    const sharedPattern = await prisma.sharedPhishingPattern.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!sharedPattern) {
+      return res.status(404).json({ error: '指定された共有パターンが見つかりません。' });
+    }
+
+    if (!sharedPattern.domain) {
+      return res.status(400).json({ error: 'この共有パターンには対象ドメインが設定されていません。' });
+    }
+
+    // Check if domain already exists for this brand
+    const existing = await prisma.detectedDomain.findFirst({
+      where: { brandId, domain: sharedPattern.domain },
+    });
+
+    if (existing) {
+      return res.json({ detectedDomain: existing, alreadyExisted: true });
+    }
+
+    // Create DetectedDomain for this brand from shared pattern
+    const detectedDomain = await prisma.detectedDomain.create({
+      data: {
+        brandId,
+        domain: sharedPattern.domain,
+        source: 'shared_pattern',
+        status: 'confirmed_threat',
+      },
+    });
+
+    res.status(201).json({ detectedDomain, alreadyExisted: false });
+  } catch (err) {
+    console.error('Error applying shared pattern:', err);
+    res.status(500).json({ error: '共有パターンの適用に失敗しました。しばらくしてからもう一度お試しください。' });
+  }
+});
+
 export default router;

@@ -160,6 +160,16 @@ export const deletePhishingPattern = (id: string) =>
   fetchAPI<void>(`/phishing-patterns/${id}`, { method: 'DELETE' });
 export const applyPhishingPattern = (id: string) =>
   fetchAPI<any>(`/phishing-patterns/${id}/apply`, { method: 'POST' });
+export const sharePhishingPattern = (id: string) =>
+  fetchAPI<any>(`/phishing-patterns/${id}/share`, { method: 'POST' });
+
+// Shared Phishing Patterns (cross-company, anonymized)
+export const getSharedPatterns = (params?: Record<string, string>) => {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return fetchAPI<any[]>(`/shared-patterns${query}`);
+};
+export const applySharedPattern = (id: string, brandId: string) =>
+  fetchAPI<any>(`/shared-patterns/${id}/apply`, { method: 'POST', body: JSON.stringify({ brandId }) });
 
 // Abuse contacts
 export const getAbuseContacts = (threatId: string) =>

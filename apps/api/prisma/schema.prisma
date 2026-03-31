@@ -217,12 +217,31 @@ model PhishingPattern {
   severity    String   @default("medium")
   status      String   @default("new")
   victimCount Int      @default(0)
+  isShared    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([brandId])
   @@index([status])
   @@index([domain])
+}
+
+// Anonymized shared phishing patterns - source company is not identifiable
+model SharedPhishingPattern {
+  id          String   @id @default(uuid())
+  patternType String   @default("domain_spoof")
+  url         String?
+  domain      String?
+  description String
+  tags        String   @default("")
+  severity    String   @default("medium")
+  victimCount Int      @default(0)
+  sharedAt    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([domain])
+  @@index([patternType])
+  @@index([severity])
 }
 
 model SocialPost {
