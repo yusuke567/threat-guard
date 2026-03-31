@@ -141,6 +141,8 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
         where: { id: pattern.id },
         data: { status: 'rule_created' },
       });
+      // Also create global detection rule for cross-organization sharing
+      await createOrUpdateGlobalRule(pattern);
       return res.json({ detectedDomain: existing, alreadyExisted: true });
     }
 
@@ -158,11 +160,71 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
       data: { status: 'rule_created' },
     });
 
+    // Create global detection rule for cross-organization sharing
+    // The source organization is NOT stored to maintain privacy per Terms of Service
+    await createOrUpdateGlobalRule(pattern);
+
     res.status(201).json({ detectedDomain, alreadyExisted: false });
   } catch (err) {
     console.error('Error applying phishing pattern:', err);
     res.status(500).json({ error: 'パターンの適用に失敗しました。しばらくしてからもう一度お試しください。' });
   }
 });
+
+// Helper: Create or update a global detection rule from a phishing pattern
+// This shares the detection rule across all organizations without revealing the source
+async function createOrUpdateGlobalRule(pattern: {
+  patternType: string;
+  domain: string | null;
+  url: string | null;
+  description: string;
+  severity: string;
+  tags: string;
+  victimCount: number;
+}) {
+  if (!pattern.domain) return;
+
+  const existing = await prisma.globalDetectionRule.findFirst({
+    where: { domain: pattern.domain },
+  });
+
+  if (existing) {
+    // Update existing rule - aggregate victim count
+    await prisma.globalDetectionRule.update({
+      where: { id: existing.id },
+      data: {
+        victimCount: existing.victimCount + pattern.victimCount,
+        // Update severity if new pattern has higher severity
+        severity: getSeverityPriority(pattern.severity) > getSeverityPriority(existing.severity)
+          ? pattern.severity
+          : existing.severity,
+      },
+    });
+  } else {
+    // Create new global rule without organization linkage
+    await prisma.globalDetectionRule.create({
+      data: {
+        patternType: pattern.patternType,
+        domain: pattern.domain,
+        urlPattern: pattern.url,
+        description: pattern.description,
+        severity: pattern.severity,
+        tags: pattern.tags,
+        victimCount: pattern.victimCount,
+        isActive: true,
+      },
+    });
+  }
+}
+
+function getSeverityPriority(severity: string): number {
+  switch (severity) {
+    case 'critical': return 4;
+    case 'high': return 3;
+    case 'medium': return 2;
+    case 'low': return 1;
+    default: return 0;
+  }
+}
 
 export default router;

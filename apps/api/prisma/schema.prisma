@@ -324,3 +324,23 @@ model AlertLog {
   @@index([detectedDomainId])
   @@index([sentAt])
 }
+
+// Global detection rules shared across all organizations
+// Source organization is NOT stored to maintain privacy per Terms of Service
+model GlobalDetectionRule {
+  id          String   @id @default(uuid())
+  patternType String   @default("domain_spoof") // domain_spoof, url_pattern, keyword, etc.
+  domain      String?  // Target domain for detection
+  urlPattern  String?  // URL pattern for matching
+  description String   // Description of the phishing technique
+  severity    String   @default("medium") // low, medium, high, critical
+  tags        String   @default("") // Comma-separated tags for categorization
+  victimCount Int      @default(0) // Aggregated victim count
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([domain])
+  @@index([isActive])
+  @@index([patternType])
+}
