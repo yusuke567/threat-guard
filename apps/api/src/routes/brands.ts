@@ -515,10 +515,29 @@ router.post('/:id/domains', async (req, res) => {
 
     const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
     const where = isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: req.user!.organizationId! };
-    const brand = await prisma.brand.findFirst({ where });
+    const brand = await prisma.brand.findFirst({ where, include: { organization: true } });
     if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
 
     const domain = parsed.data.domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+
+    // Check for duplicate domain within the same organization
+    const existingDomainInOrg = await prisma.brandDomain.findFirst({
+      where: {
+        domain,
+        brand: {
+          organizationId: brand.organizationId,
+          id: { not: brand.id }, // Exclude current brand
+        },
+      },
+      include: { brand: true },
+    });
+    if (existingDomainInOrg) {
+      return res.status(409).json({
+        error: `このドメインは既に同じ組織内の別のブランド「${existingDomainInOrg.brand.name}」に登録されています。`,
+        duplicateBrand: existingDomainInOrg.brand.name,
+        duplicateBrandId: existingDomainInOrg.brandId,
+      });
+    }
 
     // If setting as primary, demote existing primary
     if (parsed.data.type === 'primary') {
@@ -611,8 +630,30 @@ router.post('/:id/domains/bulk', async (req, res) => {
     let added = 0;
     let skipped = 0;
     let reclassified = 0;
+    const duplicates: Array<{ domain: string; brandName: string }> = [];
+
+    // Pre-fetch existing domains in the same organization (excluding current brand)
+    const existingOrgDomains = await prisma.brandDomain.findMany({
+      where: {
+        domain: { in: unique },
+        brand: {
+          organizationId: brand.organizationId,
+          id: { not: brand.id },
+        },
+      },
+      include: { brand: { select: { name: true } } },
+    });
+    const orgDomainMap = new Map(existingOrgDomains.map((d) => [d.domain, d.brand.name]));
 
     for (const domain of unique) {
+      // Check for duplicate in the same organization
+      const existingBrandName = orgDomainMap.get(domain);
+      if (existingBrandName) {
+        duplicates.push({ domain, brandName: existingBrandName });
+        skipped++;
+        continue;
+      }
+
       try {
         await prisma.brandDomain.upsert({
           where: { brandId_domain: { brandId: brand.id, domain } },
@@ -656,7 +697,17 @@ router.post('/:id/domains/bulk', async (req, res) => {
       });
     }
 
-    res.status(201).json({ added, skipped, reclassified, total: unique.length, scanTriggered: added > 0 });
+    res.status(201).json({
+      added,
+      skipped,
+      reclassified,
+      total: unique.length,
+      scanTriggered: added > 0,
+      duplicates: duplicates.length > 0 ? duplicates : undefined,
+      duplicateMessage: duplicates.length > 0
+        ? `${duplicates.length}件のドメインが同じ組織内の別ブランドに既に登録されているためスキップしました。`
+        : undefined,
+    });
   } catch (err) {
     console.error('Bulk add brand domains error:', err);
     res.status(500).json({ error: 'ドメインの一括追加に失敗しました。' });
@@ -693,7 +744,32 @@ router.post('/:id/whitelist/import', async (req, res) => {
 
   const existingSet = new Set(existing);
   const newDomains = domains.filter((d) => !existingSet.has(d));
-  const merged = [...existing, ...newDomains];
+
+  // Check for duplicates in the same organization (excluding current brand)
+  const existingOrgDomains = await prisma.brandDomain.findMany({
+    where: {
+      domain: { in: newDomains },
+      brand: {
+        organizationId: brand.organizationId,
+        id: { not: brand.id },
+      },
+    },
+    include: { brand: { select: { name: true } } },
+  });
+  const orgDomainMap = new Map(existingOrgDomains.map((d) => [d.domain, d.brand.name]));
+
+  const duplicatesInOrg: Array<{ domain: string; brandName: string }> = [];
+  const nonDuplicateDomains: string[] = [];
+  for (const domain of newDomains) {
+    const existingBrandName = orgDomainMap.get(domain);
+    if (existingBrandName) {
+      duplicatesInOrg.push({ domain, brandName: existingBrandName });
+    } else {
+      nonDuplicateDomains.push(domain);
+    }
+  }
+
+  const merged = [...existing, ...nonDuplicateDomains];
 
   await prisma.brand.update({
     where: { id: req.params.id },
@@ -701,11 +777,11 @@ router.post('/:id/whitelist/import', async (req, res) => {
   });
 
   let reclassified = 0;
-  if (newDomains.length > 0) {
+  if (nonDuplicateDomains.length > 0) {
     const result = await prisma.detectedDomain.updateMany({
       where: {
         brandId: req.params.id,
-        domain: { in: newDomains },
+        domain: { in: nonDuplicateDomains },
         status: { not: 'false_positive' },
       },
       data: { status: 'false_positive' },
@@ -714,10 +790,15 @@ router.post('/:id/whitelist/import', async (req, res) => {
   }
 
   res.json({
-    imported: newDomains.length,
+    imported: nonDuplicateDomains.length,
     duplicatesSkipped: domains.length - newDomains.length,
+    duplicatesInOrg: duplicatesInOrg.length,
     totalWhitelist: merged.length,
     reclassified,
+    duplicates: duplicatesInOrg.length > 0 ? duplicatesInOrg : undefined,
+    duplicateMessage: duplicatesInOrg.length > 0
+      ? `${duplicatesInOrg.length}件のドメインが同じ組織内の別ブランドに既に登録されているためスキップしました。`
+      : undefined,
   });
 });
 
