@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrands, getPhishingPatterns, createPhishingPattern, updatePhishingPattern, deletePhishingPattern, applyPhishingPattern } from '@/lib/api';
+import { getBrands, getPhishingPatterns, createPhishingPattern, updatePhishingPattern, deletePhishingPattern, applyPhishingPattern, importPhishingPatternsCSV } from '@/lib/api';
 
 const PATTERN_TYPES = [
   { value: 'domain_spoof', label: 'ドメイン偽装' },
@@ -33,6 +33,9 @@ export default function PhishingPatternsPage() {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [csvImporting, setCsvImporting] = useState(false);
   const [form, setForm] = useState({
     reportedBy: '',
     patternType: 'domain_spoof',
@@ -90,6 +93,32 @@ export default function PhishingPatternsPage() {
     reload();
   };
 
+  const handleCsvImport = async () => {
+    if (!selectedBrand || !csvText.trim()) return;
+    setCsvImporting(true);
+    try {
+      const result = await importPhishingPatternsCSV(selectedBrand, csvText);
+      alert(`インポート完了: ${result.created}件登録${result.errors > 0 ? `、${result.errors}件エラー` : ''}`);
+      setShowCsvImport(false);
+      setCsvText('');
+      reload();
+    } catch (err: any) {
+      alert(err.message || 'インポートに失敗しました');
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCsvText(event.target?.result as string || '');
+    };
+    reader.readAsText(file);
+  };
+
   const getSeverityBadge = (s: string) => {
     const sev = SEVERITIES.find((x) => x.value === s);
     return sev ? <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${sev.color}`}>{sev.label}</span> : s;
@@ -107,12 +136,20 @@ export default function PhishingPatternsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📋 ユーザー報告パターン</h1>
           <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">ユーザーからヒアリングしたフィッシング手口</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-        >
-          + 新規報告
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCsvImport(!showCsvImport)}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
+          >
+            CSV一括登録
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            + 新規報告
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -228,6 +265,56 @@ export default function PhishingPatternsPage() {
             </button>
           </div>
         </form>
+      )}
+
+      {/* CSV Import form */}
+      {showCsvImport && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+          <h2 className="text-lg font-semibold">CSV一括インポート</h2>
+          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+            <p>CSVファイルまたはテキストで複数のパターンを一括登録できます。</p>
+            <p className="font-medium">必須列: description（説明）</p>
+            <p>対応列: reportedBy, patternType, url, domain, description, severity, victimCount, tags</p>
+            <p className="text-xs text-gray-500">※ patternType: domain_spoof, email, sms, social, clone_site, other</p>
+            <p className="text-xs text-gray-500">※ severity: low, medium, high, critical</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">CSVファイルを選択</label>
+            <input
+              type="file"
+              accept=".csv,.txt"
+              onChange={handleFileUpload}
+              className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">またはCSVテキストを直接入力</label>
+            <textarea
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono"
+              rows={8}
+              placeholder={`patternType,url,domain,description,severity,victimCount
+domain_spoof,https://example-phish.com,,フィッシングサイト,high,5
+email,,,不審なメール報告,medium,0`}
+              value={csvText}
+              onChange={(e) => setCsvText(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCsvImport}
+              disabled={csvImporting || !csvText.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {csvImporting ? 'インポート中...' : 'インポート実行'}
+            </button>
+            <button
+              onClick={() => { setShowCsvImport(false); setCsvText(''); }}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+            >
+              キャンセル
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Pattern list */}
