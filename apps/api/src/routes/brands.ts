@@ -838,4 +838,340 @@ router.delete('/:id', async (req, res) => {
   res.status(204).send();
 });
 
+// CSV bulk import brands (MUST be before /:id routes)
+// Note: This is placed at the end but the route path '/import-csv' won't conflict with '/:id'
+router.post('/import-csv', async (req, res) => {
+  try {
+    const { csv } = req.body;
+    if (!csv || typeof csv !== 'string') {
+      return res.status(400).json({ error: 'CSVデータが必要です。' });
+    }
+
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const userOrgId = req.user!.organizationId;
+
+    // Parse CSV (supports both comma and tab delimiters)
+    const lines = csv.trim().split(/\r?\n/);
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'CSVにヘッダーとデータ行が必要です。' });
+    }
+
+    // Detect delimiter (comma or tab)
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/"/g, ''));
+
+    // Build header map with flexible naming
+    const headerMap: Record<string, number> = {};
+    headers.forEach((h, i) => {
+      const normalized = h
+        .replace(/ブランド名|brand_name|brandname/, 'name')
+        .replace(/ドメイン|domain_name|domainname/, 'domain')
+        .replace(/キーワード|keywords|検知キーワード/, 'keywords')
+        .replace(/組織id|organization_id|org_id|orgid/, 'organizationid')
+        .replace(/組織名|organization_name|org_name|orgname/, 'organizationname');
+      headerMap[normalized] = i;
+    });
+
+    const nameIdx = headerMap['name'];
+    const domainIdx = headerMap['domain'];
+    if (nameIdx === undefined) {
+      return res.status(400).json({ error: '「name」または「ブランド名」列が必要です。' });
+    }
+    if (domainIdx === undefined) {
+      return res.status(400).json({ error: '「domain」または「ドメイン」列が必要です。' });
+    }
+
+    const created: any[] = [];
+    const errors: { line: number; message: string }[] = [];
+
+    // Cache for organization lookup/creation
+    const orgCache = new Map<string, string>();
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Parse CSV fields (handle quoted values)
+      const fields: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if ((char === delimiter.charAt(0)) && !inQuotes) {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      fields.push(current.trim());
+
+      const getValue = (key: string) => {
+        const idx = headerMap[key];
+        return idx !== undefined && fields[idx] ? fields[idx].replace(/^"|"$/g, '') : null;
+      };
+
+      const name = getValue('name');
+      const domain = getValue('domain');
+
+      if (!name) {
+        errors.push({ line: i + 1, message: 'ブランド名が空です' });
+        continue;
+      }
+      if (!domain) {
+        errors.push({ line: i + 1, message: 'ドメインが空です' });
+        continue;
+      }
+
+      // Normalize domain
+      const normalizedDomain = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+
+      // Determine organization ID
+      let orgId = userOrgId;
+      const orgIdFromCsv = getValue('organizationid');
+      const orgNameFromCsv = getValue('organizationname');
+
+      if (isSuperadmin && orgIdFromCsv) {
+        // Superadmin can specify organizationId directly
+        orgId = orgIdFromCsv;
+      } else if (isSuperadmin && orgNameFromCsv) {
+        // Superadmin can specify organization by name - look up or create
+        const cachedOrgId = orgCache.get(orgNameFromCsv.toLowerCase());
+        if (cachedOrgId) {
+          orgId = cachedOrgId;
+        } else {
+          let org = await prisma.organization.findFirst({ where: { name: orgNameFromCsv } });
+          if (!org) {
+            org = await prisma.organization.create({ data: { name: orgNameFromCsv } });
+          }
+          orgId = org.id;
+          orgCache.set(orgNameFromCsv.toLowerCase(), org.id);
+        }
+      }
+
+      if (!orgId) {
+        errors.push({ line: i + 1, message: '組織IDが指定されていません' });
+        continue;
+      }
+
+      // Check for duplicate domain within the organization
+      const existingBrand = await prisma.brand.findFirst({
+        where: { organizationId: orgId, domain: normalizedDomain },
+      });
+      if (existingBrand) {
+        errors.push({ line: i + 1, message: `ドメイン「${normalizedDomain}」は既に登録されています` });
+        continue;
+      }
+
+      try {
+        const brand = await prisma.brand.create({
+          data: {
+            name,
+            domain: normalizedDomain,
+            organizationId: orgId,
+            keywords: getValue('keywords') || '',
+            whitelistDomains: normalizedDomain,
+          },
+        });
+
+        // Trigger initial scan for newly created brand
+        runFullScan(brand.id, brand.name).catch((err) => {
+          console.error(`[Brand CSV Import] Auto-scan failed for ${brand.name}:`, err);
+        });
+
+        created.push(brand);
+      } catch (err) {
+        errors.push({ line: i + 1, message: '登録エラー' });
+      }
+    }
+
+    res.json({
+      success: true,
+      created: created.length,
+      errors: errors.length,
+      errorDetails: errors.slice(0, 10),
+    });
+  } catch (err) {
+    console.error('Error importing brands CSV:', err);
+    res.status(500).json({ error: 'ブランドCSVインポートに失敗しました。' });
+  }
+});
+
+// CSV bulk import domains for a brand
+router.post('/:id/domains/import-csv', async (req, res) => {
+  try {
+    const { csv } = req.body;
+    if (!csv || typeof csv !== 'string') {
+      return res.status(400).json({ error: 'CSVデータが必要です。' });
+    }
+
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin ? { id: req.params.id } : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({ where });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    // Parse CSV - support simple domain list or CSV with headers
+    const lines = csv.trim().split(/\r?\n/);
+    if (lines.length < 1) {
+      return res.status(400).json({ error: 'CSVデータが空です。' });
+    }
+
+    // Check if first line looks like a header
+    const firstLine = lines[0].toLowerCase();
+    const hasHeader = firstLine.includes('domain') || firstLine.includes('ドメイン') || firstLine.includes('type') || firstLine.includes('種別');
+    const startIdx = hasHeader ? 1 : 0;
+
+    // Detect delimiter
+    const delimiter = lines[0].includes('\t') ? '\t' : (lines[0].includes(',') ? ',' : null);
+
+    // Build header map if header exists
+    let domainIdx = 0;
+    let typeIdx = -1;
+    if (hasHeader && delimiter) {
+      const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      headers.forEach((h, i) => {
+        if (h === 'domain' || h === 'ドメイン') domainIdx = i;
+        if (h === 'type' || h === '種別' || h === 'タイプ') typeIdx = i;
+      });
+    }
+
+    const domainsToAdd: Array<{ domain: string; type: 'primary' | 'owned' }> = [];
+
+    for (let i = startIdx; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      let domain: string;
+      let type: 'primary' | 'owned' = 'owned';
+
+      if (delimiter) {
+        const fields = line.split(delimiter).map(f => f.trim().replace(/^"|"$/g, ''));
+        domain = fields[domainIdx] || '';
+        if (typeIdx >= 0 && fields[typeIdx]) {
+          const typeVal = fields[typeIdx].toLowerCase();
+          type = typeVal === 'primary' || typeVal === 'プライマリ' ? 'primary' : 'owned';
+        }
+      } else {
+        // Single column - just domain
+        domain = line;
+      }
+
+      // Normalize domain
+      domain = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+      if (domain && domain.includes('.')) {
+        domainsToAdd.push({ domain, type });
+      }
+    }
+
+    // Deduplicate
+    const uniqueDomains = new Map<string, 'primary' | 'owned'>();
+    for (const { domain, type } of domainsToAdd) {
+      // Primary takes precedence
+      if (!uniqueDomains.has(domain) || type === 'primary') {
+        uniqueDomains.set(domain, type);
+      }
+    }
+
+    // Pre-fetch existing domains in the same organization (excluding current brand)
+    const domainList = [...uniqueDomains.keys()];
+    const existingOrgDomains = await prisma.brandDomain.findMany({
+      where: {
+        domain: { in: domainList },
+        brand: {
+          organizationId: brand.organizationId,
+          id: { not: brand.id },
+        },
+      },
+      include: { brand: { select: { name: true } } },
+    });
+    const orgDomainMap = new Map(existingOrgDomains.map((d) => [d.domain, d.brand.name]));
+
+    let added = 0;
+    let skipped = 0;
+    let reclassified = 0;
+    const duplicates: Array<{ domain: string; brandName: string }> = [];
+    const errors: { line: number; message: string }[] = [];
+
+    for (const [domain, type] of uniqueDomains) {
+      // Check for duplicate in the same organization
+      const existingBrandName = orgDomainMap.get(domain);
+      if (existingBrandName) {
+        duplicates.push({ domain, brandName: existingBrandName });
+        skipped++;
+        continue;
+      }
+
+      try {
+        // If setting as primary, demote existing primary
+        if (type === 'primary') {
+          await prisma.brandDomain.updateMany({
+            where: { brandId: brand.id, type: 'primary' },
+            data: { type: 'owned' },
+          });
+        }
+
+        await prisma.brandDomain.upsert({
+          where: { brandId_domain: { brandId: brand.id, domain } },
+          update: { type },
+          create: { brandId: brand.id, domain, type },
+        });
+
+        const existing = await prisma.brandDomain.findUnique({
+          where: { brandId_domain: { brandId: brand.id, domain } },
+        });
+        if (existing && (Date.now() - new Date(existing.createdAt).getTime()) < 2000) {
+          added++;
+        } else {
+          skipped++;
+        }
+
+        // Reclassify matching detected domains as false_positive
+        if (type === 'owned') {
+          const result = await prisma.detectedDomain.updateMany({
+            where: {
+              brandId: brand.id,
+              domain: { contains: domain },
+              status: { not: 'false_positive' },
+            },
+            data: { status: 'false_positive' },
+          });
+          reclassified += result.count;
+        }
+      } catch (err) {
+        errors.push({ line: 0, message: `${domain}: 登録エラー` });
+        skipped++;
+      }
+    }
+
+    // Sync whitelistDomains
+    await syncWhitelistDomains(brand.id);
+
+    // Trigger scan if new domains were added
+    if (added > 0) {
+      runFullScan(brand.id, brand.name).catch((err) => {
+        console.error(`[BrandDomain CSV Import] Auto-scan failed for ${brand.name}:`, err);
+      });
+    }
+
+    res.json({
+      success: true,
+      added,
+      skipped,
+      reclassified,
+      total: uniqueDomains.size,
+      scanTriggered: added > 0,
+      errors: errors.length,
+      errorDetails: errors.slice(0, 10),
+      duplicates: duplicates.length > 0 ? duplicates : undefined,
+      duplicateMessage: duplicates.length > 0
+        ? `${duplicates.length}件のドメインが同じ組織内の別ブランドに既に登録されているためスキップしました。`
+        : undefined,
+    });
+  } catch (err) {
+    console.error('Error importing domains CSV:', err);
+    res.status(500).json({ error: 'ドメインCSVインポートに失敗しました。' });
+  }
+});
+
 export default router;

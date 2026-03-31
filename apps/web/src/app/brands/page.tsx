@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getBrands, createBrand, updateBrand, deleteBrand, triggerScan, getOrganizations, createOrganization } from '@/lib/api';
+import { getBrands, createBrand, updateBrand, deleteBrand, triggerScan, getOrganizations, createOrganization, importBrandsCSV } from '@/lib/api';
 
 /* ──── Monitoring status helpers ──── */
 const MONITORING_STATUS: Record<string, { label: string; color: string; dot: string }> = {
@@ -39,6 +39,9 @@ export default function BrandsPage() {
     newOrgName: '',
     keywords: '',
   });
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [csvImporting, setCsvImporting] = useState(false);
 
   const loadBrands = () => {
     getBrands()
@@ -124,6 +127,41 @@ export default function BrandsPage() {
     loadBrands();
   };
 
+  const handleCsvImport = async () => {
+    if (!csvText.trim()) return;
+    setCsvImporting(true);
+    try {
+      const result = await importBrandsCSV(csvText);
+      const msg = `インポート完了: ${result.created}件登録${result.errors > 0 ? `、${result.errors}件エラー` : ''}`;
+      if (result.created > 0) {
+        setScanNotice(`${msg}\n初回ドメイン調査を自動開始しました。`);
+        setTimeout(() => setScanNotice(null), 15000);
+      } else {
+        alert(msg);
+      }
+      if (result.errors > 0 && result.errorDetails.length > 0) {
+        console.log('CSV Import Errors:', result.errorDetails);
+      }
+      setShowCsvImport(false);
+      setCsvText('');
+      loadBrands();
+    } catch (err: any) {
+      alert(err.message || 'インポートに失敗しました');
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCsvText(event.target?.result as string || '');
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -131,19 +169,76 @@ export default function BrandsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">ブランド管理</h1>
           <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">監視対象のブランドを管理</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-        >
-          + ブランド追加
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCsvImport(!showCsvImport)}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
+          >
+            CSV一括登録
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          >
+            + ブランド追加
+          </button>
+        </div>
       </div>
 
       {/* Scan triggered notice */}
       {scanNotice && (
         <div className="flex items-start gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-700 dark:text-blue-300">{scanNotice}</p>
+          <p className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-line">{scanNotice}</p>
+        </div>
+      )}
+
+      {/* CSV Import Form */}
+      {showCsvImport && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+          <h2 className="text-lg font-bold">CSV一括インポート</h2>
+          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+            <p>CSVファイルまたはテキストで複数のブランドを一括登録できます。</p>
+            <p className="font-medium">必須列: name（ブランド名）, domain（ドメイン）</p>
+            <p>対応列: name, domain, keywords, organizationName</p>
+            <p className="text-xs text-gray-500">※ 日本語ヘッダーにも対応: ブランド名, ドメイン, キーワード, 組織名</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">CSVファイルを選択</label>
+            <input
+              type="file"
+              accept=".csv,.txt"
+              onChange={handleFileUpload}
+              className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">またはCSVテキストを直接入力</label>
+            <textarea
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              rows={8}
+              placeholder={`name,domain,keywords
+MyBrand,mybrand.com,マイブランド,my-brand
+AnotherBrand,another.co.jp,アナザー`}
+              value={csvText}
+              onChange={(e) => setCsvText(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCsvImport}
+              disabled={csvImporting || !csvText.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {csvImporting ? 'インポート中...' : 'インポート実行'}
+            </button>
+            <button
+              onClick={() => { setShowCsvImport(false); setCsvText(''); }}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+            >
+              キャンセル
+            </button>
+          </div>
         </div>
       )}
 

@@ -17,6 +17,7 @@ import {
   addBrandDomain,
   bulkAddBrandDomains,
   removeBrandDomain,
+  importDomainsCSV,
 } from '@/lib/api';
 
 /* ──────────────────────── types ──────────────────────── */
@@ -134,6 +135,9 @@ export default function BrandDetailPage() {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkDomains, setBulkDomains] = useState('');
   const [bulkAdding, setBulkAdding] = useState(false);
+  const [csvMode, setCsvMode] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [csvImporting, setCsvImporting] = useState(false);
   const [scanHistory, setScanHistory] = useState<{ scans: any[]; total: number; page: number; totalPages: number } | null>(null);
   const [scanPage, setScanPage] = useState(1);
   const [showEmailSettings, setShowEmailSettings] = useState(false);
@@ -311,6 +315,48 @@ export default function BrandDetailPage() {
     } finally {
       setBulkAdding(false);
     }
+  };
+
+  const handleCsvImport = async () => {
+    if (!csvText.trim() || !brand) return;
+    setCsvImporting(true);
+    setScanNotice(null);
+    setDomainSuccess(null);
+    try {
+      const result = await importDomainsCSV(brand.id, csvText.trim());
+      const msgs: string[] = [];
+      if (result.added > 0) msgs.push(`${result.added}件追加`);
+      if (result.skipped > 0) msgs.push(`${result.skipped}件は既存`);
+      if (result.reclassified > 0) msgs.push(`${result.reclassified}件の検知ドメインをホワイトリスト（誤検知）に再分類`);
+      if (result.errors > 0) msgs.push(`${result.errors}件エラー`);
+      setDomainSuccess(`✅ CSVインポート完了: ${msgs.join('、')}`);
+      setTimeout(() => setDomainSuccess(null), 10000);
+      if (result.added > 0) {
+        setScanNotice(`🔍 「${brand.name}」のドメイン調査を自動開始しました。`);
+        setTimeout(() => setScanNotice(null), 15000);
+      }
+      if (result.duplicateMessage) {
+        alert(result.duplicateMessage);
+      }
+      setCsvText('');
+      setCsvMode(false);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'CSVインポートに失敗しました');
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
+  const handleCsvFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setCsvText(event.target?.result as string || '');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleRemoveDomain = async (domainId: string) => {
@@ -774,13 +820,22 @@ export default function BrandDetailPage() {
         </form>
         <div className="flex items-center justify-between mt-2">
           <p className="text-xs text-gray-400">プライマリ = 監視対象の本体ドメイン。保有 = 自社管理ドメイン（ホワイトリスト自動登録）。</p>
-          <button
-            type="button"
-            onClick={() => setBulkMode(!bulkMode)}
-            className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap ml-2"
-          >
-            {bulkMode ? '閉じる' : '📋 一括登録'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setBulkMode(!bulkMode); setCsvMode(false); }}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap"
+            >
+              {bulkMode ? '閉じる' : '📋 一括登録'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCsvMode(!csvMode); setBulkMode(false); }}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap"
+            >
+              {csvMode ? '閉じる' : '📄 CSV登録'}
+            </button>
+          </div>
         </div>
 
         {/* Bulk add domains */}
@@ -807,6 +862,51 @@ export default function BrandDetailPage() {
               </button>
             </div>
           </form>
+        )}
+
+        {/* CSV import domains */}
+        {csvMode && (
+          <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 space-y-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">CSVファイルからドメインを一括登録</label>
+            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+              <p>対応形式: ドメインのみのリスト、または「domain, type」列のCSV</p>
+              <p>type: primary（プライマリ）または owned（保有）。省略時は owned</p>
+            </div>
+            <div>
+              <input
+                type="file"
+                accept=".csv,.txt"
+                onChange={handleCsvFileUpload}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">またはCSVテキストを直接入力</label>
+              <textarea
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                placeholder={`domain,type
+example.com,owned
+example.co.jp,primary
+example.net`}
+                rows={6}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-400">
+                {csvText.trim() ? `CSVデータを検出` : 'CSVデータを入力してください'}
+              </p>
+              <button
+                type="button"
+                onClick={handleCsvImport}
+                disabled={csvImporting || !csvText.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {csvImporting ? 'インポート中...' : 'CSVインポート'}
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Domain added success notice */}

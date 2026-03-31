@@ -45,6 +45,11 @@ export const createOrganization = (name: string) =>
 // Brands
 export const getBrands = () => fetchAPI<any[]>('/brands');
 export const getBrand = (id: string) => fetchAPI<any>(`/brands/${id}`);
+export const importBrandsCSV = (csv: string) =>
+  fetchAPI<{ success: boolean; created: number; errors: number; errorDetails: { line: number; message: string }[] }>(
+    '/brands/import-csv',
+    { method: 'POST', body: JSON.stringify({ csv }) }
+  );
 export const createBrand = (data: any) =>
   fetchAPI<any>('/brands', { method: 'POST', body: JSON.stringify(data) });
 export const updateBrand = (id: string, data: any) =>
@@ -99,6 +104,11 @@ export const bulkAddBrandDomains = (brandId: string, domains: string, type: 'pri
   fetchAPI<any>(`/brands/${brandId}/domains/bulk`, { method: 'POST', body: JSON.stringify({ domains, type }) });
 export const removeBrandDomain = (brandId: string, domainId: string) =>
   fetchAPI<void>(`/brands/${brandId}/domains/${domainId}`, { method: 'DELETE' });
+export const importDomainsCSV = (brandId: string, csv: string) =>
+  fetchAPI<{ success: boolean; added: number; skipped: number; reclassified: number; total: number; scanTriggered: boolean; errors: number; errorDetails: { line: number; message: string }[]; duplicates?: Array<{ domain: string; brandName: string }>; duplicateMessage?: string }>(
+    `/brands/${brandId}/domains/import-csv`,
+    { method: 'POST', body: JSON.stringify({ csv }) }
+  );
 
 // Threats
 export const getThreats = (params?: Record<string, string>) => {
