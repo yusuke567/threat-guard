@@ -98,7 +98,9 @@ function ResetPasswordForm() {
                 type={showPassword ? 'text' : 'password'}
                 required
                 minLength={8}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-700 dark:text-gray-100"
+                autoComplete="new-password"
+                name="password"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 pr-10 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-700 dark:text-gray-100"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="8文字以上"
@@ -114,7 +116,9 @@ function ResetPasswordForm() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 required
                 minLength={8}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-700 dark:text-gray-100"
+                autoComplete="new-password"
+                name="confirmPassword"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2.5 pr-10 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none dark:bg-gray-700 dark:text-gray-100"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="パスワードを再入力"
