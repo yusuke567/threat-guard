@@ -3,6 +3,50 @@ import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 
+// グローバル検知ルールを作成/更新（登録元の会社情報は保存しない）
+async function upsertGlobalDetectionRule(pattern: {
+  domain: string | null;
+  patternType: string;
+  description: string;
+  tags: string;
+  severity: string;
+  victimCount: number;
+}) {
+  if (!pattern.domain) return;
+
+  const existing = await prisma.globalDetectionRule.findUnique({
+    where: { domain: pattern.domain },
+  });
+
+  if (existing) {
+    // 既存ルールがあれば、より高い severity と victimCount の合算で更新
+    const severityOrder: Record<string, number> = { low: 1, medium: 2, high: 3 };
+    const newSeverity =
+      (severityOrder[pattern.severity] ?? 0) > (severityOrder[existing.severity] ?? 0)
+        ? pattern.severity
+        : existing.severity;
+
+    await prisma.globalDetectionRule.update({
+      where: { domain: pattern.domain },
+      data: {
+        severity: newSeverity,
+        victimCount: existing.victimCount + pattern.victimCount,
+      },
+    });
+  } else {
+    await prisma.globalDetectionRule.create({
+      data: {
+        domain: pattern.domain,
+        patternType: pattern.patternType,
+        description: pattern.description,
+        tags: pattern.tags,
+        severity: pattern.severity,
+        victimCount: pattern.victimCount,
+      },
+    });
+  }
+}
+
 // Helper: verify brand belongs to user's org (superadmin bypasses)
 async function verifyBrandOrg(brandId: string, organizationId: string | null, isSuperadmin: boolean) {
   if (isSuperadmin) return prisma.brand.findFirst({ where: { id: brandId } });
@@ -141,6 +185,10 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
         where: { id: pattern.id },
         data: { status: 'rule_created' },
       });
+
+      // グローバル検知ルールにも登録（他社にも適用されるよう）
+      await upsertGlobalDetectionRule(pattern);
+
       return res.json({ detectedDomain: existing, alreadyExisted: true });
     }
 
@@ -157,6 +205,9 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
       where: { id: pattern.id },
       data: { status: 'rule_created' },
     });
+
+    // グローバル検知ルールにも登録（他社にも適用されるよう）
+    await upsertGlobalDetectionRule(pattern);
 
     res.status(201).json({ detectedDomain, alreadyExisted: false });
   } catch (err) {

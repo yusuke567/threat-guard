@@ -308,6 +308,21 @@ model BrowserReport {
   @@index([status])
 }
 
+model GlobalDetectionRule {
+  id          String   @id @default(uuid())
+  domain      String   @unique
+  patternType String   @default("domain_spoof")
+  description String
+  tags        String   @default("")
+  severity    String   @default("medium")
+  victimCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([domain])
+  @@index([severity])
+}
+
 model AlertLog {
   id               String         @id @default(uuid())
   userId           String

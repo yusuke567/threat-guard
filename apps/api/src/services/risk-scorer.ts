@@ -149,7 +149,14 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
   const userReportBoost = patternMatch ? 15 : 0;
   const victimBoost = (patternMatch?.victimCount ?? 0) > 0 ? 10 : 0;
 
-  const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost));
+  // グローバル検知ルールによるブースト（他社で登録されたフィッシング手口も反映）
+  const globalRule = await prisma.globalDetectionRule.findUnique({
+    where: { domain: domain.domain },
+  });
+  const globalRuleBoost = globalRule ? 20 : 0;
+  const globalVictimBoost = (globalRule?.victimCount ?? 0) > 0 ? 10 : 0;
+
+  const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost + globalRuleBoost + globalVictimBoost));
 
   // Update the domain's risk score
   await prisma.detectedDomain.update({
