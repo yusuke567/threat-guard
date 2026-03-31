@@ -142,12 +142,25 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
     factors.contentSimilarity * 0.1
   );
 
-  // User report boost: if this domain was reported by users, increase score
-  const patternMatch = await prisma.phishingPattern.findFirst({
-    where: { brandId: domain.brandId, domain: domain.domain, status: { not: 'archived' } },
-  });
-  const userReportBoost = patternMatch ? 15 : 0;
-  const victimBoost = (patternMatch?.victimCount ?? 0) > 0 ? 10 : 0;
+  // User report boost: check both local pattern and global detection rules
+  const [patternMatch, globalMatch] = await Promise.all([
+    prisma.phishingPattern.findFirst({
+      where: { brandId: domain.brandId, domain: domain.domain, status: { not: 'archived' } },
+    }),
+    prisma.globalDetectionRule.findUnique({
+      where: { domain: domain.domain },
+    }),
+  ]);
+
+  // Boost if matched by either local pattern or global rule
+  const hasMatch = patternMatch || globalMatch;
+  const userReportBoost = hasMatch ? 15 : 0;
+
+  // Aggregate victim counts from both sources
+  const localVictims = patternMatch?.victimCount ?? 0;
+  const globalVictims = globalMatch?.victimCount ?? 0;
+  const totalVictims = localVictims + globalVictims;
+  const victimBoost = totalVictims > 0 ? Math.min(20, 10 + Math.floor(totalVictims / 5)) : 0;
 
   const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost));
 

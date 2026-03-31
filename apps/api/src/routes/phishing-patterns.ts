@@ -3,6 +3,54 @@ import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 
+// Severity priority map for determining which severity to keep
+const SEVERITY_PRIORITY: Record<string, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+};
+
+// Upsert pattern to GlobalDetectionRule (shared across all organizations)
+// Source organization is NOT stored to maintain privacy
+async function upsertGlobalDetectionRule(pattern: {
+  domain: string | null;
+  patternType: string;
+  severity: string;
+  victimCount: number;
+}) {
+  if (!pattern.domain) return;
+
+  const existing = await prisma.globalDetectionRule.findUnique({
+    where: { domain: pattern.domain },
+  });
+
+  if (existing) {
+    // Aggregate: keep higher severity, sum victim counts
+    const newSeverity =
+      (SEVERITY_PRIORITY[pattern.severity] || 0) > (SEVERITY_PRIORITY[existing.severity] || 0)
+        ? pattern.severity
+        : existing.severity;
+
+    await prisma.globalDetectionRule.update({
+      where: { domain: pattern.domain },
+      data: {
+        severity: newSeverity,
+        victimCount: existing.victimCount + Math.max(1, pattern.victimCount),
+      },
+    });
+  } else {
+    await prisma.globalDetectionRule.create({
+      data: {
+        domain: pattern.domain,
+        patternType: pattern.patternType,
+        severity: pattern.severity,
+        victimCount: Math.max(1, pattern.victimCount),
+      },
+    });
+  }
+}
+
 // Helper: verify brand belongs to user's org (superadmin bypasses)
 async function verifyBrandOrg(brandId: string, organizationId: string | null, isSuperadmin: boolean) {
   if (isSuperadmin) return prisma.brand.findFirst({ where: { id: brandId } });
@@ -141,6 +189,10 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
         where: { id: pattern.id },
         data: { status: 'rule_created' },
       });
+
+      // Upsert to GlobalDetectionRule for cross-organization sharing
+      await upsertGlobalDetectionRule(pattern);
+
       return res.json({ detectedDomain: existing, alreadyExisted: true });
     }
 
@@ -157,6 +209,9 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
       where: { id: pattern.id },
       data: { status: 'rule_created' },
     });
+
+    // Upsert to GlobalDetectionRule for cross-organization sharing
+    await upsertGlobalDetectionRule(pattern);
 
     res.status(201).json({ detectedDomain, alreadyExisted: false });
   } catch (err) {

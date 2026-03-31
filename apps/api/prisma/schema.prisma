@@ -324,3 +324,18 @@ model AlertLog {
   @@index([detectedDomainId])
   @@index([sentAt])
 }
+
+// Global detection rules shared across all organizations
+// Source organization is intentionally not stored for privacy
+model GlobalDetectionRule {
+  id          String   @id @default(uuid())
+  domain      String   @unique
+  patternType String   @default("domain_spoof")
+  severity    String   @default("medium")
+  victimCount Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([domain])
+  @@index([severity])
+}
