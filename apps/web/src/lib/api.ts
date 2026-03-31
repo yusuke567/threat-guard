@@ -160,6 +160,11 @@ export const deletePhishingPattern = (id: string) =>
   fetchAPI<void>(`/phishing-patterns/${id}`, { method: 'DELETE' });
 export const applyPhishingPattern = (id: string) =>
   fetchAPI<any>(`/phishing-patterns/${id}/apply`, { method: 'POST' });
+export const importPhishingPatternsCSV = (brandId: string, csv: string) =>
+  fetchAPI<{ success: boolean; created: number; errors: number; errorDetails: { line: number; message: string }[] }>(
+    `/brands/${brandId}/phishing-patterns/import-csv`,
+    { method: 'POST', body: JSON.stringify({ csv }) }
+  );
 
 // Abuse contacts
 export const getAbuseContacts = (threatId: string) =>

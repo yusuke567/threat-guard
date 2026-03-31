@@ -163,6 +163,146 @@ router.delete('/phishing-patterns/:id', async (req, res) => {
   }
 });
 
+// CSV bulk import patterns
+router.post('/brands/:brandId/phishing-patterns/import-csv', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const orgId = req.user!.organizationId;
+    const { brandId } = req.params;
+
+    const brand = await verifyBrandOrg(brandId, orgId, isSuperadmin);
+    if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
+
+    const { csv } = req.body;
+    if (!csv || typeof csv !== 'string') {
+      return res.status(400).json({ error: 'CSVデータが必要です。' });
+    }
+
+    // Parse CSV (supports both comma and tab delimiters)
+    const lines = csv.trim().split(/\r?\n/);
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'CSVにヘッダーとデータ行が必要です。' });
+    }
+
+    // Detect delimiter (comma or tab)
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/"/g, ''));
+
+    // Expected headers: reportedBy, patternType, url, domain, description, severity, victimCount, tags
+    const headerMap: Record<string, number> = {};
+    headers.forEach((h, i) => {
+      // Support various header names
+      const normalized = h
+        .replace(/報告者|reporter/, 'reportedby')
+        .replace(/種別|type|パターン種別/, 'patterntype')
+        .replace(/説明|手口/, 'description')
+        .replace(/重要度|深刻度/, 'severity')
+        .replace(/被害者数|被害/, 'victimcount')
+        .replace(/ドメイン/, 'domain')
+        .replace(/タグ/, 'tags');
+      headerMap[normalized] = i;
+    });
+
+    const descIdx = headerMap['description'];
+    if (descIdx === undefined) {
+      return res.status(400).json({ error: '「description」列が必要です。' });
+    }
+
+    const validPatternTypes = ['domain_spoof', 'email', 'sms', 'social', 'clone_site', 'other'];
+    const validSeverities = ['low', 'medium', 'high', 'critical'];
+
+    const created: any[] = [];
+    const errors: { line: number; message: string }[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      // Parse CSV fields (handle quoted values)
+      const fields: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      for (const char of line) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if ((char === delimiter.charAt(0)) && !inQuotes) {
+          fields.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      fields.push(current.trim());
+
+      const getValue = (key: string) => {
+        const idx = headerMap[key];
+        return idx !== undefined && fields[idx] ? fields[idx].replace(/^"|"$/g, '') : null;
+      };
+
+      const description = getValue('description');
+      if (!description) {
+        errors.push({ line: i + 1, message: '説明が空です' });
+        continue;
+      }
+
+      let url = getValue('url');
+      let domain = getValue('domain');
+
+      // Extract domain from URL if domain is not provided
+      if (!domain && url) {
+        try {
+          const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+          domain = urlObj.hostname;
+        } catch {
+          // Keep URL as-is if parsing fails
+        }
+      }
+
+      let patternType = getValue('patterntype') || 'domain_spoof';
+      if (!validPatternTypes.includes(patternType)) {
+        patternType = 'other';
+      }
+
+      let severity = getValue('severity') || 'medium';
+      if (!validSeverities.includes(severity)) {
+        severity = 'medium';
+      }
+
+      const victimCountStr = getValue('victimcount');
+      const victimCount = victimCountStr ? parseInt(victimCountStr, 10) || 0 : 0;
+
+      try {
+        const pattern = await prisma.phishingPattern.create({
+          data: {
+            brandId,
+            reportedBy: getValue('reportedby'),
+            patternType,
+            url,
+            domain,
+            description,
+            tags: getValue('tags') || '',
+            severity,
+            victimCount,
+          },
+        });
+        created.push(pattern);
+      } catch (err) {
+        errors.push({ line: i + 1, message: '登録エラー' });
+      }
+    }
+
+    res.json({
+      success: true,
+      created: created.length,
+      errors: errors.length,
+      errorDetails: errors.slice(0, 10), // Return first 10 errors
+    });
+  } catch (err) {
+    console.error('Error importing CSV:', err);
+    res.status(500).json({ error: 'CSVインポートに失敗しました。' });
+  }
+});
+
 // Apply pattern to detection
 router.post('/phishing-patterns/:id/apply', async (req, res) => {
   try {
