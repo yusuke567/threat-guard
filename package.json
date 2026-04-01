@@ -5,6 +5,9 @@
   "workspaces": ["packages/*", "apps/*"],
   "scripts": {
     "dev:api": "npm run dev -w @threat-guard/api",
-    "build": "npm run build -w @threat-guard/shared && npm run build -w @threat-guard/api"
+    "build": "npm run build -w @threat-guard/shared && npm run build -w @threat-guard/api",
+    "docs:dev": "npm run dev -w @threat-guard/docs",
+    "docs:build": "npm run build -w @threat-guard/docs",
+    "docs:preview": "npm run preview -w @threat-guard/docs"
   }
 }
