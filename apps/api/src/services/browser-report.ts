@@ -64,10 +64,11 @@ export async function checkGoogleSafeBrowsing(url: string): Promise<{
 export async function reportToGoogleSafeBrowsing(url: string): Promise<{
   success: boolean;
   message: string;
+  manualReportUrl?: string;
 }> {
-  // APIキーが未設定の場合は、フォームベースの申請にフォールバック
+  // APIキーが未設定の場合は、手動報告リンクを返す
   if (!GOOGLE_SB_API_KEY) {
-    console.log('GOOGLE_SAFE_BROWSING_API_KEY is not configured. Falling back to form-based report.');
+    console.log('GOOGLE_SAFE_BROWSING_API_KEY is not configured. Returning manual report URL.');
     return reportToGoogleSafeBrowsingForm(url);
   }
 
@@ -95,8 +96,8 @@ export async function reportToGoogleSafeBrowsing(url: string): Promise<{
 
   if (!res.ok) {
     const errText = await res.text();
-    // Fall back to form-based report if API fails
-    console.warn(`Google SB threatHits API failed (${res.status}): ${errText}. Falling back to report form.`);
+    // Fall back to manual report URL if API fails
+    console.warn(`Google SB threatHits API failed (${res.status}): ${errText}. Returning manual report URL.`);
     return reportToGoogleSafeBrowsingForm(url);
   }
 
@@ -107,47 +108,22 @@ export async function reportToGoogleSafeBrowsing(url: string): Promise<{
 }
 
 /**
- * Fallback: Report via Google Safe Browsing phishing report form
- * POST to safebrowsing.google.com/safebrowsing/report_phish/
+ * Fallback: Return manual report URL for Google Safe Browsing
+ * Google's form requires browser interaction (CSRF tokens, JavaScript)
+ * so we provide a pre-filled URL for manual submission
  */
-async function reportToGoogleSafeBrowsingForm(url: string): Promise<{
+function reportToGoogleSafeBrowsingForm(url: string): {
   success: boolean;
   message: string;
-}> {
-  try {
-    const formUrl = 'https://safebrowsing.google.com/safebrowsing/report_phish/?hl=en';
+  manualReportUrl: string;
+} {
+  const manualReportUrl = `https://safebrowsing.google.com/safebrowsing/report_phish/?hl=en&url=${encodeURIComponent(url)}`;
 
-    const params = new URLSearchParams();
-    params.append('url', url);
-    params.append('dq', ''); // description field
-
-    const res = await fetch(formUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'ThreatGuard/1.0',
-      },
-      body: params.toString(),
-    });
-
-    // Google's form returns 200 even on submission
-    if (res.status >= 200 && res.status < 400) {
-      return {
-        success: true,
-        message: 'URL reported to Google Safe Browsing via phishing report form',
-      };
-    }
-
-    return {
-      success: false,
-      message: `Google report form returned status ${res.status}`,
-    };
-  } catch (err: any) {
-    return {
-      success: false,
-      message: `Google report form error: ${err.message}`,
-    };
-  }
+  return {
+    success: true,
+    message: 'Google Safe Browsing APIキーが未設定のため、手動報告リンクを生成しました。リンクをクリックして報告を完了してください。',
+    manualReportUrl,
+  };
 }
 
 // --- Microsoft SmartScreen ---
