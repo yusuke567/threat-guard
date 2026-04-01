@@ -12,13 +12,14 @@ const GOOGLE_SB_SUBMIT_URL = 'https://safebrowsing.googleapis.com/v4/threatHits'
 
 /**
  * Check if a URL is already flagged in Google Safe Browsing
+ * Note: This function requires an API key (form-based check is not available)
  */
 export async function checkGoogleSafeBrowsing(url: string): Promise<{
   isFlagged: boolean;
   threats: Array<{ threatType: string; platformType: string }>;
 }> {
   if (!GOOGLE_SB_API_KEY) {
-    throw new Error('GOOGLE_SAFE_BROWSING_API_KEY is not configured');
+    throw new Error('Safe Browsingステータスの確認にはGOOGLE_SAFE_BROWSING_API_KEYの設定が必要です。申請のみ可能です。');
   }
 
   const body = {
@@ -60,13 +61,16 @@ export async function checkGoogleSafeBrowsing(url: string): Promise<{
 /**
  * Report a phishing URL to Google Safe Browsing via the report_phish endpoint
  * Uses the free report submission endpoint (no Web Risk API sales contact needed)
+ * Falls back to form-based submission if API key is not configured
  */
 export async function reportToGoogleSafeBrowsing(url: string): Promise<{
   success: boolean;
   message: string;
 }> {
+  // If API key is not configured, use form-based submission directly
   if (!GOOGLE_SB_API_KEY) {
-    throw new Error('GOOGLE_SAFE_BROWSING_API_KEY is not configured');
+    console.info('GOOGLE_SAFE_BROWSING_API_KEY not configured, using form-based submission.');
+    return reportToGoogleSafeBrowsingForm(url);
   }
 
   // Use the Safe Browsing Update API report endpoint
