@@ -18,7 +18,7 @@ export async function checkGoogleSafeBrowsing(url: string): Promise<{
   threats: Array<{ threatType: string; platformType: string }>;
 }> {
   if (!GOOGLE_SB_API_KEY) {
-    throw new Error('GOOGLE_SAFE_BROWSING_API_KEY is not configured');
+    throw new Error('GOOGLE_SAFE_BROWSING_API_KEYが設定されていません。ステータス確認にはAPIキーが必要ですが、削除申請はAPIキーなしでも実行可能です。');
   }
 
   const body = {
@@ -65,8 +65,10 @@ export async function reportToGoogleSafeBrowsing(url: string): Promise<{
   success: boolean;
   message: string;
 }> {
+  // APIキーが未設定の場合は、フォームベースの申請にフォールバック
   if (!GOOGLE_SB_API_KEY) {
-    throw new Error('GOOGLE_SAFE_BROWSING_API_KEY is not configured');
+    console.log('GOOGLE_SAFE_BROWSING_API_KEY is not configured. Falling back to form-based report.');
+    return reportToGoogleSafeBrowsingForm(url);
   }
 
   // Use the Safe Browsing Update API report endpoint
