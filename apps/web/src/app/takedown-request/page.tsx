@@ -25,11 +25,18 @@ interface PoliceRecipient {
   email: string;
 }
 
+interface JpcertRecipient {
+  type: 'jpcert';
+  name: string;
+  email: string;
+  pgpKeyUrl?: string;
+}
+
 interface AbuseGroup {
   abuseEmail: string | null;
   registrar: string;
   threats: ThreatInfo[];
-  recipientType?: 'registrar' | 'police';
+  recipientType?: 'registrar' | 'police' | 'jpcert';
   recipientName?: string;
   // Step 2 fields
   template?: string;
@@ -68,6 +75,8 @@ export default function TakedownRequestPage() {
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [policeRecipient, setPoliceRecipient] = useState<PoliceRecipient | null>(null);
   const [sendToPolice, setSendToPolice] = useState(false);
+  const [jpcertRecipient, setJpcertRecipient] = useState<JpcertRecipient | null>(null);
+  const [sendToJpcert, setSendToJpcert] = useState(false);
 
   // Step 3 result
   const [result, setResult] = useState<any>(null);
@@ -98,6 +107,9 @@ export default function TakedownRequestPage() {
         })));
         if (data.policeRecipient) {
           setPoliceRecipient(data.policeRecipient);
+        }
+        if (data.jpcertRecipient) {
+          setJpcertRecipient(data.jpcertRecipient);
         }
       })
       .catch((err) => setError(err.message))
@@ -133,15 +145,41 @@ export default function TakedownRequestPage() {
         }
       : null;
 
+  // JPCERT group: all active threats combined into one group
+  const jpcertGroup: AbuseGroup & { originalIndex: number } | null =
+    sendToJpcert && jpcertRecipient && activeThreats.length > 0
+      ? {
+          abuseEmail: jpcertRecipient.email,
+          registrar: '',
+          recipientType: 'jpcert' as const,
+          recipientName: jpcertRecipient.name,
+          threats: activeThreats,
+          language: 'ja',
+          evidenceTypes: ['screenshot', 'whois'],
+          template: '',
+          manualEmail: '',
+          originalIndex: -2, // sentinel for jpcert group
+        }
+      : null;
+
   const activeGroups = [
     ...registrarGroups,
     ...(policeGroup ? [policeGroup] : []),
+    ...(jpcertGroup ? [jpcertGroup] : []),
   ];
 
   const unresolvedCount = registrarGroups.filter((g) => !g.abuseEmail && !g.manualEmail).length;
 
   // Police group state (separate from registrar groups since it's virtual)
   const [policeGroupState, setPoliceGroupState] = useState<{
+    template: string;
+    loading: boolean;
+    language: string;
+    evidenceTypes: string[];
+  }>({ template: '', loading: false, language: 'ja', evidenceTypes: ['screenshot', 'whois'] });
+
+  // JPCERT group state (separate from registrar groups since it's virtual)
+  const [jpcertGroupState, setJpcertGroupState] = useState<{
     template: string;
     loading: boolean;
     language: string;
@@ -198,7 +236,28 @@ export default function TakedownRequestPage() {
         }));
       }
     }
-  }, [groups, excludedIds, sendToPolice, policeRecipient, activeThreats]);
+
+    // Generate JPCERT template if enabled
+    if (sendToJpcert && jpcertRecipient && activeThreats.length > 0) {
+      setJpcertGroupState((prev) => ({ ...prev, loading: true }));
+      try {
+        const res = await generateBatchTemplate({
+          threatIds: activeThreats.map((t) => t.threatId),
+          abuseEmail: jpcertRecipient.email,
+          registrar: '',
+          language: 'ja',
+          recipientType: 'jpcert',
+        });
+        setJpcertGroupState((prev) => ({ ...prev, template: res.template, loading: false }));
+      } catch {
+        setJpcertGroupState((prev) => ({
+          ...prev,
+          template: '(テンプレート生成に失敗しました。手動で入力してください。)',
+          loading: false,
+        }));
+      }
+    }
+  }, [groups, excludedIds, sendToPolice, policeRecipient, sendToJpcert, jpcertRecipient, activeThreats]);
 
   // Move to step 2
   const goToStep2 = async () => {
@@ -240,6 +299,21 @@ export default function TakedownRequestPage() {
             evidenceTypes: policeGroupState.evidenceTypes.join(','),
             recipientType: 'police',
             recipientName: policeRecipient.name,
+          });
+        }
+      }
+
+      // JPCERT items
+      if (sendToJpcert && jpcertRecipient && jpcertGroupState.template) {
+        for (const t of activeThreats) {
+          items.push({
+            threatId: t.threatId,
+            abuseEmail: jpcertRecipient.email,
+            template: jpcertGroupState.template,
+            language: 'ja',
+            evidenceTypes: jpcertGroupState.evidenceTypes.join(','),
+            recipientType: 'jpcert',
+            recipientName: jpcertRecipient.name,
           });
         }
       }
@@ -387,59 +461,105 @@ export default function TakedownRequestPage() {
           </div>
 
           {/* 送信先まとめ */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">送信先を選択</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+            <h3 className="font-bold text-gray-900 dark:text-gray-100">送信先を選択</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">削除申請の送信先を選択してください。複数の送信先を同時に選択できます。</p>
 
-            {/* Registrar groups */}
-            {registrarGroups.map((g, i) => (
-              <div key={`reg-${i}`} className="flex items-center gap-3 py-2">
-                <span>📧</span>
-                <span className="font-medium text-sm">{g.registrar}</span>
-                {g.abuseEmail ? (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">({g.abuseEmail})</span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-orange-600">⚠️ 送信先を入力してください</span>
-                    <input
-                      type="email"
-                      placeholder="abuse@example.com"
-                      value={g.manualEmail || ''}
-                      onChange={(e) => {
-                        const updated = [...groups];
-                        const idx = g.originalIndex;
-                        if (idx >= 0) {
-                          updated[idx] = { ...updated[idx], manualEmail: e.target.value };
-                          setGroups(updated);
-                        }
-                      }}
-                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm w-64"
-                    />
-                  </div>
-                )}
-                <span className="text-xs text-gray-400 dark:text-gray-500">— {g.threats.length}件</span>
-              </div>
-            ))}
+            {/* 1. ドメインレジストラへの削除申請 */}
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                <span className="text-lg">📧</span>
+                ドメインレジストラへの削除申請
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                各ドメインのレジストラ（登録管理会社）に直接削除を依頼します
+              </p>
+              {registrarGroups.length > 0 ? (
+                <div className="space-y-2 pl-2">
+                  {registrarGroups.map((g, i) => (
+                    <div key={`reg-${i}`} className="flex items-center gap-3 py-1.5 bg-gray-50 dark:bg-gray-700/50 rounded px-3">
+                      <span className="font-medium text-sm flex-1">{g.registrar}</span>
+                      {g.abuseEmail ? (
+                        <span className="text-xs text-gray-500 dark:text-gray-400">({g.abuseEmail})</span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-orange-600">⚠️ 送信先を入力</span>
+                          <input
+                            type="email"
+                            placeholder="abuse@example.com"
+                            value={g.manualEmail || ''}
+                            onChange={(e) => {
+                              const updated = [...groups];
+                              const idx = g.originalIndex;
+                              if (idx >= 0) {
+                                updated[idx] = { ...updated[idx], manualEmail: e.target.value };
+                                setGroups(updated);
+                              }
+                            }}
+                            className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm w-56"
+                          />
+                        </div>
+                      )}
+                      <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded">{g.threats.length}件</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 dark:text-gray-500 pl-2">対象のドメインがありません</p>
+              )}
+            </div>
 
-            {/* Police recipient checkbox */}
+            {/* 2. 警視庁への情報提供 */}
             {policeRecipient && (
-              <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                <label className="flex items-center gap-3 py-2 cursor-pointer">
+              <div className={`border rounded-lg p-4 transition-colors ${sendToPolice ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={sendToPolice}
                     onChange={(e) => setSendToPolice(e.target.checked)}
-                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 w-4 h-4"
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 w-4 h-4 mt-1"
                   />
-                  <span>🚔</span>
-                  <div>
-                    <span className="font-medium text-sm">{policeRecipient.name}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({policeRecipient.email})</span>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <span className="text-lg">🚔</span>
+                      警視庁への情報提供
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {policeRecipient.name}（{policeRecipient.email}）に情報提供します
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      ※ レジストラへの申請とは別に、並行して警視庁サイバー犯罪対策課にも報告します
+                    </p>
                   </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">— {activeThreats.length}件</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded">{activeThreats.length}件</span>
                 </label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 ml-10">
-                  レジストラへの申請とは別に、警視庁サイバー犯罪対策課にも情報提供します
-                </p>
+              </div>
+            )}
+
+            {/* 3. JPCERT/CCへの報告 */}
+            {jpcertRecipient && (
+              <div className={`border rounded-lg p-4 transition-colors ${sendToJpcert ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendToJpcert}
+                    onChange={(e) => setSendToJpcert(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <span className="text-lg">🛡️</span>
+                      JPCERT/CCへのフィッシング報告
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {jpcertRecipient.name}（{jpcertRecipient.email}）にフィッシング報告を送信します
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      ※ JPCERT/CCは日本のセキュリティインシデント対応機関で、フィッシングサイトの早期閉鎖を支援します
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded">{activeThreats.length}件</span>
+                </label>
               </div>
             )}
           </div>
@@ -680,6 +800,93 @@ export default function TakedownRequestPage() {
             </div>
           )}
 
+          {/* JPCERT group */}
+          {sendToJpcert && jpcertRecipient && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-green-300 dark:border-green-700 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    🛡️ {jpcertRecipient.name}
+                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({activeThreats.length}件)</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">送信先: {jpcertRecipient.email}</p>
+                </div>
+                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs font-bold">JPCERT報告</span>
+              </div>
+
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                対象: {activeThreats.map((t) => t.domain).join(' / ')}
+              </div>
+
+              {jpcertGroupState.loading ? (
+                <div className="flex items-center gap-2 py-8 justify-center text-gray-500 dark:text-gray-400">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600" />
+                  <span className="text-sm">JPCERT向けフィッシング報告文を生成中...</span>
+                </div>
+              ) : (
+                <textarea
+                  value={jpcertGroupState.template}
+                  onChange={(e) => setJpcertGroupState((prev) => ({ ...prev, template: e.target.value }))}
+                  rows={14}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-sm font-mono resize-y"
+                />
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    setJpcertGroupState((prev) => ({ ...prev, loading: true }));
+                    try {
+                      const res = await generateBatchTemplate({
+                        threatIds: activeThreats.map((t) => t.threatId),
+                        abuseEmail: jpcertRecipient.email,
+                        registrar: '',
+                        language: 'ja',
+                        recipientType: 'jpcert',
+                      });
+                      setJpcertGroupState((prev) => ({ ...prev, template: res.template, loading: false }));
+                    } catch {
+                      setJpcertGroupState((prev) => ({ ...prev, loading: false }));
+                    }
+                  }}
+                  className="text-sm text-green-600 hover:text-green-800 flex items-center gap-1"
+                >
+                  🔄 再生成
+                </button>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">添付エビデンス:</h4>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { key: 'screenshot', label: 'スクリーンショット' },
+                    { key: 'whois', label: 'WHOIS情報' },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={jpcertGroupState.evidenceTypes.includes(key)}
+                        onChange={(e) => {
+                          setJpcertGroupState((prev) => {
+                            const types = [...prev.evidenceTypes];
+                            if (e.target.checked) types.push(key);
+                            else {
+                              const ti = types.indexOf(key);
+                              if (ti >= 0) types.splice(ti, 1);
+                            }
+                            return { ...prev, evidenceTypes: types };
+                          });
+                        }}
+                        className="rounded border-gray-300 dark:border-gray-600 text-green-600"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <button
               onClick={() => setStep(1)}
@@ -691,7 +898,8 @@ export default function TakedownRequestPage() {
               onClick={() => setStep(3)}
               disabled={
                 registrarGroups.some((g) => !g.template || g.loading) ||
-                (sendToPolice && (!policeGroupState.template || policeGroupState.loading))
+                (sendToPolice && (!policeGroupState.template || policeGroupState.loading)) ||
+                (sendToJpcert && (!jpcertGroupState.template || jpcertGroupState.loading))
               }
               className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
             >
@@ -753,8 +961,30 @@ export default function TakedownRequestPage() {
               </div>
             )}
 
+            {/* JPCERT group */}
+            {sendToJpcert && jpcertRecipient && (
+              <div className="border-b border-gray-100 dark:border-gray-700 py-4 last:border-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                    🛡️ {jpcertRecipient.name} — {activeThreats.length}件
+                  </h3>
+                  <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs font-bold">JPCERT報告</span>
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                  <div>送信先: <span className="font-mono">{jpcertRecipient.email}</span></div>
+                  <div>文面: 日本語（フィッシング報告様式）</div>
+                  <div>添付: {jpcertGroupState.evidenceTypes.map((t) =>
+                    t === 'screenshot' ? 'スクショ' : t === 'whois' ? 'WHOIS' : t
+                  ).join(' + ') || 'なし'}</div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    対象: {activeThreats.map((t) => t.domain).join(', ')}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 font-medium">
-              合計: {activeThreats.length}件の脅威 → {registrarGroups.length + (sendToPolice ? 1 : 0)}通のメールを送信
+              合計: {activeThreats.length}件の脅威 → {registrarGroups.length + (sendToPolice ? 1 : 0) + (sendToJpcert ? 1 : 0)}通のメールを送信
             </div>
           </div>
 
