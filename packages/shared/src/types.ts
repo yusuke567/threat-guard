@@ -12,6 +12,8 @@ export type DomainStatus =
 
 export type TakedownStatus = 'draft' | 'sent' | 'acknowledged' | 'completed' | 'rejected';
 
+export type TakedownRecipientType = 'registrar' | 'police' | 'jpcert';
+
 export type ScanType = 'ct_monitor' | 'domain_generation' | 'manual';
 
 export type ScanJobStatus = 'pending' | 'running' | 'completed' | 'failed';
@@ -65,8 +67,12 @@ export interface ThreatAnalysis {
 export interface TakedownRequest {
   id: string;
   detectedDomainId: string;
+  recipientType: TakedownRecipientType;
+  recipientName?: string;
   registrar: string;
+  abuseEmail?: string;
   template: string;
+  language: string;
   status: TakedownStatus;
   sentAt?: Date;
   respondedAt?: Date;

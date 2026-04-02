@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getAbuseContacts } from '../services/whois-abuse.js';
-import { generateTakedownTemplate, generatePoliceTemplateBatch, POLICE_RECIPIENT, type RecipientType } from '../services/takedown.js';
+import { generateTakedownTemplate, generatePoliceTemplateBatch, generateJpcertTemplateBatch, POLICE_RECIPIENT, JPCERT_RECIPIENT, type RecipientType } from '../services/takedown.js';
 import { sendTakedownEmail } from '../services/takedown-export.js';
 
 const router = Router();
@@ -69,6 +69,7 @@ router.post('/abuse-contacts', async (req, res) => {
       threats: results,
       groups: Object.values(groups),
       policeRecipient: POLICE_RECIPIENT,
+      jpcertRecipient: JPCERT_RECIPIENT,
     });
   } catch (err: any) {
     console.error('Abuse contacts lookup failed:', err);
@@ -86,7 +87,7 @@ router.post('/', async (req, res) => {
       template: z.string().min(1),
       language: z.string().default('en'),
       evidenceTypes: z.string().default(''),
-      recipientType: z.enum(['registrar', 'police']).default('registrar'),
+      recipientType: z.enum(['registrar', 'police', 'jpcert']).default('registrar'),
       recipientName: z.string().optional(),
     });
     const schema = z.object({
@@ -122,14 +123,18 @@ router.post('/', async (req, res) => {
       const whois = threat.whoisData ? JSON.parse(threat.whoisData) : {};
       const registrar = whois?.registrar || 'Unknown';
 
+      const recipientName = item.recipientType === 'police'
+        ? (item.recipientName || POLICE_RECIPIENT.name)
+        : item.recipientType === 'jpcert'
+          ? (item.recipientName || JPCERT_RECIPIENT.name)
+          : registrar;
+
       const takedown = await prisma.takedownRequest.create({
         data: {
           detectedDomainId: item.threatId,
           batchId: batch.id,
           recipientType: item.recipientType,
-          recipientName: item.recipientType === 'police'
-            ? (item.recipientName || POLICE_RECIPIENT.name)
-            : registrar,
+          recipientName,
           registrar,
           abuseEmail: item.abuseEmail,
           template: item.template,
@@ -324,7 +329,7 @@ router.post('/generate-template', async (req, res) => {
       abuseEmail: z.string().email(),
       registrar: z.string(),
       language: z.enum(['ja', 'en']).default('en'),
-      recipientType: z.enum(['registrar', 'police']).default('registrar'),
+      recipientType: z.enum(['registrar', 'police', 'jpcert']).default('registrar'),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -349,6 +354,21 @@ router.post('/generate-template', async (req, res) => {
     if (parsed.data.recipientType === 'police') {
       const policeTemplate = await generatePoliceTemplateBatch(threats as any);
       return res.json({ template: policeTemplate, language: 'ja' });
+    }
+
+    // JPCERT template uses JPCERT's official format
+    if (parsed.data.recipientType === 'jpcert') {
+      // Include webProbes for IP address information
+      const threatsWithProbes = await prisma.detectedDomain.findMany({
+        where: { id: { in: parsed.data.threatIds }, brandId: { in: brandIds } },
+        include: {
+          brand: { include: { organization: true } },
+          analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
+          webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
+        },
+      });
+      const jpcertTemplate = await generateJpcertTemplateBatch(threatsWithProbes as any);
+      return res.json({ template: jpcertTemplate, language: 'ja' });
     }
 
     const useJapanese = parsed.data.language === 'ja';
