@@ -7,6 +7,7 @@ import {
   sendTakedownEmail, downloadTakedownPdf, getContentAnalysis,
   triggerProbe, updateThreatStatus,
   getBrowserReports, submitGoogleReport, submitMicrosoftReport,
+  getBulkAbuseContacts, generateBatchTemplate, submitBatchTakedown,
 } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 import GlossaryTerm from '@/components/GlossaryTerm';
@@ -198,20 +199,16 @@ export default function ThreatDetailPage() {
   };
 
   // ─── Takedown Flow ──────────────────────────────────────────────────────────
-  const openTakedownModal = async () => {
-    setShowTakedownModal(true);
-    setTakedownStep('loading_contacts');
-    setTakedownError('');
-    setTakedownSuccess('');
-    try {
-      const contacts = await getAbuseContacts(threat.id);
-      setRegistrar(contacts.registrar);
-      setAbuseEmail(contacts.abuseEmail || '');
-      setTakedownStep('confirm_recipient');
-    } catch {
-      setTakedownError('Abuse連絡先の取得に失敗しました');
-      setTakedownStep('confirm_recipient');
+  const scrollToTakedownSection = () => {
+    const el = document.getElementById('unified-takedown-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  };
+
+  const openTakedownModal = async () => {
+    // Redirect to unified section instead of modal
+    scrollToTakedownSection();
   };
 
   const handleGenerate = async () => {
@@ -565,13 +562,443 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
         </dl>
       </div>
 
-      {/* ブラウザ削除申請 */}
-      <BrowserReportSection threat={threat} />
+      {/* 統合削除申請セクション */}
+      <UnifiedTakedownSection threat={threat} />
     </div>
   );
 }
 
-// ─── Browser Report Section ─────────────────────────────────────────────────
+// ─── Unified Takedown Section ───────────────────────────────────────────────
+
+function UnifiedTakedownSection({ threat }: { threat: any }) {
+  // Browser reports state
+  const [browserReports, setBrowserReports] = useState<any[]>([]);
+  const [manualUrls, setManualUrls] = useState<{ google?: string; microsoft?: string }>({});
+  const [loadingBrowser, setLoadingBrowser] = useState(false);
+  const [submittingGoogle, setSubmittingGoogle] = useState(false);
+  const [submittingMicrosoft, setSubmittingMicrosoft] = useState(false);
+
+  // Registrar/Police/JPCERT state
+  const [registrar, setRegistrar] = useState('');
+  const [abuseEmail, setAbuseEmail] = useState('');
+  const [policeRecipient, setPoliceRecipient] = useState<{ name: string; email: string } | null>(null);
+  const [jpcertRecipient, setJpcertRecipient] = useState<{ name: string; email: string } | null>(null);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+
+  // Selection state
+  const [sendToRegistrar, setSendToRegistrar] = useState(true);
+  const [sendToPolice, setSendToPolice] = useState(false);
+  const [sendToJpcert, setSendToJpcert] = useState(false);
+
+  // Template generation state
+  const [registrarTemplate, setRegistrarTemplate] = useState('');
+  const [policeTemplate, setPoliceTemplate] = useState('');
+  const [jpcertTemplate, setJpcertTemplate] = useState('');
+  const [generatingRegistrar, setGeneratingRegistrar] = useState(false);
+  const [generatingPolice, setGeneratingPolice] = useState(false);
+  const [generatingJpcert, setGeneratingJpcert] = useState(false);
+
+  // Submission state
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // Expanded sections
+  const [expandedSection, setExpandedSection] = useState<'browser' | 'registrar' | 'police' | 'jpcert' | null>(null);
+
+  // Fetch browser reports
+  const fetchBrowserReports = useCallback(async () => {
+    setLoadingBrowser(true);
+    try {
+      const data = await getBrowserReports(threat.id);
+      setBrowserReports(data.reports || []);
+      setManualUrls(data.manualUrls || {});
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingBrowser(false);
+    }
+  }, [threat.id]);
+
+  // Fetch abuse contacts
+  const fetchAbuseContacts = useCallback(async () => {
+    setLoadingContacts(true);
+    try {
+      const data = await getBulkAbuseContacts([threat.id]);
+      if (data.threats?.length > 0) {
+        const t = data.threats[0];
+        setRegistrar(t.registrar || '');
+        setAbuseEmail(t.abuseEmail || '');
+      }
+      if (data.policeRecipient) {
+        setPoliceRecipient(data.policeRecipient);
+      }
+      if (data.jpcertRecipient) {
+        setJpcertRecipient(data.jpcertRecipient);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingContacts(false);
+    }
+  }, [threat.id]);
+
+  useEffect(() => {
+    fetchBrowserReports();
+    fetchAbuseContacts();
+  }, [fetchBrowserReports, fetchAbuseContacts]);
+
+  const googleReport = browserReports.find((r: any) => r.provider === 'GOOGLE_SAFE_BROWSING');
+  const microsoftReport = browserReports.find((r: any) => r.provider === 'MICROSOFT_SMARTSCREEN');
+
+  const handleSubmitGoogle = async () => {
+    setSubmittingGoogle(true);
+    setError('');
+    setSuccess('');
+    try {
+      await submitGoogleReport(threat.id);
+      setSuccess('Google Safe Browsingへの申請が完了しました');
+      await fetchBrowserReports();
+    } catch (e: any) {
+      setError(e.message || 'Google Safe Browsingへの申請に失敗しました');
+    } finally {
+      setSubmittingGoogle(false);
+    }
+  };
+
+  const handleSubmitMicrosoft = async () => {
+    setSubmittingMicrosoft(true);
+    setError('');
+    setSuccess('');
+    try {
+      await submitMicrosoftReport(threat.id);
+      setSuccess('Microsoft SmartScreenへの申請が完了しました');
+      await fetchBrowserReports();
+    } catch (e: any) {
+      setError(e.message || 'Microsoft SmartScreenへの申請に失敗しました');
+    } finally {
+      setSubmittingMicrosoft(false);
+    }
+  };
+
+  const generateTemplate = async (type: 'registrar' | 'police' | 'jpcert') => {
+    const setGenerating = type === 'registrar' ? setGeneratingRegistrar : type === 'police' ? setGeneratingPolice : setGeneratingJpcert;
+    const setTemplate = type === 'registrar' ? setRegistrarTemplate : type === 'police' ? setPoliceTemplate : setJpcertTemplate;
+    const email = type === 'registrar' ? abuseEmail : type === 'police' ? policeRecipient?.email : jpcertRecipient?.email;
+
+    if (!email) return;
+
+    setGenerating(true);
+    setError('');
+    try {
+      const res = await generateBatchTemplate({
+        threatIds: [threat.id],
+        abuseEmail: email,
+        registrar: registrar,
+        language: 'ja',
+        recipientType: type,
+      });
+      setTemplate(res.template);
+    } catch (e: any) {
+      setError(`テンプレート生成に失敗しました: ${e.message}`);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSendTakedown = async (type: 'registrar' | 'police' | 'jpcert') => {
+    const template = type === 'registrar' ? registrarTemplate : type === 'police' ? policeTemplate : jpcertTemplate;
+    const email = type === 'registrar' ? abuseEmail : type === 'police' ? policeRecipient?.email : jpcertRecipient?.email;
+    const recipientName = type === 'registrar' ? registrar : type === 'police' ? policeRecipient?.name : jpcertRecipient?.name;
+
+    if (!email || !template) return;
+
+    setSubmitting(true);
+    setError('');
+    try {
+      await submitBatchTakedown([{
+        threatId: threat.id,
+        abuseEmail: email,
+        template,
+        language: 'ja',
+        evidenceTypes: 'screenshot,whois',
+        recipientType: type,
+        recipientName,
+      }]);
+      const labels = { registrar: 'レジストラ', police: '警視庁', jpcert: 'JPCERT/CC' };
+      setSuccess(`${labels[type]}への削除申請を送信しました`);
+      setExpandedSection(null);
+    } catch (e: any) {
+      setError(e.message || '送信に失敗しました');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusBadge = (report: any) => {
+    if (!report) {
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">未申請</span>;
+    }
+    if (report.status === 'error') {
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">エラー</span>;
+    }
+    if (report.status === 'confirmed') {
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300">確認済み</span>;
+    }
+    return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">申請済み</span>;
+  };
+
+  return (
+    <div id="unified-takedown-section" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+        📋 削除申請
+      </h2>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+        この脅威を削除するために、以下の機関・サービスに申請できます。
+      </p>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">{error}</div>
+      )}
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm">{success}</div>
+      )}
+
+      <div className="space-y-3">
+        {/* 1. ブラウザ削除申請 */}
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setExpandedSection(expandedSection === 'browser' ? null : 'browser')}
+            className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🛡️</span>
+              <div className="text-left">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">ブラウザ削除申請</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Google Safe Browsing / Microsoft SmartScreen</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(googleReport)}
+              {getStatusBadge(microsoftReport)}
+              <span className="text-gray-400">{expandedSection === 'browser' ? '▲' : '▼'}</span>
+            </div>
+          </button>
+          {expandedSection === 'browser' && (
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                ブラウザのフィッシング保護機能にこのURLを報告し、ユーザーがアクセスした際に警告を表示させます。
+              </p>
+              {loadingBrowser ? (
+                <div className="flex items-center gap-2 py-4 justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">読み込み中...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Google Safe Browsing */}
+                  <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Google Safe Browsing</span>
+                      {getStatusBadge(googleReport)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {manualUrls.google && (
+                        <a href={manualUrls.google} target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-xs text-blue-600 border border-blue-200 rounded">手動申請</a>
+                      )}
+                      {(!googleReport || googleReport.status === 'error') && (
+                        <button onClick={handleSubmitGoogle} disabled={submittingGoogle} className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50">
+                          {submittingGoogle ? '申請中...' : '申請'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Microsoft SmartScreen */}
+                  <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">Microsoft SmartScreen</span>
+                      {getStatusBadge(microsoftReport)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {manualUrls.microsoft && (
+                        <a href={manualUrls.microsoft} target="_blank" rel="noopener noreferrer" className="px-3 py-1 text-xs text-blue-600 border border-blue-200 rounded">手動申請</a>
+                      )}
+                      {(!microsoftReport || microsoftReport.status === 'error') && (
+                        <button onClick={handleSubmitMicrosoft} disabled={submittingMicrosoft} className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50">
+                          {submittingMicrosoft ? '申請中...' : '申請'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 2. レジストラ削除申請 */}
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setExpandedSection(expandedSection === 'registrar' ? null : 'registrar')}
+            className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">📧</span>
+              <div className="text-left">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">レジストラ削除申請</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{registrar || 'ドメイン登録管理会社'}に直接削除を依頼</p>
+              </div>
+            </div>
+            <span className="text-gray-400">{expandedSection === 'registrar' ? '▲' : '▼'}</span>
+          </button>
+          {expandedSection === 'registrar' && (
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+              {loadingContacts ? (
+                <div className="flex items-center gap-2 py-4 justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">連絡先を取得中...</span>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">レジストラ</label>
+                    <p className="text-sm">{registrar || '不明'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">通報先メールアドレス</label>
+                    <input
+                      type="email"
+                      value={abuseEmail}
+                      onChange={(e) => setAbuseEmail(e.target.value)}
+                      placeholder="abuse@registrar.com"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                    />
+                  </div>
+                  {!registrarTemplate ? (
+                    <button onClick={() => generateTemplate('registrar')} disabled={generatingRegistrar || !abuseEmail} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                      {generatingRegistrar ? '生成中...' : '削除申請文面を生成'}
+                    </button>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">申請内容（編集可能）</label>
+                        <textarea value={registrarTemplate} onChange={(e) => setRegistrarTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => generateTemplate('registrar')} disabled={generatingRegistrar} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200">再生成</button>
+                        <button onClick={() => handleSendTakedown('registrar')} disabled={submitting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                          {submitting ? '送信中...' : '申請を送信'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 3. 警視庁への情報提供 */}
+        {policeRecipient && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setExpandedSection(expandedSection === 'police' ? null : 'police')}
+              className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🚔</span>
+                <div className="text-left">
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100">警視庁への情報提供</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{policeRecipient.name}</p>
+                </div>
+              </div>
+              <span className="text-gray-400">{expandedSection === 'police' ? '▲' : '▼'}</span>
+            </button>
+            {expandedSection === 'police' && (
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  警視庁サイバー犯罪対策課に情報提供します。フィッシングサイトの捜査・対応に活用されます。
+                </p>
+                <div className="text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">送信先: </span>
+                  <span className="font-mono">{policeRecipient.email}</span>
+                </div>
+                {!policeTemplate ? (
+                  <button onClick={() => generateTemplate('police')} disabled={generatingPolice} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                    {generatingPolice ? '生成中...' : '情報提供文面を生成'}
+                  </button>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">情報提供内容（編集可能）</label>
+                      <textarea value={policeTemplate} onChange={(e) => setPoliceTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => generateTemplate('police')} disabled={generatingPolice} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200">再生成</button>
+                      <button onClick={() => handleSendTakedown('police')} disabled={submitting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                        {submitting ? '送信中...' : '情報提供を送信'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. JPCERT/CCへのフィッシング報告 */}
+        {jpcertRecipient && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setExpandedSection(expandedSection === 'jpcert' ? null : 'jpcert')}
+              className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🛡️</span>
+                <div className="text-left">
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100">JPCERT/CCへのフィッシング報告</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">日本のセキュリティインシデント対応機関</p>
+                </div>
+              </div>
+              <span className="text-gray-400">{expandedSection === 'jpcert' ? '▲' : '▼'}</span>
+            </button>
+            {expandedSection === 'jpcert' && (
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  JPCERT/CCはフィッシングサイトの早期閉鎖を支援する機関です。報告することで対応が促進されます。
+                </p>
+                <div className="text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">送信先: </span>
+                  <span className="font-mono">{jpcertRecipient.email}</span>
+                </div>
+                {!jpcertTemplate ? (
+                  <button onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                    {generatingJpcert ? '生成中...' : 'フィッシング報告文面を生成'}
+                  </button>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">報告内容（編集可能）</label>
+                      <textarea value={jpcertTemplate} onChange={(e) => setJpcertTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200">再生成</button>
+                      <button onClick={() => handleSendTakedown('jpcert')} disabled={submitting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                        {submitting ? '送信中...' : '報告を送信'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Browser Report Section (deprecated, kept for reference) ────────────────
 
 function BrowserReportSection({ threat }: { threat: any }) {
   const [reports, setReports] = useState<any[]>([]);
