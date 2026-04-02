@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
-import { generateTakedownTemplate } from '../services/takedown.js';
+import { generateTakedownTemplate, generatePoliceTemplate, generateJpcertTemplate, JPCERT_RECIPIENT } from '../services/takedown.js';
 import { generateTakedownPdf, sendTakedownEmail } from '../services/takedown-export.js';
 
 const router = Router();
@@ -30,15 +30,30 @@ async function verifyTakedownOrg(takedownId: string, organizationId: string | nu
 router.post('/', async (req, res) => {
   const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
   const orgId = req.user!.organizationId;
-  const schema = z.object({ detectedDomainId: z.string().uuid() });
+  const schema = z.object({
+    detectedDomainId: z.string().uuid(),
+    recipientType: z.enum(['registrar', 'police', 'jpcert']).default('registrar'),
+  });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const domain = await verifyDomainOrg(parsed.data.detectedDomainId, orgId, isSuperadmin);
   if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
-  const result = await generateTakedownTemplate(parsed.data.detectedDomainId);
+  let result;
+  if (parsed.data.recipientType === 'police') {
+    result = await generatePoliceTemplate(parsed.data.detectedDomainId);
+  } else if (parsed.data.recipientType === 'jpcert') {
+    result = await generateJpcertTemplate(parsed.data.detectedDomainId);
+  } else {
+    result = await generateTakedownTemplate(parsed.data.detectedDomainId);
+  }
   res.status(201).json(result);
+});
+
+// Get JPCERT recipient info
+router.get('/jpcert-info', (_req, res) => {
+  res.json(JPCERT_RECIPIENT);
 });
 
 // Update takedown status
