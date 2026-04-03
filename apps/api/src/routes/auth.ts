@@ -30,6 +30,7 @@ router.post('/login', async (req, res) => {
   const token = signToken({
     userId: user.id,
     email: user.email,
+    name: user.name,
     organizationId: user.organizationId,
     role: user.role,
   });
