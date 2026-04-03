@@ -509,7 +509,7 @@ export default function TakedownRequestPage() {
               )}
             </div>
 
-            {/* 2. 警視庁への情報提供 */}
+            {/* 2. 警視庁へのフィッシング報告 */}
             {policeRecipient && (
               <div className={`border rounded-lg p-4 transition-colors ${sendToPolice ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -522,7 +522,7 @@ export default function TakedownRequestPage() {
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <span className="text-lg">🚔</span>
-                      警視庁への情報提供
+                      警視庁へのフィッシング報告
                     </h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {policeRecipient.name}（{policeRecipient.email}）に情報提供します

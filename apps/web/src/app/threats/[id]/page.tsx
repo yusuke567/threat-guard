@@ -898,7 +898,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
           )}
         </div>
 
-        {/* 3. 警視庁への情報提供 */}
+        {/* 3. 警視庁へのフィッシング報告 */}
         {policeRecipient && (
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <button
@@ -908,7 +908,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
               <div className="flex items-center gap-3">
                 <span className="text-xl">🚔</span>
                 <div className="text-left">
-                  <h3 className="font-medium text-gray-900 dark:text-gray-100">警視庁への情報提供</h3>
+                  <h3 className="font-medium text-gray-900 dark:text-gray-100">警視庁へのフィッシング報告</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{policeRecipient.name}</p>
                 </div>
               </div>
@@ -925,7 +925,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
                 </div>
                 {!policeTemplate ? (
                   <button onClick={() => generateTemplate('police')} disabled={generatingPolice} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
-                    {generatingPolice ? '生成中...' : '情報提供文面を生成'}
+                    {generatingPolice ? '生成中...' : 'フィッシング報告文面を生成'}
                   </button>
                 ) : (
                   <>
