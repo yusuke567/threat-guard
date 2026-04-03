@@ -524,8 +524,6 @@ export async function generateJpcertTemplate(
 - 被害組織：${domain.brand.organization.name}
 - 正規ドメイン：https://${domain.brand.domain}/
 - ブランド名：${domain.brand.name}
-- 業種：
-- サービス内容：
 
 **4. その他関連情報**
 
@@ -624,8 +622,6 @@ ${sitesList}
 - 被害組織：${org.name}
 - 正規ドメイン：https://${brand.domain}/
 - ブランド名：${brand.name}
-- 業種：
-- サービス内容：
 
 **4. その他関連情報**
 
