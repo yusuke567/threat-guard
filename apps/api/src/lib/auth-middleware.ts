@@ -7,6 +7,7 @@ const TOKEN_EXPIRY = '7d';
 export interface AuthUser {
   userId: string;
   email: string;
+  name: string | null;
   organizationId: string | null;
   role: string;
 }
