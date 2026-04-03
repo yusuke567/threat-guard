@@ -461,7 +461,7 @@ ${date}`;
 
 /**
  * Generate a takedown request template for JPCERT/CC
- * Always generates in Japanese following JPCERT's official phishing report format
+ * Uses a fixed template format without AI generation
  */
 export async function generateJpcertTemplate(
   detectedDomainId: string,
@@ -481,126 +481,66 @@ export async function generateJpcertTemplate(
   const whois = domain.whoisData ? JSON.parse(domain.whoisData) : {};
   const registrar = whois?.registrar || '不明';
 
-  let template = '';
+  const reportDate = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' JST';
+  const discoveryDate = domain.firstSeen.toISOString().replace('T', ' ').slice(0, 19) + ' JST';
+  const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+  const riskScoreText = domain.riskScore !== null ? `${domain.riskScore}/100` : '未算出';
+  const categoryText = analysis?.category === 'phishing'
+    ? 'フィッシング'
+    : analysis?.category === 'brand_abuse'
+      ? 'ブランド悪用'
+      : '不正サイト';
 
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      const { default: Anthropic } = await import('@anthropic-ai/sdk');
-      const anthropic = new Anthropic();
-
-      const prompt = `You are a cybersecurity incident reporter in Japan. Generate a phishing site report to JPCERT/CC following their official format.
-
-**Reporting Organization:**
-- Organization: ${domain.brand.organization.name}
-- Brand: ${domain.brand.name}
-- Contact Email: (通報者のメールアドレス欄は空欄のままにする)
-
-**Phishing Site:**
-- URL: https://${domain.domain}/
-- IP Address: ${webProbe?.ip || '不明'}
-- First Detected: ${domain.firstSeen.toISOString()}
-- Threat Category: ${analysis?.category || 'phishing'}
-- Analysis: ${analysis?.reasoning || 'This domain closely resembles the legitimate brand domain'}
-
-**Legitimate Site:**
-- URL: https://${domain.brand.domain}/
-- Organization: ${domain.brand.organization.name}
-
-Generate the report entirely in Japanese using the exact JPCERT format below. Leave contact fields blank for user to fill in.
-
---- フィッシング報告様式 ---
-
-The format must include:
-1. 連絡先 (1-1: お名前、組織名称、部署名、電子メールアドレス - leave values blank for user to fill)
-2. インシデントの情報 (2-1: フィッシングサイトのURL, IPアドレス, 確認日時)
-3. 偽装対象の正規サイト情報 (2-2: URL, 組織名称)
-4. その他関連情報 (3-3: 発見方法、対処状況など)
-
-Output ONLY the completed form, no additional text.`;
-
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      template = response.content[0].type === 'text' ? response.content[0].text : '';
-    } catch (err) {
-      console.error('Anthropic API failed for JPCERT template, using fallback:', err);
-    }
-  }
-
-  if (!template) {
-    const confirmDate = domain.firstSeen.toISOString().replace('T', ' ').slice(0, 19) + ' JST';
-    const categoryDescJa = analysis?.category === 'phishing'
-      ? 'フィッシングサイト'
-      : analysis?.category === 'brand_abuse'
-        ? 'ブランド悪用サイト'
-        : 'フィッシングの疑いがあるサイト';
-    const analysisJa = analysis?.reasoning || `このドメインは正規サイト ${domain.brand.domain} に酷似しており、利用者を誤認させる形で使用されています。`;
-
-    template = `ご担当者様
+  const template = `ご担当者様
 
 当社を偽るフィッシングサイトを検出いたしました。
 削除をお願いいたします。
 
---- フィッシング報告様式 ---
+**フィッシングサイト報告書**
 
-この報告は、JPCERT/CCへフィッシングサイトの情報をお送りするものです。
+**1. 連絡先**
 
-----------------------------------------------------------------------
-1. 連絡先
-----------------------------------------------------------------------
+- 報告者名：${userName || ''}
+- 所属組織：${domain.brand.organization.name}
+- メールアドレス：${domain.brand.senderEmail || ''}
+- 報告日時：${reportDate}
 
- 1-1 お名前、組織名称、部署名、メールアドレスをご記入ください。
+**2. インシデントの情報**
 
-     名前: ${userName || ''}
-     組織名称: ${domain.brand.organization.name}
-     部署名:
-     電子メールアドレス: ${domain.brand.senderEmail || ''}
+**対象フィッシングサイト一覧：**
 
-----------------------------------------------------------------------
-2. インシデントの情報
-----------------------------------------------------------------------
-2-1 フィッシングサイトに関する情報をご記入ください。
+**サイト1**
 
-    フィッシングサイトのURL: https://${domain.domain}/
-    フィッシングサイトのIPアドレス: ${webProbe?.ip || '不明'}
-    フィッシングサイトの確認日時: ${confirmDate}
+- 悪用URL：https://${domain.domain}/
+- IPアドレス：${webProbe?.ip || '不明'}
+- 発見日時：${discoveryDate}
+- サイトの状態：${siteStatus}
+- リスクスコア：${riskScoreText}
+- 攻撃種別：${categoryText}
+- 詳細：当社ブランドを悪用した偽装サイト
 
-2-2  偽装の対象となった正規サイトの情報
+**3. 偽装対象の正規サイト情報**
 
-    正規サイトのURL: https://${domain.brand.domain}/
-    正規サイトの組織名称: ${domain.brand.organization.name}
+- 被害組織：${domain.brand.organization.name}
+- 正規ドメイン：https://${domain.brand.domain}/
+- ブランド名：${domain.brand.name}
+- 業種：
+- サービス内容：
 
-3-3 その他、関連情報
-   フィッシングサイトの発見方法、対処状況などインシデントに関連
-   する情報をご記入ください。
+**4. その他関連情報**
 
-   ■ 発見方法
-   ThreatGuard フィッシング検知システムによる自動検出
+- **発見方法：** 社内セキュリティ監視システムによる検知
+- **被害状況：** 調査中
+- **対処状況：**
+    - 社内関係部署への緊急連絡完了
+    - 顧客への注意喚起準備中
+- **追加情報：**
+    - 当該サイトは当社の正規サイトデザインを模倣
+    - 顧客の個人情報及び取引情報の窃取が目的と推定
+    - 継続監視が必要な状況
 
-   ■ 脅威の種類
-   ${categoryDescJa}
-
-   ■ 分析結果
-   ${analysisJa}
-
-   ■ リスクスコア
-   ${domain.riskScore !== null ? `${domain.riskScore}/100` : '未算出'}
-
-   ■ ドメイン登録情報
-   - レジストラ: ${registrar}${whois?.creationDate ? `\n   - 登録日: ${whois.creationDate}` : ''}${whois?.registrantCountry ? `\n   - 登録者の国: ${whois.registrantCountry}` : ''}
-
-   ■ 対処状況
-   本報告をもってJPCERT/CCへの情報提供といたします。
-   レジストラへの削除依頼も別途実施予定です。
-
-----------------------------------------------------------------------
-※ 報告内容の暗号化に必要なJPCERT/CCのPGP公開鍵:
-  https://www.jpcert.or.jp/keys/info-0x69ECE048.asc
-----------------------------------------------------------------------`;
-  }
+**報告者署名：**
+${userName || ''}`;
 
   // Save the takedown request
   const takedown = await prisma.takedownRequest.create({
@@ -621,9 +561,10 @@ Output ONLY the completed form, no additional text.`;
 
 /**
  * Generate JPCERT template for multiple threats (batch)
+ * Uses a fixed template format without AI generation
  */
 export async function generateJpcertTemplateBatch(
-  threats: Array<{ id: string; domain: string; riskScore: number | null; analyses: any[]; brand: any; webProbes?: any[] }>,
+  threats: Array<{ id: string; domain: string; riskScore: number | null; analyses: any[]; brand: any; webProbes?: any[]; firstSeen?: Date }>,
   userName?: string,
 ): Promise<string> {
   if (threats.length === 0) return '';
@@ -631,119 +572,75 @@ export async function generateJpcertTemplateBatch(
   const brand = threats[0].brand;
   const org = brand.organization;
 
-  let template = '';
+  const reportDate = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' JST';
 
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      const { default: Anthropic } = await import('@anthropic-ai/sdk');
-      const anthropic = new Anthropic();
+  const sitesList = threats.map((t, index) => {
+    const analysis = t.analyses[0];
+    const webProbe = t.webProbes?.[0];
+    const discoveryDate = t.firstSeen
+      ? new Date(t.firstSeen).toISOString().replace('T', ' ').slice(0, 19) + ' JST'
+      : '不明';
+    const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+    const riskScoreText = t.riskScore !== null ? `${t.riskScore}/100` : '未算出';
+    const categoryText = analysis?.category === 'phishing'
+      ? 'フィッシング'
+      : analysis?.category === 'brand_abuse'
+        ? 'ブランド悪用'
+        : '不正サイト';
 
-      const domainList = threats.map((t) => {
-        const analysis = t.analyses[0];
-        const webProbe = t.webProbes?.[0];
-        return `- URL: https://${t.domain}/, IP: ${webProbe?.ip || '不明'}, リスクスコア: ${t.riskScore ?? 'N/A'}/100, 種別: ${analysis?.category || 'unknown'}`;
-      }).join('\n');
+    return `**サイト${index + 1}**
 
-      const prompt = `You are a cybersecurity incident reporter in Japan. Generate a phishing site report to JPCERT/CC for MULTIPLE phishing sites following their official format.
+- 悪用URL：https://${t.domain}/
+- IPアドレス：${webProbe?.ip || '不明'}
+- 発見日時：${discoveryDate}
+- サイトの状態：${siteStatus}
+- リスクスコア：${riskScoreText}
+- 攻撃種別：${categoryText}
+- 詳細：当社ブランドを悪用した偽装サイト`;
+  }).join('\n\n');
 
-**Reporting Organization:**
-- Organization: ${org.name}
-- Brand: ${brand.name}
-- Legitimate Domain: ${brand.domain}
-
-**Phishing Sites (${threats.length} total):**
-${domainList}
-
-Generate the report entirely in Japanese using JPCERT's official format.
-
---- フィッシング報告様式 ---
-
-Format must include:
-1. 連絡先 (leave contact values blank for user to fill)
-2. インシデントの情報 - list ALL phishing sites
-3. 偽装対象の正規サイト情報
-4. その他関連情報 (発見方法、対処状況など)
-
-Output ONLY the completed form.`;
-
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 3000,
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      template = response.content[0].type === 'text' ? response.content[0].text : '';
-    } catch (err) {
-      console.error('Anthropic API failed for batch JPCERT template:', err);
-    }
-  }
-
-  if (!template) {
-    const confirmDate = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' JST';
-    const domainListText = threats.map((t) => {
-      const webProbe = t.webProbes?.[0];
-      return `   - URL: https://${t.domain}/
-     IPアドレス: ${webProbe?.ip || '不明'}
-     リスクスコア: ${t.riskScore ?? '未算出'}/100`;
-    }).join('\n\n');
-
-    template = `ご担当者様
+  const template = `ご担当者様
 
 当社を偽るフィッシングサイトを検出いたしました。
 削除をお願いいたします。
 
---- フィッシング報告様式 ---
+**フィッシングサイト報告書**
 
-この報告は、JPCERT/CCへフィッシングサイトの情報をお送りするものです。
+**1. 連絡先**
 
-----------------------------------------------------------------------
-1. 連絡先
-----------------------------------------------------------------------
+- 報告者名：${userName || ''}
+- 所属組織：${org.name}
+- メールアドレス：${brand.senderEmail || ''}
+- 報告日時：${reportDate}
 
- 1-1 お名前、組織名称、部署名、メールアドレスをご記入ください。
+**2. インシデントの情報**
 
-     名前: ${userName || ''}
-     組織名称: ${org.name}
-     部署名:
-     電子メールアドレス: ${brand.senderEmail || ''}
+**対象フィッシングサイト一覧：**
 
-----------------------------------------------------------------------
-2. インシデントの情報
-----------------------------------------------------------------------
-2-1 フィッシングサイトに関する情報をご記入ください。
+${sitesList}
 
-    ■ フィッシングサイト一覧（${threats.length}件）
+**3. 偽装対象の正規サイト情報**
 
-${domainListText}
+- 被害組織：${org.name}
+- 正規ドメイン：https://${brand.domain}/
+- ブランド名：${brand.name}
+- 業種：
+- サービス内容：
 
-    フィッシングサイトの確認日時: ${confirmDate}
+**4. その他関連情報**
 
-2-2  偽装の対象となった正規サイトの情報
+- **発見方法：** 社内セキュリティ監視システムによる検知
+- **被害状況：** 調査中
+- **対処状況：**
+    - 社内関係部署への緊急連絡完了
+    - 顧客への注意喚起準備中
+- **追加情報：**
+    - 当該サイトは当社の正規サイトデザインを模倣
+    - 顧客の個人情報及び取引情報の窃取が目的と推定
+    - 継続監視が必要な状況
 
-    正規サイトのURL: https://${brand.domain}/
-    正規サイトの組織名称: ${org.name}
-
-3-3 その他、関連情報
-   フィッシングサイトの発見方法、対処状況などインシデントに関連
-   する情報をご記入ください。
-
-   ■ 発見方法
-   ThreatGuard フィッシング検知システムによる自動検出
-
-   ■ 概要
-   上記${threats.length}件のドメインは、弊社の正規ドメイン ${brand.domain} に
-   酷似しており、利用者を誤認させる形で使用されています。
-   フィッシング行為およびブランドの不正使用に該当します。
-
-   ■ 対処状況
-   本報告をもってJPCERT/CCへの情報提供といたします。
-   各レジストラへの削除依頼も別途実施予定です。
-
-----------------------------------------------------------------------
-※ 報告内容の暗号化に必要なJPCERT/CCのPGP公開鍵:
-  https://www.jpcert.or.jp/keys/info-0x69ECE048.asc
-----------------------------------------------------------------------`;
-  }
+**報告者署名：**
+${userName || ''}`;
 
   return template;
 }
