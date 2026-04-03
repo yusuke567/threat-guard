@@ -539,7 +539,12 @@ Output ONLY the completed form, no additional text.`;
         : 'フィッシングの疑いがあるサイト';
     const analysisJa = analysis?.reasoning || `このドメインは正規サイト ${domain.brand.domain} に酷似しており、利用者を誤認させる形で使用されています。`;
 
-    template = `--- フィッシング報告様式 ---
+    template = `ご担当者様
+
+当社を偽るフィッシングサイトを検出いたしました。
+削除をお願いいたします。
+
+--- フィッシング報告様式 ---
 
 この報告は、JPCERT/CCへフィッシングサイトの情報をお送りするものです。
 
@@ -682,7 +687,12 @@ Output ONLY the completed form.`;
      リスクスコア: ${t.riskScore ?? '未算出'}/100`;
     }).join('\n\n');
 
-    template = `--- フィッシング報告様式 ---
+    template = `ご担当者様
+
+当社を偽るフィッシングサイトを検出いたしました。
+削除をお願いいたします。
+
+--- フィッシング報告様式 ---
 
 この報告は、JPCERT/CCへフィッシングサイトの情報をお送りするものです。
 
