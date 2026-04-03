@@ -352,7 +352,16 @@ router.post('/generate-template', async (req, res) => {
 
     // Police template uses a separate generation path
     if (parsed.data.recipientType === 'police') {
-      const policeTemplate = await generatePoliceTemplateBatch(threats as any);
+      // Include webProbes for IP address information
+      const threatsWithProbes = await prisma.detectedDomain.findMany({
+        where: { id: { in: parsed.data.threatIds }, brandId: { in: brandIds } },
+        include: {
+          brand: { include: { organization: true } },
+          analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
+          webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
+        },
+      });
+      const policeTemplate = await generatePoliceTemplateBatch(threatsWithProbes as any, req.user?.name || undefined);
       return res.json({ template: policeTemplate, language: 'ja' });
     }
 

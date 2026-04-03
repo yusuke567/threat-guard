@@ -234,114 +234,81 @@ Date: ${date}`;
  * Always generates in Japanese
  */
 export async function generatePoliceTemplate(
-  detectedDomainId: string
+  detectedDomainId: string,
+  userName?: string
 ): Promise<{ id: string; template: string }> {
   const domain = await prisma.detectedDomain.findUniqueOrThrow({
     where: { id: detectedDomainId },
     include: {
       brand: { include: { organization: true } },
       analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
+      webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
     },
   });
 
   const analysis = domain.analyses[0];
+  const webProbe = domain.webProbes[0];
   const whois = domain.whoisData ? JSON.parse(domain.whoisData) : {};
   const registrar = whois?.registrar || '不明';
 
-  let template = '';
+  const reportDate = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' JST';
+  const discoveryDate = domain.firstSeen.toISOString().replace('T', ' ').slice(0, 19) + ' JST';
+  const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+  const riskScoreText = domain.riskScore !== null ? `${domain.riskScore}/100` : '未算出';
+  const categoryText = analysis?.category === 'phishing'
+    ? 'フィッシング'
+    : analysis?.category === 'brand_abuse'
+      ? 'ブランド悪用'
+      : '不正サイト';
 
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      const { default: Anthropic } = await import('@anthropic-ai/sdk');
-      const anthropic = new Anthropic();
+  const template = `ご担当者様
 
-      const prompt = `You are a cybercrime reporting specialist in Japan. Generate a formal information report (情報提供) to the Tokyo Metropolitan Police Department (警視庁 サイバー犯罪対策課) about a phishing/brand abuse website.
+当社を偽るフィッシングサイトを検出いたしました。
+削除をお願いいたします。
 
-**Reporting Organization:**
-- Organization: ${domain.brand.organization.name}
-- Brand: ${domain.brand.name}
-- Legitimate Domain: ${domain.brand.domain}
+**フィッシングサイト報告書**
 
-**Suspicious Domain:**
-- Domain: ${domain.domain}
-- Registrar: ${registrar}
-- First Detected: ${domain.firstSeen.toISOString()}
-- Threat Category: ${analysis?.category || 'suspected brand abuse'}
-- Analysis: ${analysis?.reasoning || 'Domain closely resembles the legitimate brand domain'}
+**1. 連絡先**
 
-Generate the report entirely in Japanese using formal business Japanese (敬語).
-The report should be addressed to "警視庁 サイバー犯罪対策課 御中".
+- 報告者名：${userName || ''}
+- 所属組織：${domain.brand.organization.name}
+- メールアドレス：${domain.brand.senderEmail || ''}
+- 報告日時：${reportDate}
 
-Structure:
-1. 件名（フィッシングサイトに関する情報提供）
-2. 通報者情報（組織名・ブランド名・連絡先として正規ドメイン）
-3. 不正サイトの情報（ドメイン名・検知日・脅威の種類・詳細分析）
-4. 被害の状況・リスク（顧客の個人情報漏洩リスク等）
-5. ドメイン登録情報（レジストラ・登録日等のWHOIS情報）
-6. 対応のお願い（捜査・サイト閉鎖への協力依頼）
-7. 添付資料の説明（スクリーンショット・WHOIS情報等を添付している旨）
+**2. インシデントの情報**
 
-Format it as a ready-to-send document body.`;
+**対象フィッシングサイト一覧：**
 
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      });
+**サイト1**
 
-      template = response.content[0].type === 'text' ? response.content[0].text : '';
-    } catch (err) {
-      console.error('Anthropic API failed for police template, using fallback:', err);
-    }
-  }
+- 悪用URL：https://${domain.domain}/
+- IPアドレス：${webProbe?.ip || '不明'}
+- 発見日時：${discoveryDate}
+- サイトの状態：${siteStatus}
+- リスクスコア：${riskScoreText}
+- 攻撃種別：${categoryText}
+- 詳細：当社ブランドを悪用した偽装サイト
 
-  if (!template) {
-    const date = new Date().toISOString().split('T')[0];
-    const categoryDescJa = analysis?.category === 'phishing'
-      ? 'フィッシングサイト'
-      : analysis?.category === 'brand_abuse'
-        ? 'ブランド悪用サイト'
-        : '不正サイト（ブランドなりすましの疑い）';
-    const analysisJa = analysis?.reasoning || 'このドメインは弊社の正規ドメインに酷似しており、消費者を誤認させる形で使用されている疑いがあります。';
+**3. 偽装対象の正規サイト情報**
 
-    template = `件名: ${categoryDescJa}に関する情報提供 — ${domain.domain}
+- 被害組織：${domain.brand.organization.name}
+- 正規ドメイン：https://${domain.brand.domain}/
+- ブランド名：${domain.brand.name}
 
-警視庁 サイバー犯罪対策課 御中
+**4. その他関連情報**
 
-下記の不正サイトについて情報提供いたします。
+- **発見方法：** 社内セキュリティ監視システムによる検知
+- **被害状況：** 調査中
+- **対処状況：**
+    - 社内関係部署への緊急連絡完了
+    - 顧客への注意喚起準備中
+- **追加情報：**
+    - 当該サイトは当社の正規サイトデザインを模倣
+    - 顧客の個人情報及び取引情報の窃取が目的と推定
+    - 継続監視が必要な状況
 
-1. 通報者情報
-   - 組織名: ${domain.brand.organization.name}
-   - ブランド名: ${domain.brand.name}
-   - 正規ドメイン: ${domain.brand.domain}
-
-2. 不正サイト情報
-   - 不正ドメイン: ${domain.domain}
-   - 脅威の種類: ${categoryDescJa}
-   - 初回検知日: ${domain.firstSeen.toISOString().split('T')[0]}
-   - レジストラ: ${registrar}
-
-3. 脅威の詳細
-   ${analysisJa}
-
-4. 被害の状況・リスク
-   当該サイトは弊社のサービスを利用するお客様を標的としており、ログイン情報・個人情報・クレジットカード情報等の窃取が行われる恐れがあります。弊社正規サイトと外観が酷似しているため、一般消費者が偽サイトと判別することは困難です。
-
-5. ドメイン登録情報
-   - レジストラ: ${registrar}${whois?.creationDate ? `\n   - 登録日: ${whois.creationDate}` : ''}${whois?.registrantCountry ? `\n   - 登録者の国: ${whois.registrantCountry}` : ''}${whois?.registrantOrganization ? `\n   - 登録者組織: ${whois.registrantOrganization}` : ''}
-
-6. 対応のお願い
-   本件につきまして、捜査およびサイト閉鎖に向けたご対応をお願い申し上げます。弊社としても全面的に協力いたします。
-
-7. 添付資料
-   - 不正サイトのスクリーンショット
-   - WHOIS情報
-   - AI分析レポート
-
-${domain.brand.organization.name}
-ブランドプロテクションチーム
-日付: ${date}`;
-  }
+**報告者署名：**
+${domain.brand.organization.name}・${userName || ''}`;
 
   // Save the takedown request
   const takedown = await prisma.takedownRequest.create({
@@ -362,99 +329,84 @@ ${domain.brand.organization.name}
 
 /**
  * Generate police template for multiple threats (batch)
+ * Uses a fixed template format without AI generation
  */
 export async function generatePoliceTemplateBatch(
-  threats: Array<{ id: string; domain: string; riskScore: number | null; analyses: any[]; brand: any }>,
+  threats: Array<{ id: string; domain: string; riskScore: number | null; analyses: any[]; brand: any; webProbes?: any[]; firstSeen?: Date }>,
+  userName?: string,
 ): Promise<string> {
   if (threats.length === 0) return '';
 
   const brand = threats[0].brand;
   const org = brand.organization;
 
-  let template = '';
+  const reportDate = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' JST';
 
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      const { default: Anthropic } = await import('@anthropic-ai/sdk');
-      const anthropic = new Anthropic();
+  const sitesList = threats.map((t, index) => {
+    const analysis = t.analyses[0];
+    const webProbe = t.webProbes?.[0];
+    const discoveryDate = t.firstSeen
+      ? new Date(t.firstSeen).toISOString().replace('T', ' ').slice(0, 19) + ' JST'
+      : '不明';
+    const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+    const riskScoreText = t.riskScore !== null ? `${t.riskScore}/100` : '未算出';
+    const categoryText = analysis?.category === 'phishing'
+      ? 'フィッシング'
+      : analysis?.category === 'brand_abuse'
+        ? 'ブランド悪用'
+        : '不正サイト';
 
-      const domainList = threats.map((t) => {
-        const analysis = t.analyses[0];
-        return `- ${t.domain} (リスクスコア: ${t.riskScore ?? 'N/A'}/100, 種別: ${analysis?.category || 'unknown'})`;
-      }).join('\n');
+    return `**サイト${index + 1}**
 
-      const prompt = `You are a cybercrime reporting specialist in Japan. Generate a formal information report (情報提供) to the Tokyo Metropolitan Police Department (警視庁 サイバー犯罪対策課) about MULTIPLE phishing/brand abuse websites.
+- 悪用URL：https://${t.domain}/
+- IPアドレス：${webProbe?.ip || '不明'}
+- 発見日時：${discoveryDate}
+- サイトの状態：${siteStatus}
+- リスクスコア：${riskScoreText}
+- 攻撃種別：${categoryText}
+- 詳細：当社ブランドを悪用した偽装サイト`;
+  }).join('\n\n');
 
-**Reporting Organization:**
-- Organization: ${org.name}
-- Brand: ${brand.name}
-- Legitimate Domain: ${brand.domain}
+  const template = `ご担当者様
 
-**Suspicious Domains (${threats.length} total):**
-${domainList}
+当社を偽るフィッシングサイトを検出いたしました。
+削除をお願いいたします。
 
-Generate the report entirely in Japanese using formal business Japanese (敬語).
-Address it to "警視庁 サイバー犯罪対策課 御中".
+**フィッシングサイト報告書**
 
-Structure:
-1. 件名（フィッシングサイト${threats.length}件に関する情報提供）
-2. 通報者情報
-3. 不正サイト一覧（全ドメインをリスト）
-4. 各サイトの脅威詳細
-5. 被害の状況・リスク
-6. 対応のお願い
-7. 添付資料の説明
+**1. 連絡先**
 
-Format it as a ready-to-send document body.`;
+- 報告者名：${userName || ''}
+- 所属組織：${org.name}
+- メールアドレス：${brand.senderEmail || ''}
+- 報告日時：${reportDate}
 
-      const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 3000,
-        messages: [{ role: 'user', content: prompt }],
-      });
+**2. インシデントの情報**
 
-      template = response.content[0].type === 'text' ? response.content[0].text : '';
-    } catch (err) {
-      console.error('Anthropic API failed for batch police template:', err);
-    }
-  }
+**対象フィッシングサイト一覧：**
 
-  if (!template) {
-    const date = new Date().toISOString().split('T')[0];
-    const domainListText = threats.map((t) => `   - ${t.domain}（リスクスコア: ${t.riskScore ?? '未算出'}/100）`).join('\n');
+${sitesList}
 
-    template = `件名: フィッシングサイト${threats.length}件に関する情報提供
+**3. 偽装対象の正規サイト情報**
 
-警視庁 サイバー犯罪対策課 御中
+- 被害組織：${org.name}
+- 正規ドメイン：https://${brand.domain}/
+- ブランド名：${brand.name}
 
-下記の不正サイトについて情報提供いたします。
+**4. その他関連情報**
 
-1. 通報者情報
-   - 組織名: ${org.name}
-   - ブランド名: ${brand.name}
-   - 正規ドメイン: ${brand.domain}
+- **発見方法：** 社内セキュリティ監視システムによる検知
+- **被害状況：** 調査中
+- **対処状況：**
+    - 社内関係部署への緊急連絡完了
+    - 顧客への注意喚起準備中
+- **追加情報：**
+    - 当該サイトは当社の正規サイトデザインを模倣
+    - 顧客の個人情報及び取引情報の窃取が目的と推定
+    - 継続監視が必要な状況
 
-2. 不正サイト一覧（${threats.length}件）
-${domainListText}
-
-3. 脅威の詳細
-   上記ドメインは弊社の正規ドメイン ${brand.domain} に酷似しており、消費者を誤認させる形で使用されています。フィッシング行為およびブランドの不正使用に該当します。
-
-4. 被害の状況・リスク
-   当該サイトは弊社のサービスを利用するお客様を標的としており、ログイン情報・個人情報・クレジットカード情報等の窃取が行われる恐れがあります。
-
-5. 対応のお願い
-   本件につきまして、捜査およびサイト閉鎖に向けたご対応をお願い申し上げます。
-
-6. 添付資料
-   - 各サイトのスクリーンショット
-   - WHOIS情報
-   - AI分析レポート
-
-${org.name}
-ブランドプロテクションチーム
-${date}`;
-  }
+**報告者署名：**
+${org.name}・${userName || ''}`;
 
   return template;
 }

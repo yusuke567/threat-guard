@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
 
   let result;
   if (parsed.data.recipientType === 'police') {
-    result = await generatePoliceTemplate(parsed.data.detectedDomainId);
+    result = await generatePoliceTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);
   } else if (parsed.data.recipientType === 'jpcert') {
     result = await generateJpcertTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);
   } else {
