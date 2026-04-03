@@ -464,7 +464,8 @@ ${date}`;
  * Always generates in Japanese following JPCERT's official phishing report format
  */
 export async function generateJpcertTemplate(
-  detectedDomainId: string
+  detectedDomainId: string,
+  userName?: string
 ): Promise<{ id: string; template: string }> {
   const domain = await prisma.detectedDomain.findUniqueOrThrow({
     where: { id: detectedDomainId },
@@ -548,10 +549,10 @@ Output ONLY the completed form, no additional text.`;
 
  1-1 お名前、組織名称、部署名、メールアドレスをご記入ください。
 
-     名前:
+     名前: ${userName || ''}
      組織名称: ${domain.brand.organization.name}
      部署名:
-     電子メールアドレス:
+     電子メールアドレス: ${domain.brand.senderEmail || ''}
 
 ----------------------------------------------------------------------
 2. インシデントの情報
@@ -618,6 +619,7 @@ Output ONLY the completed form, no additional text.`;
  */
 export async function generateJpcertTemplateBatch(
   threats: Array<{ id: string; domain: string; riskScore: number | null; analyses: any[]; brand: any; webProbes?: any[] }>,
+  userName?: string,
 ): Promise<string> {
   if (threats.length === 0) return '';
 
@@ -690,10 +692,10 @@ Output ONLY the completed form.`;
 
  1-1 お名前、組織名称、部署名、メールアドレスをご記入ください。
 
-     名前:
+     名前: ${userName || ''}
      組織名称: ${org.name}
      部署名:
-     電子メールアドレス:
+     電子メールアドレス: ${brand.senderEmail || ''}
 
 ----------------------------------------------------------------------
 2. インシデントの情報

@@ -367,7 +367,7 @@ router.post('/generate-template', async (req, res) => {
           webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
         },
       });
-      const jpcertTemplate = await generateJpcertTemplateBatch(threatsWithProbes as any);
+      const jpcertTemplate = await generateJpcertTemplateBatch(threatsWithProbes as any, req.user?.name || undefined);
       return res.json({ template: jpcertTemplate, language: 'ja' });
     }
 
