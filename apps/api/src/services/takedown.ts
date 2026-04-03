@@ -540,7 +540,7 @@ export async function generateJpcertTemplate(
     - 継続監視が必要な状況
 
 **報告者署名：**
-${userName || ''}`;
+${domain.brand.organization.name}・${userName || ''}`;
 
   // Save the takedown request
   const takedown = await prisma.takedownRequest.create({
@@ -640,7 +640,7 @@ ${sitesList}
     - 継続監視が必要な状況
 
 **報告者署名：**
-${userName || ''}`;
+${org.name}・${userName || ''}`;
 
   return template;
 }
