@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /api/
+Disallow: /screenshots/
+Disallow: /uploads/
+Allow: /diagnose
+
+Sitemap: https://app.threatguard.jp/sitemap.xml

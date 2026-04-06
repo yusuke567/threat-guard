@@ -11,6 +11,7 @@ import {
 } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 import GlossaryTerm from '@/components/GlossaryTerm';
+import Image from 'next/image';
 import { Button, useToast } from '@/components/ui';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -1195,10 +1196,13 @@ function ScreenshotsTab({ threat, probe, probing, onProbe }: {
         </div>
         {threat.screenshotUrl ? (
           <>
-            <img
+            <Image
               src={threat.screenshotUrl}
               alt={`${threat.domain} のスクリーンショット`}
+              width={800}
+              height={450}
               className="w-full max-w-2xl rounded-lg border border-[var(--border-default)]"
+              unoptimized
             />
             {probe?.probeAt && (
               <p className="text-xs text-[var(--text-tertiary)] mt-2">

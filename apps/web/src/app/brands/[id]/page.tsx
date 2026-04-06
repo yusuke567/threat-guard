@@ -18,6 +18,7 @@ import {
   removeBrandDomain,
   importDomainsCSV,
 } from '@/lib/api';
+import Image from 'next/image';
 import { Button, useToast } from '@/components/ui';
 
 /* ──────────────────────── types ──────────────────────── */
@@ -413,7 +414,7 @@ export default function BrandDetailPage() {
           <div className="flex-shrink-0">
             <div className="w-20 h-20 rounded-xl bg-surface-elevated flex items-center justify-center overflow-hidden border border-gray-200 dark:border-gray-600 relative group">
               {brand.logoUrl ? (
-                <img src={brand.logoUrl} alt={brand.name} className="w-full h-full object-contain" />
+                <Image src={brand.logoUrl} alt={brand.name} width={80} height={80} className="w-full h-full object-contain" unoptimized />
               ) : (
                 <span className="text-3xl text-gray-400">🏢</span>
               )}

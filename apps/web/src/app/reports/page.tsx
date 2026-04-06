@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { generateReport, getBrands } from '@/lib/api';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, Tooltip as RTooltip,
-} from 'recharts';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
+
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
+const PieChart = dynamic(() => import('recharts').then(m => m.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then(m => m.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(m => m.Cell), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(m => m.Legend), { ssr: false });
+const RTooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
 
 const REPORT_TYPES = [
   {
@@ -216,10 +226,13 @@ function RegulatoryReport({ data }: { data: any }) {
                 <tr key={i} className="border-b border-[var(--border-subtle)]">
                   <td className="py-2 pr-3">
                     {t.screenshotUrl ? (
-                      <img
+                      <Image
                         src={t.screenshotUrl}
                         alt={`${t.domain} のスクリーンショット`}
-                        className="w-24 h-16 object-cover rounded border border-[var(--border-default)]"
+                        width={96}
+                        height={64}
+                        className="object-cover rounded border border-[var(--border-default)]"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-24 h-16 bg-surface-elevated rounded flex items-center justify-center text-[var(--text-tertiary)] text-xs">

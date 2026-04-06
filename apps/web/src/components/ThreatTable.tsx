@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, Fragment } from 'react';
+import Image from 'next/image';
 import { RiskBadgeCompact } from './RiskBadge';
 import { Icon, useToast } from './ui';
 import { triggerProbe } from '@/lib/api';
@@ -254,10 +255,13 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                             </button>
                           </div>
                           {threat.screenshotUrl ? (
-                            <img
+                            <Image
                               src={threat.screenshotUrl}
                               alt={`${threat.domain} のスクリーンショット`}
+                              width={800}
+                              height={450}
                               className="w-full rounded border border-gray-200 dark:border-gray-700"
+                              unoptimized
                             />
                           ) : (
                             <div className="flex flex-col items-center justify-center h-32 bg-surface-elevated rounded text-[var(--text-tertiary)] text-sm gap-2">

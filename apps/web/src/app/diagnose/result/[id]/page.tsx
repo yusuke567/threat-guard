@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 
 type DiagnosisResult = {
@@ -255,10 +256,13 @@ export default function DiagnosisResultPage() {
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-slate-300 mb-3">📸 スクリーンショット</h3>
             {result.screenshotUrl ? (
-              <img
+              <Image
                 src={result.screenshotUrl}
                 alt={`${result.domain} のスクリーンショット`}
+                width={800}
+                height={450}
                 className="rounded-lg w-full border border-white/10"
+                unoptimized
               />
             ) : (
               <div className="bg-white/5 rounded-lg h-40 flex items-center justify-center text-slate-500 text-sm">

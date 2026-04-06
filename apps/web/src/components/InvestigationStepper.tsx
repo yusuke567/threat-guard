@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import GlossaryTerm from './GlossaryTerm';
 import { Button, Card, Alert, Icon } from './ui';
 
@@ -248,10 +249,13 @@ export default function InvestigationStepper({ threat, contentAnalysis, latestAn
                   {threat.screenshotUrl && (
                     <div className="rounded-lg border border-[var(--border-default)] p-3">
                       <h4 className="text-xs font-bold text-[var(--text-primary)] mb-2">サイトの画面キャプチャ</h4>
-                      <img
+                      <Image
                         src={threat.screenshotUrl.startsWith('/') ? threat.screenshotUrl : threat.screenshotUrl}
                         alt="サイトの画面キャプチャ"
+                        width={800}
+                        height={450}
                         className="rounded border w-full"
+                        unoptimized
                       />
                       {probe?.probeAt && (
                         <p className="text-[10px] text-[var(--text-tertiary)] mt-1">{new Date(probe.probeAt).toLocaleString('ja-JP')} 取得</p>
