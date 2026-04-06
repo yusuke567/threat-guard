@@ -20,7 +20,7 @@ export default function ThemeToggle() {
   }
 
   return (
-    <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
+    <div className="flex items-center bg-surface-elevated rounded-lg p-0.5">
       {modes.map((mode) => (
         <button
           key={mode.value}
@@ -28,8 +28,8 @@ export default function ThemeToggle() {
           title={mode.title}
           className={`px-2 py-1 rounded-md text-sm transition-colors ${
             theme === mode.value
-              ? 'bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-gray-100'
-              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              ? 'bg-surface-card shadow-sm text-[var(--text-primary)]'
+              : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           {mode.label}

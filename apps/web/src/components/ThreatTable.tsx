@@ -2,6 +2,7 @@
 
 import { useState, Fragment } from 'react';
 import { RiskBadgeCompact } from './RiskBadge';
+import { Icon, useToast } from './ui';
 import { triggerProbe } from '@/lib/api';
 
 interface BrowserReport {
@@ -68,6 +69,7 @@ interface ThreatTableProps {
 }
 
 export default function ThreatTable({ threats, onSelect, expandable = false, selectable = false, selectedIds, onSelectionChange, onScreenshotCaptured }: ThreatTableProps) {
+  const toast = useToast();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [capturingScreenshot, setCapturingScreenshot] = useState<Set<string>>(new Set());
 
@@ -79,7 +81,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
       await triggerProbe(threatId);
       onScreenshotCaptured?.();
     } catch (err: any) {
-      alert(`スクリーンショット取得に失敗しました: ${err.message}`);
+      toast.error(`スクリーンショット取得に失敗しました: ${err.message}`);
     } finally {
       setCapturingScreenshot(prev => {
         const next = new Set(prev);
@@ -109,7 +111,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
 
   if (threats.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500 dark:text-gray-400 dark:text-gray-500">
+      <div className="text-center py-12 text-[var(--text-secondary)]">
         検知された脅威はありません
       </div>
     );
@@ -159,7 +161,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+          <tr className="border-b border-[var(--border-default)] text-left text-sm text-[var(--text-secondary)]">
             {selectable && (
               <th className="pb-3 font-medium w-10">
                 <input
@@ -182,8 +184,8 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
           {threats.map((threat) => (
             <Fragment key={threat.id}>
               <tr
-                className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 cursor-pointer ${
-                  expandedRowId === threat.id ? 'bg-gray-50 dark:bg-gray-900' : ''
+                className={`border-b border-[var(--border-subtle)] hover:bg-surface-elevated cursor-pointer transition-colors ${
+                  expandedRowId === threat.id ? 'bg-surface-elevated' : ''
                 }`}
                 onClick={() => handleRowClick(threat)}
               >
@@ -199,9 +201,9 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                 )}
                 <td className="py-3">
                   <div className="font-mono text-sm font-medium">{threat.domain}</div>
-                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">vs {threat.brand.domain}</div>
+                  <div className="text-xs text-[var(--text-tertiary)] mt-0.5">vs {threat.brand.domain}</div>
                 </td>
-                <td className="py-3 text-sm text-gray-600 dark:text-gray-300">
+                <td className="py-3 text-sm text-[var(--text-secondary)]">
                   {threat.analyses[0]
                     ? categoryDescriptions[threat.analyses[0].category] || threat.analyses[0].category
                     : '—'}
@@ -214,11 +216,11 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                     {statusLabels[threat.status] || threat.status}
                   </span>
                 </td>
-                <td className="py-3 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                <td className="py-3 text-sm text-[var(--text-secondary)]">
                   {new Date(threat.firstSeen).toLocaleDateString('ja-JP')}
                 </td>
                 {expandable && (
-                  <td className="py-3 text-gray-400 dark:text-gray-500">
+                  <td className="py-3 text-[var(--text-tertiary)]">
                     <span className={`inline-block transition-transform ${expandedRowId === threat.id ? 'rotate-180' : ''}`}>
                       ▼
                     </span>
@@ -229,13 +231,13 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
               {/* Layer 2: Expanded Detail Panel */}
               {expandable && expandedRowId === threat.id && (
                 <tr>
-                  <td colSpan={selectable ? 7 : 6} className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                  <td colSpan={selectable ? 7 : 6} className="bg-surface-elevated border-b border-[var(--border-default)]">
                     <div className="p-5 space-y-4">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Screenshot */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                        <div className="bg-surface-card rounded-lg border border-[var(--border-default)] p-4">
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200">📸 スクリーンショット</h4>
+                            <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-1.5"><Icon name="camera" size={16} /> スクリーンショット</h4>
                             <button
                               type="button"
                               onClick={(e) => handleCaptureScreenshot(threat.id, e)}
@@ -247,7 +249,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                                   <span className="animate-spin">⟳</span> 取得中...
                                 </span>
                               ) : (
-                                '🔄 再取得'
+                                <><Icon name="refresh" size={14} /> 再取得</>
                               )}
                             </button>
                           </div>
@@ -258,7 +260,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                               className="w-full rounded border border-gray-200 dark:border-gray-700"
                             />
                           ) : (
-                            <div className="flex flex-col items-center justify-center h-32 bg-gray-100 dark:bg-gray-700 rounded text-gray-400 dark:text-gray-500 text-sm gap-2">
+                            <div className="flex flex-col items-center justify-center h-32 bg-surface-elevated rounded text-[var(--text-tertiary)] text-sm gap-2">
                               <span>スクリーンショット未取得</span>
                               <button
                                 type="button"
@@ -266,7 +268,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                                 disabled={capturingScreenshot.has(threat.id)}
                                 className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                {capturingScreenshot.has(threat.id) ? '取得中...' : '📷 スクリーンショットを取得'}
+                                {capturingScreenshot.has(threat.id) ? '取得中...' : <><Icon name="camera" size={14} /> スクリーンショットを取得</>}
                               </button>
                             </div>
                           )}
@@ -275,13 +277,13 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                         {/* Analysis Details */}
                         <div className="space-y-3">
                           {/* Threat Category & Confidence */}
-                          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">🔍 判定根拠</h4>
+                          <div className="bg-surface-card rounded-lg border border-[var(--border-default)] p-4">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2 flex items-center gap-1.5"><Icon name="search" size={16} /> 判定根拠</h4>
                             {threat.analyses.length > 0 ? (
                               <div className="space-y-2">
                                 {threat.analyses.map((a, i) => (
                                   <div key={i} className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                                    <span className="text-sm text-[var(--text-secondary)]">
                                       {categoryLabels[a.category] || a.category}
                                     </span>
                                     <div className="flex items-center gap-2">
@@ -295,7 +297,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                                           style={{ width: `${a.confidence * 100}%` }}
                                         />
                                       </div>
-                                      <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 w-10 text-right">
+                                      <span className="text-xs text-[var(--text-secondary)] w-10 text-right">
                                         {Math.round(a.confidence * 100)}%
                                       </span>
                                     </div>
@@ -303,22 +305,22 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-sm text-gray-400 dark:text-gray-500">分析データなし</p>
+                              <p className="text-sm text-[var(--text-tertiary)]">分析データなし</p>
                             )}
                           </div>
 
                           {/* WHOIS Summary */}
-                          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">🌐 ドメイン情報</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <div className="bg-surface-card rounded-lg border border-[var(--border-default)] p-4">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1 flex items-center gap-1.5"><Icon name="globe" size={16} /> ドメイン情報</h4>
+                            <p className="text-sm text-[var(--text-secondary)]">
                               {parseWhoisSummary(threat.whoisData) || '情報未取得'}
                             </p>
                           </div>
 
                           {/* SSL Summary */}
-                          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                            <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">🔒 SSL証明書</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
+                          <div className="bg-surface-card rounded-lg border border-[var(--border-default)] p-4">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)] mb-1 flex items-center gap-1.5"><Icon name="lock" size={16} /> SSL証明書</h4>
+                            <p className="text-sm text-[var(--text-secondary)]">
                               {parseSslSummary(threat.sslInfo) || '情報未取得'}
                             </p>
                           </div>
@@ -335,18 +337,18 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
                           削除申請
                         </a>
                         <button
-                          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 transition-colors"
+                          className="px-4 py-2 bg-surface-elevated text-[var(--text-primary)] rounded-lg text-sm font-medium hover:opacity-80 transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             // TODO: Implement false positive marking
-                            alert('誤検知マーク機能は実装予定です');
+                            toast.info('誤検知マーク機能は実装予定です');
                           }}
                         >
                           誤検知にする
                         </button>
                         <a
                           href={`/threats/${threat.id}`}
-                          className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 transition-colors"
+                          className="px-4 py-2 bg-surface-card border border-[var(--border-default)] text-[var(--text-primary)] rounded-lg text-sm font-medium hover:bg-surface-elevated transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
                           技術詳細 →

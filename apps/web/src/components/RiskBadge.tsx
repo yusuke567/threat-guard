@@ -1,6 +1,7 @@
 'use client';
 
 import Tooltip from './Tooltip';
+import { Icon } from './ui';
 
 interface RiskLevel {
   label: string;
@@ -48,14 +49,14 @@ function getRiskLevel(score: number): RiskLevel {
 
 // Compact version for tables
 export function RiskBadgeCompact({ score, threatId }: { score: number | null; threatId?: string }) {
-  if (score === null) return <span className="text-gray-400 dark:text-gray-500 text-sm">—</span>;
+  if (score === null) return <span className="text-[var(--text-tertiary)] text-sm">—</span>;
 
   const level = getRiskLevel(score);
 
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1.5 min-w-[80px]">
-        <div className="w-16 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+        <div className="w-16 h-2 bg-surface-elevated rounded-full overflow-hidden">
           <div className={`h-full rounded-full ${level.barColor}`} style={{ width: `${score}%` }} />
         </div>
         <span className={`text-xs font-bold ${level.color}`}>{score}</span>
@@ -78,7 +79,7 @@ export function RiskBadgeCompact({ score, threatId }: { score: number | null; th
 
 // Full version for detail pages
 export function RiskBadgeFull({ score }: { score: number | null }) {
-  if (score === null) return <span className="text-gray-400 dark:text-gray-500">未算出</span>;
+  if (score === null) return <span className="text-[var(--text-tertiary)]">未算出</span>;
 
   const level = getRiskLevel(score);
 
@@ -87,7 +88,7 @@ export function RiskBadgeFull({ score }: { score: number | null }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className={`text-3xl font-bold ${level.color}`}>{score}</span>
-          <span className={`px-2 py-1 rounded-lg text-sm font-bold ${level.color} bg-white dark:bg-gray-800/60`}>
+          <span className={`px-2 py-1 rounded-lg text-sm font-bold ${level.color} bg-surface-card/60`}>
             {level.label}
           </span>
         </div>
@@ -95,13 +96,13 @@ export function RiskBadgeFull({ score }: { score: number | null }) {
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-3 bg-white dark:bg-gray-800/60 rounded-full overflow-hidden mb-3">
+      <div className="w-full h-3 bg-surface-card/60 rounded-full overflow-hidden mb-3">
         <div className={`h-full rounded-full transition-all ${level.barColor}`} style={{ width: `${score}%` }} />
       </div>
 
       {/* Recommended action */}
-      <div className="bg-white dark:bg-gray-800/60 rounded-lg p-3">
-        <p className="text-xs font-bold mb-1 opacity-75">💡 推奨アクション</p>
+      <div className="bg-surface-card/60 rounded-lg p-3">
+        <p className="text-xs font-bold mb-1 opacity-75 flex items-center gap-1"><Icon name="lightbulb" size={14} /> 推奨アクション</p>
         <p className={`text-sm ${level.color}`}>{level.action}</p>
       </div>
     </div>
