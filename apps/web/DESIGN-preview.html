@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThreatGuard Design System Preview</title>
+  <style>
+    :root {
+      --surface-base: #f9fafb;
+      --surface-card: #ffffff;
+      --surface-elevated: #f3f4f6;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --text-tertiary: #9ca3af;
+      --border-default: #e5e7eb;
+      --border-subtle: #f3f4f6;
+      --brand-50: #eff6ff;
+      --brand-500: #3b82f6;
+      --brand-600: #2563eb;
+      --brand-700: #1d4ed8;
+    }
+
+    .dark {
+      --surface-base: #111827;
+      --surface-card: #1f2937;
+      --surface-elevated: #374151;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-tertiary: #6b7280;
+      --border-default: #374151;
+      --border-subtle: #374151;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      background: var(--surface-base);
+      color: var(--text-primary);
+      padding: 32px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    h1 { font-size: 30px; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 24px; font-weight: 700; margin: 48px 0 16px; border-bottom: 1px solid var(--border-default); padding-bottom: 8px; }
+    h3 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: var(--text-secondary); }
+    p { color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; }
+
+    .theme-toggle {
+      position: fixed; top: 16px; right: 16px; z-index: 100;
+      background: var(--surface-elevated); border: 1px solid var(--border-default);
+      border-radius: 8px; padding: 4px; display: flex; gap: 2px;
+    }
+    .theme-toggle button {
+      padding: 6px 12px; border-radius: 6px; border: none;
+      background: transparent; cursor: pointer; font-size: 14px;
+      color: var(--text-secondary); transition: all 0.2s;
+    }
+    .theme-toggle button.active {
+      background: var(--surface-card); box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      color: var(--text-primary);
+    }
+
+    /* Swatches */
+    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .swatch {
+      border-radius: 12px; border: 1px solid var(--border-default); overflow: hidden;
+      background: var(--surface-card);
+    }
+    .swatch-color { height: 64px; }
+    .swatch-info { padding: 10px; }
+    .swatch-name { font-size: 13px; font-weight: 600; }
+    .swatch-hex { font-size: 12px; color: var(--text-secondary); font-family: monospace; }
+
+    /* Typography */
+    .type-row { display: flex; align-items: baseline; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+    .type-label { width: 120px; font-size: 12px; color: var(--text-tertiary); flex-shrink: 0; }
+    .type-meta { font-size: 12px; color: var(--text-tertiary); margin-left: auto; font-family: monospace; white-space: nowrap; }
+
+    /* Components */
+    .component-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+      border: none; cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-primary { background: var(--brand-600); color: #fff; }
+    .btn-primary:hover { background: var(--brand-700); }
+    .btn-secondary { background: transparent; border: 1px solid var(--brand-600); color: var(--brand-600); }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--surface-elevated); color: var(--text-primary); }
+
+    .card {
+      background: var(--surface-card); border-radius: 12px;
+      border: 1px solid var(--border-default); padding: 24px;
+    }
+    .card-interactive { cursor: pointer; transition: background 0.2s; }
+    .card-interactive:hover { background: var(--surface-elevated); }
+
+    .badge {
+      display: inline-flex; align-items: center; padding: 4px 10px;
+      border-radius: 9999px; font-size: 12px; font-weight: 700;
+    }
+    .badge-critical { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-high { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .badge-medium { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
+    .badge-low { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-info { background: var(--surface-elevated); color: var(--text-secondary); font-weight: 500; border-radius: 4px; }
+
+    .dark .badge-critical { background: rgba(127,29,29,0.3); color: #fca5a5; border-color: rgba(127,29,29,0.5); }
+    .dark .badge-high { background: rgba(124,45,18,0.3); color: #fdba74; border-color: rgba(124,45,18,0.5); }
+    .dark .badge-medium { background: rgba(113,63,18,0.3); color: #fde047; border-color: rgba(113,63,18,0.5); }
+    .dark .badge-low { background: rgba(20,83,45,0.3); color: #86efac; border-color: rgba(20,83,45,0.5); }
+
+    .input {
+      width: 100%; max-width: 320px; padding: 8px 12px; font-size: 14px;
+      border-radius: 8px; border: 1px solid var(--border-default);
+      background: var(--surface-card); color: var(--text-primary);
+      outline: none; transition: border-color 0.2s;
+    }
+    .input:focus { border-color: var(--brand-500); box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+    .input::placeholder { color: var(--text-tertiary); }
+
+    /* Progress bar */
+    .progress-track { width: 100%; max-width: 320px; height: 12px; background: var(--surface-elevated); border-radius: 9999px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 9999px; transition: width 0.3s; }
+
+    /* Table */
+    .table-container { background: var(--surface-card); border-radius: 12px; border: 1px solid var(--border-default); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-default); background: var(--surface-elevated); }
+    td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid var(--border-subtle); }
+    tr:hover td { background: var(--surface-elevated); }
+
+    /* Spacing */
+    .spacing-demo { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+    .spacing-block { background: var(--brand-600); border-radius: 4px; opacity: 0.7; }
+    .spacing-label { font-size: 11px; color: var(--text-tertiary); text-align: center; margin-top: 4px; font-family: monospace; }
+
+    /* Radius */
+    .radius-demo { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .radius-block { width: 64px; height: 64px; background: var(--brand-50); border: 2px solid var(--brand-500); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--brand-600); font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="theme-toggle">
+    <button class="active" onclick="setTheme('light')">Light</button>
+    <button onclick="setTheme('dark')">Dark</button>
+  </div>
+
+  <h1>ThreatGuard Design System</h1>
+  <p>Visual token reference for AI-assisted UI generation. Toggle dark mode to preview both themes.</p>
+
+  <!-- Colors -->
+  <h2>Color Palette</h2>
+
+  <h3>Brand</h3>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#eff6ff"></div><div class="swatch-info"><div class="swatch-name">brand-50</div><div class="swatch-hex">#eff6ff</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#3b82f6"></div><div class="swatch-info"><div class="swatch-name">brand-500</div><div class="swatch-hex">#3b82f6</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#2563eb"></div><div class="swatch-info"><div class="swatch-name">brand-600</div><div class="swatch-hex">#2563eb</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#1d4ed8"></div><div class="swatch-info"><div class="swatch-name">brand-700</div><div class="swatch-hex">#1d4ed8</div></div></div>
+  </div>
+
+  <h3>Surfaces</h3>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:var(--surface-base)"></div><div class="swatch-info"><div class="swatch-name">surface-base</div><div class="swatch-hex">Page background</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:var(--surface-card)"></div><div class="swatch-info"><div class="swatch-name">surface-card</div><div class="swatch-hex">Card background</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:var(--surface-elevated)"></div><div class="swatch-info"><div class="swatch-name">surface-elevated</div><div class="swatch-hex">Elevated elements</div></div></div>
+  </div>
+
+  <h3>Risk / Status</h3>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#ef4444"></div><div class="swatch-info"><div class="swatch-name">Critical (80-100)</div><div class="swatch-hex">#ef4444</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#f97316"></div><div class="swatch-info"><div class="swatch-name">High (60-79)</div><div class="swatch-hex">#f97316</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#eab308"></div><div class="swatch-info"><div class="swatch-name">Medium (40-59)</div><div class="swatch-hex">#eab308</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#22c55e"></div><div class="swatch-info"><div class="swatch-name">Low (0-39)</div><div class="swatch-hex">#22c55e</div></div></div>
+  </div>
+
+  <!-- Typography -->
+  <h2>Typography</h2>
+  <div>
+    <div class="type-row"><span class="type-label">Display</span><span style="font-size:48px;font-weight:700;line-height:1.1">ThreatGuard</span><span class="type-meta">48px / 700 / 1.1</span></div>
+    <div class="type-row"><span class="type-label">Heading 1</span><span style="font-size:30px;font-weight:700;line-height:1.2">128</span><span class="type-meta">30px / 700 / 1.2</span></div>
+    <div class="type-row"><span class="type-label">Heading 2</span><span style="font-size:24px;font-weight:700;line-height:1.3">脅威一覧</span><span class="type-meta">24px / 700 / 1.3</span></div>
+    <div class="type-row"><span class="type-label">Heading 3</span><span style="font-size:20px;font-weight:600;line-height:1.4">リスクスコア</span><span class="type-meta">20px / 600 / 1.4</span></div>
+    <div class="type-row"><span class="type-label">Heading 4</span><span style="font-size:18px;font-weight:600;line-height:1.5">判定根拠</span><span class="type-meta">18px / 600 / 1.5</span></div>
+    <div class="type-row"><span class="type-label">Body</span><span style="font-size:16px;font-weight:400;line-height:1.5">このドメインはフィッシングサイトとして検知されました。</span><span class="type-meta">16px / 400 / 1.5</span></div>
+    <div class="type-row"><span class="type-label">Label</span><span style="font-size:14px;font-weight:500;line-height:1.4">ブランド管理</span><span class="type-meta">14px / 500 / 1.4</span></div>
+    <div class="type-row"><span class="type-label">Caption</span><span style="font-size:12px;font-weight:500;line-height:1.4">2024/01/15 検知</span><span class="type-meta">12px / 500 / 1.4</span></div>
+  </div>
+
+  <!-- Components -->
+  <h2>Components</h2>
+
+  <h3>Buttons</h3>
+  <div class="component-row">
+    <button class="btn btn-primary">削除申請</button>
+    <button class="btn btn-secondary">詳細を確認</button>
+    <button class="btn btn-danger">脅威を報告</button>
+    <button class="btn btn-ghost">キャンセル</button>
+  </div>
+
+  <h3>Badges</h3>
+  <div class="component-row">
+    <span class="badge badge-critical">危険</span>
+    <span class="badge badge-high">高</span>
+    <span class="badge badge-medium">中</span>
+    <span class="badge badge-low">低</span>
+    <span class="badge badge-info">マネックス証券</span>
+  </div>
+
+  <h3>Cards</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+    <div class="card">
+      <div style="font-size:14px;font-weight:500;color:var(--text-secondary);margin-bottom:4px">検知数</div>
+      <div style="font-size:30px;font-weight:700;color:#ef4444">128</div>
+      <div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">過去30日間</div>
+    </div>
+    <div class="card card-interactive">
+      <div style="font-size:14px;font-weight:500;color:var(--text-secondary);margin-bottom:4px">対応完了</div>
+      <div style="font-size:30px;font-weight:700;color:#22c55e">42</div>
+      <div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">クリックして詳細</div>
+    </div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:500;color:var(--text-secondary);margin-bottom:4px">監視中ブランド</div>
+      <div style="font-size:30px;font-weight:700;color:var(--brand-600)">5</div>
+      <div style="font-size:12px;color:var(--text-tertiary);margin-top:4px">アクティブ</div>
+    </div>
+  </div>
+
+  <h3>Form Input</h3>
+  <div class="component-row">
+    <input class="input" type="text" placeholder="ドメインを検索...">
+  </div>
+
+  <h3>Progress Bars (Risk Score)</h3>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="progress-track"><div class="progress-fill" style="width:92%;background:#ef4444"></div></div>
+      <span style="font-size:14px;font-weight:700;color:#ef4444">92</span>
+      <span class="badge badge-critical">危険</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="progress-track"><div class="progress-fill" style="width:68%;background:#f97316"></div></div>
+      <span style="font-size:14px;font-weight:700;color:#f97316">68</span>
+      <span class="badge badge-high">高</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="progress-track"><div class="progress-fill" style="width:45%;background:#eab308"></div></div>
+      <span style="font-size:14px;font-weight:700;color:#eab308">45</span>
+      <span class="badge badge-medium">中</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="progress-track"><div class="progress-fill" style="width:15%;background:#22c55e"></div></div>
+      <span style="font-size:14px;font-weight:700;color:#22c55e">15</span>
+      <span class="badge badge-low">低</span>
+    </div>
+  </div>
+
+  <h3>Table</h3>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ドメイン</th>
+          <th>概要</th>
+          <th>リスク</th>
+          <th>ステータス</th>
+          <th>検知日</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span style="font-family:monospace;font-weight:500">monnex-sec.com</span><br><span style="font-size:12px;color:var(--text-tertiary)">vs monex.co.jp</span></td>
+          <td style="color:var(--text-secondary)">御社サイトを模倣した偽サイトです</td>
+          <td><span class="badge badge-critical">危険 92</span></td>
+          <td><span class="badge" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;font-weight:500">脅威確認</span></td>
+          <td style="color:var(--text-secondary)">2024/01/15</td>
+        </tr>
+        <tr>
+          <td><span style="font-family:monospace;font-weight:500">monex-login.net</span><br><span style="font-size:12px;color:var(--text-tertiary)">vs monex.co.jp</span></td>
+          <td style="color:var(--text-secondary)">御社ブランドを無断使用しています</td>
+          <td><span class="badge badge-high">高 65</span></td>
+          <td><span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-weight:500">削除申請中</span></td>
+          <td style="color:var(--text-secondary)">2024/01/12</td>
+        </tr>
+        <tr>
+          <td><span style="font-family:monospace;font-weight:500">monex-invest.org</span><br><span style="font-size:12px;color:var(--text-tertiary)">vs monex.co.jp</span></td>
+          <td style="color:var(--text-secondary)">ドメインが取得済み（現在未使用）</td>
+          <td><span class="badge badge-medium">中 42</span></td>
+          <td><span class="badge badge-info" style="font-weight:500">未対応</span></td>
+          <td style="color:var(--text-secondary)">2024/01/10</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Layout -->
+  <h2>Layout</h2>
+
+  <h3>Spacing Scale</h3>
+  <div class="spacing-demo">
+    <div><div class="spacing-block" style="width:16px;height:2px"></div><div class="spacing-label">0.5</div></div>
+    <div><div class="spacing-block" style="width:16px;height:4px"></div><div class="spacing-label">1</div></div>
+    <div><div class="spacing-block" style="width:16px;height:8px"></div><div class="spacing-label">2</div></div>
+    <div><div class="spacing-block" style="width:16px;height:12px"></div><div class="spacing-label">3</div></div>
+    <div><div class="spacing-block" style="width:16px;height:16px"></div><div class="spacing-label">4</div></div>
+    <div><div class="spacing-block" style="width:16px;height:20px"></div><div class="spacing-label">5</div></div>
+    <div><div class="spacing-block" style="width:16px;height:24px"></div><div class="spacing-label">6</div></div>
+    <div><div class="spacing-block" style="width:16px;height:32px"></div><div class="spacing-label">8</div></div>
+    <div><div class="spacing-block" style="width:16px;height:48px"></div><div class="spacing-label">12</div></div>
+    <div><div class="spacing-block" style="width:16px;height:64px"></div><div class="spacing-label">16</div></div>
+  </div>
+
+  <h3>Border Radius</h3>
+  <div class="radius-demo">
+    <div><div class="radius-block" style="border-radius:4px">4px</div><div class="spacing-label">rounded</div></div>
+    <div><div class="radius-block" style="border-radius:8px">8px</div><div class="spacing-label">rounded-lg</div></div>
+    <div><div class="radius-block" style="border-radius:12px">12px</div><div class="spacing-label">rounded-xl</div></div>
+    <div><div class="radius-block" style="border-radius:16px">16px</div><div class="spacing-label">rounded-2xl</div></div>
+    <div><div class="radius-block" style="border-radius:9999px">full</div><div class="spacing-label">rounded-full</div></div>
+  </div>
+
+  <h3>Depth / Elevation</h3>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:16px">
+    <div class="card" style="width:180px;text-align:center"><div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">Level 0</div>Border only</div>
+    <div class="card" style="width:180px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.05)"><div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">Level 1</div>shadow-sm</div>
+    <div class="card" style="width:180px;text-align:center;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)"><div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">Level 2</div>shadow-md</div>
+    <div class="card" style="width:180px;text-align:center;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1)"><div style="font-size:12px;color:var(--text-tertiary);margin-bottom:4px">Level 3</div>shadow-lg</div>
+  </div>
+
+  <div style="margin-top:64px;padding:24px 0;border-top:1px solid var(--border-default);text-align:center;color:var(--text-tertiary);font-size:12px">
+    ThreatGuard Design System v1.0
+  </div>
+
+  <script>
+    function setTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      document.querySelectorAll('.theme-toggle button').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === theme);
+      });
+    }
+  </script>
+</body>
+</html>
