@@ -3,6 +3,7 @@
 .env
 .git-credentials
 .mcp.json
+storybook-static
 .next/
 .vercel
 dist/
