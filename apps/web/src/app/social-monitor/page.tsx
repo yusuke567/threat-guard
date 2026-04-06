@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader, Button } from '@/components/ui';
 import StatCard from '@/components/StatCard';
 import { RiskBadgeCompact } from '@/components/RiskBadge';
 import { useAuth } from '@/components/AuthProvider';
@@ -137,24 +138,21 @@ export default function SocialMonitorPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            📡 SNS監視
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Twitter上のフィッシングURL拡散をリアルタイム検知
-          </p>
-        </div>
-        {isAdmin && (
-          <button
-            onClick={handleScan}
-            disabled={scanning}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-          >
-            {scanning ? '⏳ スキャン中...' : '🔄 手動スキャン'}
-          </button>
-        )}
+      <div className="mb-6">
+        <PageHeader
+          title="📡 SNS監視"
+          description="Twitter上のフィッシングURL拡散をリアルタイム検知"
+          actions={
+            isAdmin ? (
+              <Button
+                onClick={handleScan}
+                disabled={scanning}
+              >
+                {scanning ? '⏳ スキャン中...' : '🔄 手動スキャン'}
+              </Button>
+            ) : undefined
+          }
+        />
       </div>
 
       {/* Scan result */}
@@ -209,7 +207,7 @@ export default function SocialMonitorPage() {
         <select
           value={filters.status}
           onChange={(e) => handleFilterChange('status', e.target.value)}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200"
+          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
         >
           <option value="">すべてのステータス</option>
           <option value="new">🆕 未対応</option>
@@ -220,7 +218,7 @@ export default function SocialMonitorPage() {
         <select
           value={filters.brandId}
           onChange={(e) => handleFilterChange('brandId', e.target.value)}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200"
+          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
         >
           <option value="">すべてのブランド</option>
           {brands.map((b) => (
@@ -233,7 +231,7 @@ export default function SocialMonitorPage() {
         <select
           value={filters.sortBy}
           onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200"
+          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
         >
           <option value="createdAt">検知日時</option>
           <option value="riskScore">リスクスコア</option>
@@ -248,33 +246,33 @@ export default function SocialMonitorPage() {
               page: '1',
             }))
           }
-          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)] hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           {filters.order === 'desc' ? '↓ 降順' : '↑ 昇順'}
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-surface-card rounded-xl border border-[var(--border-default)] overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-gray-500 dark:text-gray-400">
+          <div className="p-12 text-center text-[var(--text-secondary)]">
             読み込み中...
           </div>
         ) : posts.length === 0 ? (
           <div className="p-8 sm:p-12">
             <div className="text-center mb-8">
               <p className="text-4xl mb-3">✅</p>
-              <p className="font-bold text-lg text-gray-900 dark:text-gray-100">
+              <p className="font-bold text-lg text-[var(--text-primary)]">
                 現在、フィッシングURLの拡散は検知されていません
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm text-[var(--text-secondary)] mt-1">
                 4時間ごとに自動スキャンしています
               </p>
             </div>
 
             {/* How it works - ステップ説明 */}
             <div className="max-w-2xl mx-auto">
-              <p className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4 text-center">
+              <p className="text-sm font-bold text-[var(--text-secondary)] mb-4 text-center">
                 📡 SNS監視のしくみ
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -306,7 +304,7 @@ export default function SocialMonitorPage() {
                   </p>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-4 text-center">
+              <p className="text-xs text-[var(--text-tertiary)] mt-4 text-center">
                 💡 ここに何も表示されていない＝フィッシングURLの拡散が検知されていない、ということです。安全な状態です。
               </p>
             </div>
@@ -314,27 +312,27 @@ export default function SocialMonitorPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-[var(--border-default)]">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">
                     投稿者
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">
                     内容
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">
                     マッチドメイン
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">
                     ブランド
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">
                     リスク
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">
                     ステータス
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">
                     投稿日時
                   </th>
                 </tr>
@@ -347,7 +345,7 @@ export default function SocialMonitorPage() {
                   >
                     <td className="px-4 py-3">
                       <div>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                        <span className="font-medium text-[var(--text-primary)]">
                           {post.authorName || '—'}
                         </span>
                         {post.authorHandle && (
@@ -367,7 +365,7 @@ export default function SocialMonitorPage() {
                         href={`https://x.com/i/status/${post.postId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        className="text-[var(--text-secondary)] hover:text-blue-600 dark:hover:text-blue-400"
                         title={post.content}
                       >
                         {truncate(post.content, 80)}
@@ -387,7 +385,7 @@ export default function SocialMonitorPage() {
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                    <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">
                       {post.brand?.name || '—'}
                     </td>
                     <td className="px-4 py-3">
@@ -408,7 +406,7 @@ export default function SocialMonitorPage() {
                         <option value="dismissed">🚫 却下</option>
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-4 py-3 text-xs text-[var(--text-secondary)] whitespace-nowrap">
                       {formatDate(post.postedAt)}
                     </td>
                   </tr>
@@ -420,8 +418,8 @@ export default function SocialMonitorPage() {
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border-default)] bg-gray-50 dark:bg-gray-900/50">
+            <span className="text-sm text-[var(--text-secondary)]">
               全 {pagination.total} 件中{' '}
               {(pagination.page - 1) * pagination.pageSize + 1}–
               {Math.min(pagination.page * pagination.pageSize, pagination.total)}{' '}
@@ -431,17 +429,17 @@ export default function SocialMonitorPage() {
               <button
                 onClick={() => handlePageChange(pagination.page - 1)}
                 disabled={pagination.page <= 1}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-30 hover:bg-white dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
+                className="px-3 py-1 text-sm border border-[var(--border-default)] rounded-lg disabled:opacity-30 hover:bg-white dark:hover:bg-gray-800 text-[var(--text-primary)]"
               >
                 ← 前
               </button>
-              <span className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400">
+              <span className="px-3 py-1 text-sm text-[var(--text-secondary)]">
                 {pagination.page} / {pagination.totalPages}
               </span>
               <button
                 onClick={() => handlePageChange(pagination.page + 1)}
                 disabled={pagination.page >= pagination.totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-30 hover:bg-white dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200"
+                className="px-3 py-1 text-sm border border-[var(--border-default)] rounded-lg disabled:opacity-30 hover:bg-white dark:hover:bg-gray-800 text-[var(--text-primary)]"
               >
                 次 →
               </button>

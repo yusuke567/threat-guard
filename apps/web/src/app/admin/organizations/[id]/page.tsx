@@ -146,7 +146,7 @@ export default function AdminOrgDetailPage() {
   if (!org) {
     return (
       <AdminGuard>
-        <div className="text-center py-20 text-gray-500 dark:text-gray-400 dark:text-gray-500">Organization が見つかりません</div>
+        <div className="text-center py-20 text-[var(--text-secondary)]">Organization が見つかりません</div>
       </AdminGuard>
     );
   }
@@ -160,20 +160,20 @@ export default function AdminOrgDetailPage() {
           </a>
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{org.name}</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">{org.name}</h1>
 
         {error && <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">{error}</div>}
         {success && <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-sm">{success}</div>}
 
         {/* Edit Name */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Organization 情報</h2>
+        <div className="bg-surface-card border border-[var(--border-default)] rounded-lg p-4 mb-6">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Organization 情報</h2>
           <form onSubmit={handleUpdateName} className="flex gap-3">
             <input
               type="text"
               value={editName}
               onChange={e => setEditName(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <button
               type="submit"
@@ -186,51 +186,51 @@ export default function AdminOrgDetailPage() {
         </div>
 
         {/* Brands */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+        <div className="bg-surface-card border border-[var(--border-default)] rounded-lg p-4 mb-6">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
             所属ブランド ({org.brands.length})
           </h2>
           {org.brands.length > 0 ? (
             <div className="space-y-2">
               {org.brands.map(brand => (
-                <div key={brand.id} className="flex items-center gap-3 py-2 px-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                  <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{brand.name}</span>
-                  <span className="text-gray-400 dark:text-gray-500 text-xs">{brand.domain}</span>
+                <div key={brand.id} className="flex items-center gap-3 py-2 px-3 bg-surface-base rounded-lg">
+                  <span className="font-medium text-[var(--text-primary)] text-sm">{brand.name}</span>
+                  <span className="text-[var(--text-tertiary)] text-xs">{brand.domain}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 dark:text-gray-500">ブランドがありません</p>
+            <p className="text-sm text-[var(--text-tertiary)]">ブランドがありません</p>
           )}
         </div>
 
         {/* Users */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+        <div className="bg-surface-card border border-[var(--border-default)] rounded-lg p-4 mb-6">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">
             所属ユーザー ({users.length})
           </h2>
           {users.length > 0 ? (
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 dark:border-gray-700">
+              <thead className="border-b border-[var(--border-default)]">
                 <tr>
-                  <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">メール</th>
-                  <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">名前</th>
-                  <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">ロール</th>
-                  <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">作成日</th>
+                  <th className="text-left py-2 font-medium text-[var(--text-secondary)]">メール</th>
+                  <th className="text-left py-2 font-medium text-[var(--text-secondary)]">名前</th>
+                  <th className="text-left py-2 font-medium text-[var(--text-secondary)]">ロール</th>
+                  <th className="text-left py-2 font-medium text-[var(--text-secondary)]">作成日</th>
                   <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {users.map(u => (
                   <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
-                    <td className="py-2 text-gray-900 dark:text-gray-100">{u.email}</td>
-                    <td className="py-2 text-gray-600 dark:text-gray-300">{u.name || '—'}</td>
+                    <td className="py-2 text-[var(--text-primary)]">{u.email}</td>
+                    <td className="py-2 text-[var(--text-secondary)]">{u.name || '—'}</td>
                     <td className="py-2">
-                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-surface-elevated text-[var(--text-secondary)]'}`}>
                         {u.role}
                       </span>
                     </td>
-                    <td className="py-2 text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(u.createdAt).toLocaleDateString('ja-JP')}</td>
+                    <td className="py-2 text-[var(--text-secondary)]">{new Date(u.createdAt).toLocaleDateString('ja-JP')}</td>
                     <td className="py-2 text-right">
                       <button
                         onClick={() => handleDeleteUser(u.id, u.email)}
@@ -244,41 +244,41 @@ export default function AdminOrgDetailPage() {
               </tbody>
             </table>
           ) : (
-            <p className="text-sm text-gray-400 dark:text-gray-500">ユーザーがいません</p>
+            <p className="text-sm text-[var(--text-tertiary)]">ユーザーがいません</p>
           )}
         </div>
 
         {/* Deleted Users */}
         {deletedUsers.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+          <div className="bg-surface-card border border-[var(--border-default)] rounded-lg p-4 mb-6">
             <button
               onClick={() => setShowDeleted(prev => !prev)}
-              className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+              className="text-sm font-semibold text-[var(--text-primary)] hover:text-blue-600 dark:hover:text-blue-400"
             >
               {showDeleted ? '削除済みユーザーを非表示' : `削除済みユーザーを表示 (${deletedUsers.length}件)`}
             </button>
             {showDeleted && (
               <table className="w-full text-sm mt-3">
-                <thead className="border-b border-gray-200 dark:border-gray-700">
+                <thead className="border-b border-[var(--border-default)]">
                   <tr>
-                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">メール</th>
-                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">名前</th>
-                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">ロール</th>
-                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">削除日</th>
+                    <th className="text-left py-2 font-medium text-[var(--text-secondary)]">メール</th>
+                    <th className="text-left py-2 font-medium text-[var(--text-secondary)]">名前</th>
+                    <th className="text-left py-2 font-medium text-[var(--text-secondary)]">ロール</th>
+                    <th className="text-left py-2 font-medium text-[var(--text-secondary)]">削除日</th>
                     <th className="py-2"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {deletedUsers.map(u => (
                     <tr key={u.id} className="opacity-60 hover:opacity-100">
-                      <td className="py-2 text-gray-500 dark:text-gray-400">{u.email}</td>
-                      <td className="py-2 text-gray-500 dark:text-gray-400">{u.name || '—'}</td>
+                      <td className="py-2 text-[var(--text-secondary)]">{u.email}</td>
+                      <td className="py-2 text-[var(--text-secondary)]">{u.name || '—'}</td>
                       <td className="py-2">
-                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-surface-elevated text-[var(--text-secondary)]">
                           {u.role}
                         </span>
                       </td>
-                      <td className="py-2 text-gray-500 dark:text-gray-400">{u.deletedAt ? new Date(u.deletedAt).toLocaleDateString('ja-JP') : '—'}</td>
+                      <td className="py-2 text-[var(--text-secondary)]">{u.deletedAt ? new Date(u.deletedAt).toLocaleDateString('ja-JP') : '—'}</td>
                       <td className="py-2 text-right">
                         <button
                           onClick={() => handleRestoreUser(u.id, u.email)}
@@ -296,46 +296,46 @@ export default function AdminOrgDetailPage() {
         )}
 
         {/* Invite User */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">ユーザー招待</h2>
+        <div className="bg-surface-card border border-[var(--border-default)] rounded-lg p-4">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">ユーザー招待</h2>
           <form onSubmit={handleInvite} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">メールアドレス *</label>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">メールアドレス *</label>
                 <input
                   type="email"
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">名前</label>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">名前</label>
                 <input
                   type="text"
                   value={inviteName}
                   onChange={e => setInviteName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">パスワード * (8文字以上)</label>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">パスワード * (8文字以上)</label>
                 <input
                   type="password"
                   value={invitePassword}
                   onChange={e => setInvitePassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-1">ロール</label>
+                <label className="block text-xs text-[var(--text-secondary)] mb-1">ロール</label>
                 <select
                   value={inviteRole}
                   onChange={e => setInviteRole(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="member">member</option>
                   <option value="admin">admin</option>

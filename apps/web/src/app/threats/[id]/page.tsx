@@ -11,6 +11,7 @@ import {
 } from '@/lib/api';
 import { RiskBadgeFull } from '@/components/RiskBadge';
 import GlossaryTerm from '@/components/GlossaryTerm';
+import { Button, useToast } from '@/components/ui';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ const statusColors: Record<string, string> = {
   new_domain: 'bg-blue-100 text-blue-800',
   analyzing: 'bg-yellow-100 text-yellow-800',
   confirmed_threat: 'bg-red-100 text-red-800',
-  false_positive: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+  false_positive: 'bg-surface-elevated text-gray-800 dark:text-gray-200',
   takedown_sent: 'bg-orange-100 text-orange-800',
   resolved: 'bg-green-100 text-green-800',
 };
@@ -115,6 +116,7 @@ function formatDateShort(d: string | null | undefined): string {
 export default function ThreatDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const [threat, setThreat] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [contentAnalysis, setContentAnalysis] = useState<any>(null);
@@ -268,7 +270,7 @@ export default function ThreatDetailPage() {
   }
 
   if (!threat) {
-    return <div className="text-center py-20 text-gray-500 dark:text-gray-400 dark:text-gray-500">脅威が見つかりません</div>;
+    return <div className="text-center py-20 text-[var(--text-secondary)]">脅威が見つかりません</div>;
   }
 
   const latestAnalysis = threat.analyses?.[0];
@@ -309,7 +311,7 @@ export default function ThreatDetailPage() {
 
         {/* Domain + Risk Badge */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-2">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 font-mono">{threat.domain}</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] font-mono">{threat.domain}</h1>
           <span className="shrink-0 text-lg">
             {getRiskEmoji(threat.riskScore)}{' '}
             <span className={`text-sm font-bold ${
@@ -324,7 +326,7 @@ export default function ThreatDetailPage() {
         </div>
 
         {/* One-line summary (Layer 1) */}
-        <p className="text-gray-600 dark:text-gray-300 mb-3">
+        <p className="text-[var(--text-secondary)] mb-3">
           {getDangerSummary(threat, latestAnalysis)}
         </p>
 
@@ -332,12 +334,12 @@ export default function ThreatDetailPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Status dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">ステータス:</span>
+            <span className="text-xs text-[var(--text-secondary)]">ステータス:</span>
             <select
               value={threat.status}
               onChange={(e) => handleStatusChange(e.target.value)}
               disabled={statusUpdating}
-              className={`px-2 py-1 rounded-full text-xs font-medium border cursor-pointer disabled:opacity-50 ${statusColors[threat.status] || 'bg-gray-100 dark:bg-gray-700'}`}
+              className={`px-2 py-1 rounded-full text-xs font-medium border cursor-pointer disabled:opacity-50 ${statusColors[threat.status] || 'bg-surface-elevated'}`}
             >
               {statusOrder.map((s) => (
                 <option key={s} value={s}>{statusLabels[s]}</option>
@@ -348,31 +350,33 @@ export default function ThreatDetailPage() {
           <span className="text-gray-300">|</span>
 
           {/* Detection date */}
-          <span className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+          <span className="text-xs text-[var(--text-secondary)]">
             検知日: {formatDateShort(threat.firstSeen)}
           </span>
 
           <span className="text-gray-300">|</span>
 
           {/* Action buttons */}
-          <button
+          <Button
+            variant="danger"
+            size="sm"
             onClick={openTakedownModal}
-            className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition-colors"
           >
             削除申請
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleFalsePositive}
             disabled={threat.status === 'false_positive'}
-            className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600 transition-colors disabled:opacity-50"
           >
             誤検知にする
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="border-b border-[var(--border-default)]">
         <nav className="flex gap-0">
           {tabs.map((tab) => (
             <button
@@ -381,7 +385,7 @@ export default function ThreatDetailPage() {
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 dark:text-gray-200 hover:border-gray-300 dark:border-gray-600'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300'
               }`}
             >
               {tab.label}
@@ -446,16 +450,16 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
       <RiskBadgeFull score={threat.riskScore} />
 
       {/* なぜ危険か (Layer 1) */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3">なぜ危険か</h2>
-        <p className="text-gray-700 dark:text-gray-200 leading-relaxed">
+      <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">なぜ危険か</h2>
+        <p className="text-[var(--text-primary)] leading-relaxed">
           {getDangerSummaryDetailed(threat, latestAnalysis, contentAnalysis, probe)}
         </p>
       </div>
 
       {/* 判定根拠 (Layer 2) */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">判定根拠</h2>
+      <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">判定根拠</h2>
         <div className="space-y-3">
           {/* Analysis category & confidence */}
           {latestAnalysis && (
@@ -489,7 +493,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
               <span className={whois.registrantOrganization ? '🟢' : '⚠️'}>
                 {whois.registrantOrganization ? '⚪' : '⚠️'}
               </span>
-              <span className="text-gray-700 dark:text-gray-200">
+              <span className="text-[var(--text-primary)]">
                 {whois.registrantOrganization
                   ? `登録者: ${whois.registrantOrganization}`
                   : '登録者情報が隠されています（WHOIS匿名化）'}
@@ -506,7 +510,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
                 return (
                   <>
                     <span>{isNew ? '⚠️' : '⚪'}</span>
-                    <span className="text-gray-700 dark:text-gray-200">
+                    <span className="text-[var(--text-primary)]">
                       <GlossaryTerm term="SSL">SSL証明書</GlossaryTerm>: 発行{daysAgo}日前
                       {isNew && '（取得直後のSSL証明書は偽サイトの特徴です）'}
                     </span>
@@ -520,7 +524,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
           {probe && (
             <div className="flex items-center gap-3 text-sm">
               <span>⚪</span>
-              <span className="text-gray-700 dark:text-gray-200">
+              <span className="text-[var(--text-primary)]">
                 サイト稼働状態: {probe.httpStatus === 200 ? 'サイトが稼働中です' : probe.dnsResolved ? 'ドメインは存在しますがサイトは応答しません' : 'サーバー未設定'}
               </span>
             </div>
@@ -532,7 +536,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
               <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">
                 AI分析の詳細を見る
               </summary>
-              <p className="mt-2 text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 leading-relaxed">
+              <p className="mt-2 text-xs text-[var(--text-secondary)] bg-surface-base rounded-lg p-3 leading-relaxed">
                 {latestAnalysis.reasoning}
               </p>
             </details>
@@ -541,8 +545,8 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
       </div>
 
       {/* ドメイン情報 */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">ドメイン情報</h2>
+      <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">ドメイン情報</h2>
         <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
           <InfoItem label="ドメイン" value={threat.domain} mono />
           <InfoItem label="ブランド" value={`${threat.brand?.name} (${threat.brand?.domain})`} />
@@ -737,7 +741,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
 
   const getStatusBadge = (report: any) => {
     if (!report) {
-      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">未申請</span>;
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-[var(--text-secondary)]">未申請</span>;
     }
     if (report.status === 'error') {
       return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">エラー</span>;
@@ -749,11 +753,11 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
   };
 
   return (
-    <div id="unified-takedown-section" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+    <div id="unified-takedown-section" className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
+      <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">
         📋 削除申請
       </h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-sm text-[var(--text-secondary)] mb-4">
         この脅威を削除するために、以下の機関・サービスに申請できます。
       </p>
 
@@ -766,16 +770,16 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
 
       <div className="space-y-3">
         {/* 1. ブラウザ削除申請 */}
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
           <button
             onClick={() => setExpandedSection(expandedSection === 'browser' ? null : 'browser')}
-            className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
           >
             <div className="flex items-center gap-3">
               <span className="text-xl">🛡️</span>
               <div className="text-left">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100">ブラウザ削除申請</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Google Safe Browsing / Microsoft SmartScreen</p>
+                <h3 className="font-medium text-[var(--text-primary)]">ブラウザ削除申請</h3>
+                <p className="text-xs text-[var(--text-secondary)]">Google Safe Browsing / Microsoft SmartScreen</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -785,19 +789,19 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
             </div>
           </button>
           {expandedSection === 'browser' && (
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            <div className="p-4 border-t border-[var(--border-default)] space-y-3">
+              <p className="text-sm text-[var(--text-secondary)] mb-3">
                 ブラウザのフィッシング保護機能にこのURLを報告し、ユーザーがアクセスした際に警告を表示させます。
               </p>
               {loadingBrowser ? (
                 <div className="flex items-center gap-2 py-4 justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">読み込み中...</span>
+                  <span className="text-sm text-[var(--text-secondary)]">読み込み中...</span>
                 </div>
               ) : (
                 <>
                   {/* Google Safe Browsing */}
-                  <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center justify-between p-3 bg-surface-card rounded-lg border border-[var(--border-default)]">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Google Safe Browsing</span>
                       {getStatusBadge(googleReport)}
@@ -814,7 +818,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
                     </div>
                   </div>
                   {/* Microsoft SmartScreen */}
-                  <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center justify-between p-3 bg-surface-card rounded-lg border border-[var(--border-default)]">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Microsoft SmartScreen</span>
                       {getStatusBadge(microsoftReport)}
@@ -837,58 +841,58 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
         </div>
 
         {/* 2. レジストラ削除申請 */}
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
           <button
             onClick={() => setExpandedSection(expandedSection === 'registrar' ? null : 'registrar')}
-            className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
           >
             <div className="flex items-center gap-3">
               <span className="text-xl">📧</span>
               <div className="text-left">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100">レジストラ削除申請</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{registrar || 'ドメイン登録管理会社'}に直接削除を依頼</p>
+                <h3 className="font-medium text-[var(--text-primary)]">レジストラ削除申請</h3>
+                <p className="text-xs text-[var(--text-secondary)]">{registrar || 'ドメイン登録管理会社'}に直接削除を依頼</p>
               </div>
             </div>
             <span className="text-gray-400">{expandedSection === 'registrar' ? '▲' : '▼'}</span>
           </button>
           {expandedSection === 'registrar' && (
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
+            <div className="p-4 border-t border-[var(--border-default)] space-y-4">
               {loadingContacts ? (
                 <div className="flex items-center gap-2 py-4 justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">連絡先を取得中...</span>
+                  <span className="text-sm text-[var(--text-secondary)]">連絡先を取得中...</span>
                 </div>
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">レジストラ</label>
+                    <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">レジストラ</label>
                     <p className="text-sm">{registrar || '不明'}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">通報先メールアドレス</label>
+                    <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">通報先メールアドレス</label>
                     <input
                       type="email"
                       value={abuseEmail}
                       onChange={(e) => setAbuseEmail(e.target.value)}
                       placeholder="abuse@registrar.com"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
+                      className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm"
                     />
                   </div>
                   {!registrarTemplate ? (
-                    <button onClick={() => generateTemplate('registrar')} disabled={generatingRegistrar || !abuseEmail} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                    <Button variant="primary" onClick={() => generateTemplate('registrar')} disabled={generatingRegistrar || !abuseEmail}>
                       {generatingRegistrar ? '生成中...' : '削除申請文面を生成'}
-                    </button>
+                    </Button>
                   ) : (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">申請内容（編集可能）</label>
-                        <textarea value={registrarTemplate} onChange={(e) => setRegistrarTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono" />
+                        <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">申請内容（編集可能）</label>
+                        <textarea value={registrarTemplate} onChange={(e) => setRegistrarTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => generateTemplate('registrar')} disabled={generatingRegistrar} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200">再生成</button>
-                        <button onClick={() => handleSendTakedown('registrar')} disabled={submitting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                        <Button variant="ghost" onClick={() => generateTemplate('registrar')} disabled={generatingRegistrar}>再生成</Button>
+                        <Button variant="danger" onClick={() => handleSendTakedown('registrar')} disabled={submitting}>
                           {submitting ? '送信中...' : '申請を送信'}
-                        </button>
+                        </Button>
                       </div>
                     </>
                   )}
@@ -900,44 +904,44 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
 
         {/* 3. 警視庁へのフィッシング報告 */}
         {policeRecipient && (
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
             <button
               onClick={() => setExpandedSection(expandedSection === 'police' ? null : 'police')}
-              className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">🚔</span>
                 <div className="text-left">
-                  <h3 className="font-medium text-gray-900 dark:text-gray-100">警視庁へのフィッシング報告</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{policeRecipient.name}</p>
+                  <h3 className="font-medium text-[var(--text-primary)]">警視庁へのフィッシング報告</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">{policeRecipient.name}</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSection === 'police' ? '▲' : '▼'}</span>
             </button>
             {expandedSection === 'police' && (
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="p-4 border-t border-[var(--border-default)] space-y-4">
+                <p className="text-sm text-[var(--text-secondary)]">
                   警視庁サイバー犯罪対策課に情報提供します。フィッシングサイトの捜査・対応に活用されます。
                 </p>
                 <div className="text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">送信先: </span>
+                  <span className="text-[var(--text-secondary)]">送信先: </span>
                   <span className="font-mono">{policeRecipient.email}</span>
                 </div>
                 {!policeTemplate ? (
-                  <button onClick={() => generateTemplate('police')} disabled={generatingPolice} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                  <Button variant="primary" onClick={() => generateTemplate('police')} disabled={generatingPolice}>
                     {generatingPolice ? '生成中...' : 'フィッシング報告文面を生成'}
-                  </button>
+                  </Button>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">情報提供内容（編集可能）</label>
-                      <textarea value={policeTemplate} onChange={(e) => setPoliceTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono" />
+                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">情報提供内容（編集可能）</label>
+                      <textarea value={policeTemplate} onChange={(e) => setPoliceTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => generateTemplate('police')} disabled={generatingPolice} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200">再生成</button>
-                      <button onClick={() => handleSendTakedown('police')} disabled={submitting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                      <Button variant="ghost" onClick={() => generateTemplate('police')} disabled={generatingPolice}>再生成</Button>
+                      <Button variant="danger" onClick={() => handleSendTakedown('police')} disabled={submitting}>
                         {submitting ? '送信中...' : '情報提供を送信'}
-                      </button>
+                      </Button>
                     </div>
                   </>
                 )}
@@ -948,44 +952,44 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
 
         {/* 4. JPCERT/CCへのフィッシング報告 */}
         {jpcertRecipient && (
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
             <button
               onClick={() => setExpandedSection(expandedSection === 'jpcert' ? null : 'jpcert')}
-              className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">🛡️</span>
                 <div className="text-left">
-                  <h3 className="font-medium text-gray-900 dark:text-gray-100">JPCERT/CCへのフィッシング報告</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">日本のセキュリティインシデント対応機関</p>
+                  <h3 className="font-medium text-[var(--text-primary)]">JPCERT/CCへのフィッシング報告</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">日本のセキュリティインシデント対応機関</p>
                 </div>
               </div>
               <span className="text-gray-400">{expandedSection === 'jpcert' ? '▲' : '▼'}</span>
             </button>
             {expandedSection === 'jpcert' && (
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="p-4 border-t border-[var(--border-default)] space-y-4">
+                <p className="text-sm text-[var(--text-secondary)]">
                   JPCERT/CCはフィッシングサイトの早期閉鎖を支援する機関です。報告することで対応が促進されます。
                 </p>
                 <div className="text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">送信先: </span>
+                  <span className="text-[var(--text-secondary)]">送信先: </span>
                   <span className="font-mono">{jpcertRecipient.email}</span>
                 </div>
                 {!jpcertTemplate ? (
-                  <button onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50">
+                  <Button variant="primary" onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert}>
                     {generatingJpcert ? '生成中...' : 'フィッシング報告文面を生成'}
-                  </button>
+                  </Button>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">報告内容（編集可能）</label>
-                      <textarea value={jpcertTemplate} onChange={(e) => setJpcertTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono" />
+                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">報告内容（編集可能）</label>
+                      <textarea value={jpcertTemplate} onChange={(e) => setJpcertTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200">再生成</button>
-                      <button onClick={() => handleSendTakedown('jpcert')} disabled={submitting} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+                      <Button variant="ghost" onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert}>再生成</Button>
+                      <Button variant="danger" onClick={() => handleSendTakedown('jpcert')} disabled={submitting}>
                         {submitting ? '送信中...' : '報告を送信'}
-                      </button>
+                      </Button>
                     </div>
                   </>
                 )}
@@ -1061,7 +1065,7 @@ function BrowserReportSection({ threat }: { threat: any }) {
 
   const getStatusBadge = (report: any) => {
     if (!report) {
-      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">未申請</span>;
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-[var(--text-secondary)]">未申請</span>;
     }
     if (report.status === 'error') {
       return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">エラー</span>;
@@ -1073,11 +1077,11 @@ function BrowserReportSection({ threat }: { threat: any }) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+    <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
+      <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
         🛡️ ブラウザ削除申請
       </h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-sm text-[var(--text-secondary)] mb-4">
         ブラウザのフィッシング保護機能にこのURLを報告し、ユーザーがアクセスした際に警告を表示させます。
       </p>
 
@@ -1091,19 +1095,19 @@ function BrowserReportSection({ threat }: { threat: any }) {
       {loadingReports ? (
         <div className="flex items-center gap-3 py-4 justify-center">
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-          <span className="text-sm text-gray-500 dark:text-gray-400">読み込み中...</span>
+          <span className="text-sm text-[var(--text-secondary)]">読み込み中...</span>
         </div>
       ) : (
         <div className="space-y-4">
           {/* Google Safe Browsing */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-4 bg-surface-base rounded-lg border border-[var(--border-default)]">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Google Safe Browsing</span>
+                <span className="text-sm font-medium text-[var(--text-primary)]">Google Safe Browsing</span>
                 {getStatusBadge(googleReport)}
               </div>
               {googleReport?.submittedAt && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">申請日: {formatDate(googleReport.submittedAt)}</p>
+                <p className="text-xs text-[var(--text-secondary)]">申請日: {formatDate(googleReport.submittedAt)}</p>
               )}
               {googleReport?.status === 'error' && googleReport.errorMessage && (
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{googleReport.errorMessage}</p>
@@ -1121,26 +1125,27 @@ function BrowserReportSection({ threat }: { threat: any }) {
                 </a>
               )}
               {(!googleReport || googleReport.status === 'error') && (
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleSubmitGoogle}
                   disabled={submittingGoogle}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {submittingGoogle ? '申請中...' : googleReport?.status === 'error' ? '再申請' : 'Google Safe Browsingに申請'}
-                </button>
+                </Button>
               )}
             </div>
           </div>
 
           {/* Microsoft SmartScreen */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-4 bg-surface-base rounded-lg border border-[var(--border-default)]">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Microsoft SmartScreen</span>
+                <span className="text-sm font-medium text-[var(--text-primary)]">Microsoft SmartScreen</span>
                 {getStatusBadge(microsoftReport)}
               </div>
               {microsoftReport?.submittedAt && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">申請日: {formatDate(microsoftReport.submittedAt)}</p>
+                <p className="text-xs text-[var(--text-secondary)]">申請日: {formatDate(microsoftReport.submittedAt)}</p>
               )}
               {microsoftReport?.status === 'error' && microsoftReport.errorMessage && (
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{microsoftReport.errorMessage}</p>
@@ -1158,13 +1163,14 @@ function BrowserReportSection({ threat }: { threat: any }) {
                 </a>
               )}
               {(!microsoftReport || microsoftReport.status === 'error') && (
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleSubmitMicrosoft}
                   disabled={submittingMicrosoft}
-                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {submittingMicrosoft ? '申請中...' : microsoftReport?.status === 'error' ? '再申請' : 'SmartScreenに申請'}
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -1182,34 +1188,34 @@ function ScreenshotsTab({ threat, probe, probing, onProbe }: {
   return (
     <div className="space-y-6">
       {/* Detected site screenshot */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-red-200 dark:border-red-800 p-6">
+      <div className="bg-surface-card rounded-xl border border-red-200 dark:border-red-800 p-6">
         <div className="flex items-center gap-2 mb-3">
           <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded text-xs font-bold">検知サイト</span>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 font-mono">{threat.domain}</h3>
+          <h3 className="text-sm font-bold text-[var(--text-primary)] font-mono">{threat.domain}</h3>
         </div>
         {threat.screenshotUrl ? (
           <>
             <img
               src={threat.screenshotUrl}
               alt={`${threat.domain} のスクリーンショット`}
-              className="w-full max-w-2xl rounded-lg border border-gray-200 dark:border-gray-700"
+              className="w-full max-w-2xl rounded-lg border border-[var(--border-default)]"
             />
             {probe?.probeAt && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+              <p className="text-xs text-[var(--text-tertiary)] mt-2">
                 撮影日時: {formatDate(probe.probeAt)}
               </p>
             )}
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-48 bg-gray-50 dark:bg-gray-900 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
-            <p className="text-gray-400 dark:text-gray-500 text-sm mb-3">スクリーンショット未取得</p>
-            <button
+          <div className="flex flex-col items-center justify-center h-48 bg-surface-base rounded-lg border border-dashed border-[var(--border-default)]">
+            <p className="text-[var(--text-tertiary)] text-sm mb-3">スクリーンショット未取得</p>
+            <Button
+              variant="primary"
               onClick={onProbe}
               disabled={probing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
             >
               {probing ? '取得中...' : 'サイトを調査して取得'}
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -1217,13 +1223,13 @@ function ScreenshotsTab({ threat, probe, probing, onProbe }: {
       {/* Re-probe button */}
       <div className="flex justify-center gap-3">
         {threat.screenshotUrl && (
-          <button
+          <Button
+            variant="ghost"
             onClick={onProbe}
             disabled={probing}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
           >
             {probing ? '再取得中...' : 'スクリーンショットを再取得'}
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -1293,12 +1299,12 @@ function TechnicalTab({ threat, whois, ssl, probe }: {
     <div className="space-y-6">
       {/* Export buttons */}
       <div className="flex gap-3">
-        <button onClick={handleExportJson} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
+        <Button variant="ghost" onClick={handleExportJson}>
           JSONエクスポート
-        </button>
-        <button onClick={handleExportCsv} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
+        </Button>
+        <Button variant="ghost" onClick={handleExportCsv}>
           CSVエクスポート
-        </button>
+        </Button>
       </div>
 
       {/* DNS / Web Probe */}
@@ -1314,22 +1320,22 @@ function TechnicalTab({ threat, whois, ssl, probe }: {
       {/* Full WHOIS */}
       <TechSection title="WHOIS">
         {whois ? (
-          <pre className="text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-80 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+          <pre className="text-xs text-[var(--text-secondary)] overflow-x-auto whitespace-pre-wrap max-h-80 bg-surface-base rounded-lg p-3">
             {JSON.stringify(whois, null, 2)}
           </pre>
         ) : (
-          <p className="text-sm text-gray-400 dark:text-gray-500">WHOIS情報未取得</p>
+          <p className="text-sm text-[var(--text-tertiary)]">WHOIS情報未取得</p>
         )}
       </TechSection>
 
       {/* HTTP Response Headers */}
       <TechSection title="HTTP レスポンスヘッダー">
         {probeHeaders ? (
-          <pre className="text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-80 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+          <pre className="text-xs text-[var(--text-secondary)] overflow-x-auto whitespace-pre-wrap max-h-80 bg-surface-base rounded-lg p-3">
             {JSON.stringify(probeHeaders, null, 2)}
           </pre>
         ) : (
-          <p className="text-sm text-gray-400 dark:text-gray-500">ヘッダー情報未取得</p>
+          <p className="text-sm text-[var(--text-tertiary)]">ヘッダー情報未取得</p>
         )}
       </TechSection>
 
@@ -1345,20 +1351,20 @@ function TechnicalTab({ threat, whois, ssl, probe }: {
             </dl>
             <details>
               <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800 font-medium">Raw SSL Data</summary>
-              <pre className="mt-2 text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-60 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+              <pre className="mt-2 text-xs text-[var(--text-secondary)] overflow-x-auto whitespace-pre-wrap max-h-60 bg-surface-base rounded-lg p-3">
                 {JSON.stringify(ssl, null, 2)}
               </pre>
             </details>
           </>
         ) : (
-          <p className="text-sm text-gray-400 dark:text-gray-500">SSL情報未取得</p>
+          <p className="text-sm text-[var(--text-tertiary)]">SSL情報未取得</p>
         )}
       </TechSection>
 
       {/* Raw HTML snippet */}
       {probe?.htmlSnippet && (
         <TechSection title="HTMLスニペット">
-          <pre className="text-xs text-gray-600 dark:text-gray-300 overflow-x-auto whitespace-pre-wrap max-h-60 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+          <pre className="text-xs text-[var(--text-secondary)] overflow-x-auto whitespace-pre-wrap max-h-60 bg-surface-base rounded-lg p-3">
             {probe.htmlSnippet}
           </pre>
         </TechSection>
@@ -1457,30 +1463,30 @@ function HistoryTab({ threat }: { threat: any }) {
   };
 
   if (events.length === 0) {
-    return <p className="text-center py-12 text-gray-400 dark:text-gray-500">対応履歴はまだありません</p>;
+    return <p className="text-center py-12 text-[var(--text-tertiary)]">対応履歴はまだありません</p>;
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
       <div className="space-y-0">
         {events.map((ev, i) => (
           <div key={i} className="relative pl-8 pb-6 last:pb-0">
             {/* Connector line */}
             {i < events.length - 1 && (
-              <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-600" />
+              <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-[var(--border-default)]" />
             )}
             {/* Dot */}
             <div className={`absolute left-0 top-1 w-6 h-6 rounded-full ${colorMap[ev.color]} flex items-center justify-center`}>
-              <div className="w-2 h-2 bg-white dark:bg-gray-800 rounded-full" />
+              <div className="w-2 h-2 bg-surface-card rounded-full" />
             </div>
 
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 dark:text-gray-500">{ev.type}</span>
-                <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(ev.date)}</span>
+                <span className="text-xs font-bold text-[var(--text-secondary)]">{ev.type}</span>
+                <span className="text-xs text-[var(--text-tertiary)]">{formatDate(ev.date)}</span>
               </div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{ev.title}</p>
-              {ev.detail && <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">{ev.detail}</p>}
+              <p className="text-sm font-medium text-[var(--text-primary)]">{ev.title}</p>
+              {ev.detail && <p className="text-xs text-[var(--text-secondary)] mt-0.5">{ev.detail}</p>}
             </div>
           </div>
         ))}
@@ -1506,18 +1512,19 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
   onSend: () => void;
   onClose: () => void;
 }) {
+  const toast = useToast();
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface-card rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           {/* Modal header */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">削除申請</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-gray-300 text-xl">&times;</button>
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">削除申請</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-[var(--text-secondary)] text-xl">&times;</button>
           </div>
 
           {/* Target info */}
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mb-4">
+          <div className="bg-surface-base rounded-lg p-3 mb-4">
             <div className="flex items-center gap-3">
               <span className="font-mono text-sm font-medium">{threat.domain}</span>
               <span className={`px-2 py-0.5 rounded text-xs font-bold ${
@@ -1542,7 +1549,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'loading_contacts' && (
             <div className="flex items-center gap-3 py-8 justify-center">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">WHOIS情報から通報先を取得中...</span>
+              <span className="text-sm text-[var(--text-secondary)]">WHOIS情報から通報先を取得中...</span>
             </div>
           )}
 
@@ -1550,13 +1557,13 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'confirm_recipient' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
                   <GlossaryTerm term="レジストラ">レジストラ</GlossaryTerm>
                 </label>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{registrar || '不明'}</p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">{registrar || '不明'}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
                   <GlossaryTerm term="abuse連絡先">通報先メールアドレス</GlossaryTerm>
                 </label>
                 <input
@@ -1564,7 +1571,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
                   value={abuseEmail}
                   onChange={(e) => onAbuseEmailChange(e.target.value)}
                   placeholder="abuse@registrar.com"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 {abuseEmail
                   ? <p className="mt-1 text-xs text-green-600">WHOISから自動取得しました（変更可能）</p>
@@ -1573,12 +1580,12 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button onClick={onGenerate} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                <Button variant="primary" onClick={onGenerate}>
                   削除申請文面を生成
-                </button>
-                <button onClick={onClose} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
+                </Button>
+                <Button variant="ghost" onClick={onClose}>
                   キャンセル
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1587,7 +1594,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'generating' && (
             <div className="flex items-center gap-3 py-8 justify-center">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">AIが削除申請文面を生成中...（30秒ほど）</span>
+              <span className="text-sm text-[var(--text-secondary)]">AIが削除申請文面を生成中...（30秒ほど）</span>
             </div>
           )}
 
@@ -1596,28 +1603,29 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">送信先:</span>{' '}
+                  <span className="text-[var(--text-secondary)]">送信先:</span>{' '}
                   <span className="font-medium">{abuseEmail}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">レジストラ:</span>{' '}
+                  <span className="text-[var(--text-secondary)]">レジストラ:</span>{' '}
                   <span className="font-medium">{registrar}</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">申請内容（編集可能）</label>
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">申請内容（編集可能）</label>
                 <textarea
                   value={template}
                   onChange={(e) => onTemplateChange(e.target.value)}
                   rows={12}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div className="flex gap-3 pt-2">
                 {currentTakedownId && (
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={async () => {
                       try {
                         const token = typeof window !== 'undefined' ? localStorage.getItem('threatguard_token') : null;
@@ -1630,20 +1638,19 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
                         window.open(url, '_blank');
                       } catch (e) {
                         console.error('PDF download failed:', e);
-                        alert('PDFの取得に失敗しました。');
+                        toast.error('PDFの取得に失敗しました。');
                       }
                     }}
-                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600"
                   >
                     プレビュー (PDF)
-                  </button>
+                  </Button>
                 )}
-                <button onClick={onClose} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
+                <Button variant="ghost" onClick={onClose}>
                   キャンセル
-                </button>
-                <button onClick={onSend} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 ml-auto">
+                </Button>
+                <Button variant="danger" onClick={onSend} className="ml-auto">
                   申請送信
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1652,7 +1659,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'sending' && (
             <div className="flex items-center gap-3 py-8 justify-center">
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">メールを送信中...</span>
+              <span className="text-sm text-[var(--text-secondary)]">メールを送信中...</span>
             </div>
           )}
 
@@ -1660,9 +1667,9 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
           {step === 'sent' && (
             <div className="text-center py-6">
               <p className="text-green-700 dark:text-green-300 font-medium mb-4">削除申請の送信が完了しました</p>
-              <button onClick={onClose} className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-600">
+              <Button variant="ghost" onClick={onClose}>
                 閉じる
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -1676,8 +1683,8 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
 function InfoItem({ label, value, mono }: { label: React.ReactNode; value: string; mono?: boolean }) {
   return (
     <div>
-      <dt className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-xs">{label}</dt>
-      <dd className={`mt-0.5 font-medium text-gray-900 dark:text-gray-100 ${mono ? 'font-mono text-xs' : ''}`}>{value}</dd>
+      <dt className="text-[var(--text-secondary)] text-xs">{label}</dt>
+      <dd className={`mt-0.5 font-medium text-[var(--text-primary)] ${mono ? 'font-mono text-xs' : ''}`}>{value}</dd>
     </div>
   );
 }
@@ -1685,17 +1692,17 @@ function InfoItem({ label, value, mono }: { label: React.ReactNode; value: strin
 function EvidenceRow({ label, value, bar }: { label: string; value: string; bar?: number }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className="text-sm text-gray-700 dark:text-gray-200">{label}</span>
+      <span className="text-sm text-[var(--text-primary)]">{label}</span>
       <div className="flex items-center gap-2 shrink-0">
         {bar != null && (
-          <div className="w-20 h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+          <div className="w-20 h-2 bg-[var(--border-default)] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${bar >= 0.8 ? 'bg-red-500' : bar >= 0.6 ? 'bg-orange-500' : 'bg-yellow-500'}`}
               style={{ width: `${Math.round(bar * 100)}%` }}
             />
           </div>
         )}
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 dark:text-gray-500">{value}</span>
+        <span className="text-xs font-medium text-[var(--text-secondary)]">{value}</span>
       </div>
     </div>
   );
@@ -1703,8 +1710,8 @@ function EvidenceRow({ label, value, bar }: { label: string; value: string; bar?
 
 function TechSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-      <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3">{title}</h3>
+    <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
+      <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">{title}</h3>
       {children}
     </div>
   );

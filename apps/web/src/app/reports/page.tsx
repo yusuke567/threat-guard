@@ -86,14 +86,14 @@ export default function ReportsPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📄 レポート</h1>
-          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">提出先に合わせたレポートを生成</p>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">📄 レポート</h1>
+          <p className="text-[var(--text-secondary)] mt-1">提出先に合わせたレポートを生成</p>
         </div>
         <div className="flex items-center gap-3">
           <select
             value={brandId}
             onChange={(e) => setBrandId(e.target.value)}
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800"
+            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm bg-surface-card"
           >
             <option value="">全ブランド</option>
             {brands.map((b) => (
@@ -120,12 +120,12 @@ export default function ReportsPage() {
             <button
               key={rt.id}
               onClick={() => handleGenerate(rt.id)}
-              className={`text-left rounded-xl border-2 p-5 transition-all ${c.border} ${c.hover} ${isSelected ? `ring-2 ${c.ring} ${c.bg}` : 'bg-white dark:bg-gray-800'}`}
+              className={`text-left rounded-xl border-2 p-5 transition-all ${c.border} ${c.hover} ${isSelected ? `ring-2 ${c.ring} ${c.bg}` : 'bg-surface-card'}`}
             >
               <div className="text-3xl mb-2">{rt.icon}</div>
-              <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">{rt.title}</h3>
+              <h3 className="font-bold text-[var(--text-primary)] text-lg">{rt.title}</h3>
               <p className={`text-sm font-medium mt-1 ${c.text}`}>{rt.description}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">{rt.detail}</p>
+              <p className="text-xs text-[var(--text-secondary)] mt-2 leading-relaxed">{rt.detail}</p>
             </button>
           );
         })}
@@ -148,10 +148,10 @@ export default function ReportsPage() {
 
       {/* Report Preview */}
       {report && !loading && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 print:border-0 print:p-0">
-          <div className="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{report.title}</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">
+        <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-8 print:border-0 print:p-0">
+          <div className="border-b border-[var(--border-default)] pb-6 mb-6">
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">{report.title}</h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
               生成日時: {new Date(report.generatedAt).toLocaleString('ja-JP')}
             </p>
           </div>
@@ -181,7 +181,7 @@ function RegulatoryReport({ data }: { data: any }) {
       {/* Timeline */}
       {data.timeline?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">検知タイムライン</h3>
+          <h3 className="font-bold text-[var(--text-primary)] mb-3">検知タイムライン</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.timeline}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -196,33 +196,33 @@ function RegulatoryReport({ data }: { data: any }) {
 
       {/* Full threat list */}
       <div>
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">脅威一覧（全{data.threats.length}件）</h3>
+        <h3 className="font-bold text-[var(--text-primary)] mb-3">脅威一覧（全{data.threats.length}件）</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">スクリーンショット</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ドメイン</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ブランド</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">リスク</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">カテゴリ</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ステータス</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">初検知</th>
-                <th className="py-2 font-medium text-gray-600 dark:text-gray-300">削除申請</th>
+              <tr className="border-b border-[var(--border-default)] text-left">
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">スクリーンショット</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">ドメイン</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">ブランド</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">リスク</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">カテゴリ</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">ステータス</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">初検知</th>
+                <th className="py-2 font-medium text-[var(--text-secondary)]">削除申請</th>
               </tr>
             </thead>
             <tbody>
               {data.threats.map((t: any, i: number) => (
-                <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
+                <tr key={i} className="border-b border-[var(--border-subtle)]">
                   <td className="py-2 pr-3">
                     {t.screenshotUrl ? (
                       <img
                         src={t.screenshotUrl}
                         alt={`${t.domain} のスクリーンショット`}
-                        className="w-24 h-16 object-cover rounded border border-gray-200 dark:border-gray-700"
+                        className="w-24 h-16 object-cover rounded border border-[var(--border-default)]"
                       />
                     ) : (
-                      <div className="w-24 h-16 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center text-gray-400 dark:text-gray-500 text-xs">
+                      <div className="w-24 h-16 bg-surface-elevated rounded flex items-center justify-center text-[var(--text-tertiary)] text-xs">
                         未取得
                       </div>
                     )}
@@ -236,7 +236,7 @@ function RegulatoryReport({ data }: { data: any }) {
                     {t.analyses.map((a: any) => CATEGORY_LABELS[a.category] || a.category).join(', ') || '—'}
                   </td>
                   <td className="py-2 pr-3">{STATUS_LABELS[t.status] || t.status}</td>
-                  <td className="py-2 pr-3 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500">
+                  <td className="py-2 pr-3 text-xs text-[var(--text-secondary)]">
                     {new Date(t.firstSeen).toLocaleDateString('ja-JP')}
                   </td>
                   <td className="py-2 text-xs">
@@ -276,7 +276,7 @@ function BoardReport({ data }: { data: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Risk Distribution */}
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">リスク分布</h3>
+          <h3 className="font-bold text-[var(--text-primary)] mb-3">リスク分布</h3>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie data={riskData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value"
@@ -291,7 +291,7 @@ function BoardReport({ data }: { data: any }) {
         {/* Category Breakdown */}
         {data.categoryBreakdown?.length > 0 && (
           <div>
-            <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">脅威カテゴリ</h3>
+            <h3 className="font-bold text-[var(--text-primary)] mb-3">脅威カテゴリ</h3>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie
@@ -316,7 +316,7 @@ function BoardReport({ data }: { data: any }) {
       {/* Trend */}
       {data.timeline?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">検知トレンド</h3>
+          <h3 className="font-bold text-[var(--text-primary)] mb-3">検知トレンド</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data.timeline}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -332,17 +332,17 @@ function BoardReport({ data }: { data: any }) {
       {/* Brand Breakdown */}
       {data.brandBreakdown?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">ブランド別脅威件数</h3>
+          <h3 className="font-bold text-[var(--text-primary)] mb-3">ブランド別脅威件数</h3>
           <div className="space-y-3">
             {data.brandBreakdown.map((b: any) => {
               const max = Math.max(...data.brandBreakdown.map((x: any) => x.count), 1);
               return (
                 <div key={b.name}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700 dark:text-gray-200">{b.name}</span>
-                    <span className="text-gray-500 dark:text-gray-400 dark:text-gray-500">{b.count}件</span>
+                    <span className="font-medium text-[var(--text-primary)]">{b.name}</span>
+                    <span className="text-[var(--text-secondary)]">{b.count}件</span>
                   </div>
-                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5">
+                  <div className="w-full bg-surface-elevated rounded-full h-2.5">
                     <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${(b.count / max) * 100}%` }} />
                   </div>
                 </div>
@@ -369,24 +369,24 @@ function CloReport({ data }: { data: any }) {
 
       {/* Threats with legal context */}
       <div>
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">法的リスク一覧</h3>
+        <h3 className="font-bold text-[var(--text-primary)] mb-3">法的リスク一覧</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">優先度</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ドメイン</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ブランド</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">リスク</th>
-                <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">法的根拠</th>
-                <th className="py-2 font-medium text-gray-600 dark:text-gray-300">TD状況</th>
+              <tr className="border-b border-[var(--border-default)] text-left">
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">優先度</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">ドメイン</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">ブランド</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">リスク</th>
+                <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">法的根拠</th>
+                <th className="py-2 font-medium text-[var(--text-secondary)]">TD状況</th>
               </tr>
             </thead>
             <tbody>
               {data.threats.map((t: any, i: number) => (
-                <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
+                <tr key={i} className="border-b border-[var(--border-subtle)]">
                   <td className="py-2 pr-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PRIORITY_COLORS[t.priority] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PRIORITY_COLORS[t.priority] || 'bg-surface-elevated text-[var(--text-primary)]'}`}>
                       {t.priority}
                     </span>
                   </td>
@@ -407,12 +407,12 @@ function CloReport({ data }: { data: any }) {
       {/* Registrar Breakdown */}
       {data.registrarBreakdown?.length > 0 && (
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-3">レジストラ別集計</h3>
+          <h3 className="font-bold text-[var(--text-primary)] mb-3">レジストラ別集計</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {data.registrarBreakdown.map((r: any) => (
-              <div key={r.registrar} className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 rounded-lg px-4 py-3">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{r.registrar}</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{r.count}件</span>
+              <div key={r.registrar} className="flex items-center justify-between bg-surface-base rounded-lg px-4 py-3">
+                <span className="text-sm font-medium text-[var(--text-primary)]">{r.registrar}</span>
+                <span className="text-sm font-bold text-[var(--text-primary)]">{r.count}件</span>
               </div>
             ))}
           </div>
@@ -424,10 +424,10 @@ function CloReport({ data }: { data: any }) {
 
 /* ========== Shared Components ========== */
 function SummaryCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
-  const colorClass = color === 'red' ? 'text-red-600' : color === 'green' ? 'text-green-600' : color === 'blue' ? 'text-blue-600' : color === 'yellow' ? 'text-yellow-600' : 'text-gray-900 dark:text-gray-100';
+  const colorClass = color === 'red' ? 'text-red-600' : color === 'green' ? 'text-green-600' : color === 'blue' ? 'text-blue-600' : color === 'yellow' ? 'text-yellow-600' : 'text-[var(--text-primary)]';
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-      <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 font-medium">{label}</p>
+    <div className="bg-surface-base rounded-lg p-4">
+      <p className="text-xs text-[var(--text-secondary)] font-medium">{label}</p>
       <p className={`text-2xl font-bold mt-1 ${colorClass}`}>{value}</p>
     </div>
   );

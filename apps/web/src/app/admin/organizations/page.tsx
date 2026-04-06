@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { PageHeader, Button, Card, Alert } from '@/components/ui';
 import AdminGuard from '@/components/AdminGuard';
 import { getAllOrganizations, createOrganization } from '@/lib/api';
 
@@ -50,32 +51,33 @@ export default function AdminOrganizationsPage() {
   return (
     <AdminGuard>
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Organization 管理</h1>
+        <div className="mb-6">
+          <PageHeader title="Organization 管理" />
+        </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">{error}</div>
+          <Alert variant="error" className="mb-4 p-3 text-sm">{error}</Alert>
         )}
 
         {/* New Organization Form */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">新規 Organization 作成</h2>
+        <Card padding="sm" className="mb-6">
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">新規 Organization 作成</h2>
           <form onSubmit={handleCreate} className="flex gap-3">
             <input
               type="text"
               value={newName}
               onChange={e => setNewName(e.target.value)}
               placeholder="Organization名を入力"
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-            <button
+            <Button
               type="submit"
               disabled={creating || !newName.trim()}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
             >
               {creating ? '作成中...' : '作成'}
-            </button>
+            </Button>
           </form>
-        </div>
+        </Card>
 
         {/* Organization List */}
         {loading ? (
@@ -83,24 +85,24 @@ export default function AdminOrganizationsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <Card className="!p-0 overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900 border-b border-[var(--border-default)]">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Organization名</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ブランド数</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-300">ユーザー数</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-300">作成日</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">Organization名</th>
+                  <th className="text-center px-4 py-3 font-medium text-[var(--text-secondary)]">ブランド数</th>
+                  <th className="text-center px-4 py-3 font-medium text-[var(--text-secondary)]">ユーザー数</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-secondary)]">作成日</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {orgs.map(org => (
                   <tr key={org.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{org.name}</td>
-                    <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-300">{org._count.brands}</td>
-                    <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-300">{org._count.users}</td>
-                    <td className="px-4 py-3 text-gray-500 dark:text-gray-400 dark:text-gray-500">{new Date(org.createdAt).toLocaleDateString('ja-JP')}</td>
+                    <td className="px-4 py-3 font-medium text-[var(--text-primary)]">{org.name}</td>
+                    <td className="px-4 py-3 text-center text-[var(--text-secondary)]">{org._count.brands}</td>
+                    <td className="px-4 py-3 text-center text-[var(--text-secondary)]">{org._count.users}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">{new Date(org.createdAt).toLocaleDateString('ja-JP')}</td>
                     <td className="px-4 py-3 text-right">
                       <a
                         href={`/admin/organizations/${org.id}`}
@@ -113,14 +115,14 @@ export default function AdminOrganizationsPage() {
                 ))}
                 {orgs.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400 dark:text-gray-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-[var(--text-tertiary)]">
                       Organization がありません
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </div>
     </AdminGuard>

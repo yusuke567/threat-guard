@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader, Button, Card, Alert, useToast } from '@/components/ui';
 import { getBrands, createBrand, updateBrand, deleteBrand, triggerScan, getOrganizations, createOrganization, importBrandsCSV } from '@/lib/api';
 
 /* ──── Monitoring status helpers ──── */
@@ -24,6 +25,7 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 export default function BrandsPage() {
+  const toast = useToast();
   const [brands, setBrands] = useState<any[]>([]);
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export default function BrandsPage() {
         orgId = newOrg.id;
         setOrganizations((prev) => [...prev, newOrg]);
       }
-      if (!orgId) return alert('組織を選択するか、新しい組織名を入力してください');
+      if (!orgId) { toast.warning('組織を選択するか、新しい組織名を入力してください'); return; }
 
       await createBrand({
         name: form.name,
@@ -88,7 +90,7 @@ export default function BrandsPage() {
     setScanning(brandId);
     try {
       await triggerScan(brandId, type);
-      alert('スキャンを開始しました');
+      toast.success('スキャンを開始しました');
     } catch (e) {
       console.error(e);
     } finally {
@@ -137,7 +139,7 @@ export default function BrandsPage() {
         setScanNotice(`${msg}\n初回ドメイン調査を自動開始しました。`);
         setTimeout(() => setScanNotice(null), 15000);
       } else {
-        alert(msg);
+        toast.info(msg);
       }
       if (result.errors > 0 && result.errorDetails.length > 0) {
         console.log('CSV Import Errors:', result.errorDetails);
@@ -146,7 +148,7 @@ export default function BrandsPage() {
       setCsvText('');
       loadBrands();
     } catch (err: any) {
-      alert(err.message || 'インポートに失敗しました');
+      toast.error(err.message || 'インポートに失敗しました');
     } finally {
       setCsvImporting(false);
     }
@@ -164,58 +166,52 @@ export default function BrandsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">ブランド管理</h1>
-          <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">監視対象のブランドを管理</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowCsvImport(!showCsvImport)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
-          >
-            CSV一括登録
-          </button>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
-          >
-            + ブランド追加
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="ブランド管理"
+        description="監視対象のブランドを管理"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setShowCsvImport(!showCsvImport)}>
+              CSV一括登録
+            </Button>
+            <Button onClick={() => setShowForm(!showForm)}>
+              + ブランド追加
+            </Button>
+          </>
+        }
+      />
 
       {/* Scan triggered notice */}
       {scanNotice && (
-        <div className="flex items-start gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <Alert variant="info" className="flex items-start gap-2 px-4 py-3">
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-700 dark:text-blue-300 whitespace-pre-line">{scanNotice}</p>
-        </div>
+          <p className="text-sm whitespace-pre-line">{scanNotice}</p>
+        </Alert>
       )}
 
       {/* CSV Import Form */}
       {showCsvImport && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+        <Card className="space-y-4">
           <h2 className="text-lg font-bold">CSV一括インポート</h2>
-          <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+          <div className="text-sm text-[var(--text-secondary)] space-y-2">
             <p>CSVファイルまたはテキストで複数のブランドを一括登録できます。</p>
             <p className="font-medium">必須列: name（ブランド名）, domain（ドメイン）</p>
             <p>対応列: name, domain, keywords, organizationName</p>
             <p className="text-xs text-gray-500">※ 日本語ヘッダーにも対応: ブランド名, ドメイン, キーワード, 組織名</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">CSVファイルを選択</label>
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">CSVファイルを選択</label>
             <input
               type="file"
               accept=".csv,.txt"
               onChange={handleFileUpload}
-              className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50"
+              className="block w-full text-sm text-[var(--text-secondary)] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/30 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">またはCSVテキストを直接入力</label>
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">またはCSVテキストを直接入力</label>
             <textarea
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm font-mono bg-white dark:bg-gray-900 text-[var(--text-primary)]"
               rows={8}
               placeholder={`name,domain,keywords
 MyBrand,mybrand.com,マイブランド,my-brand
@@ -225,55 +221,49 @@ AnotherBrand,another.co.jp,アナザー`}
             />
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={handleCsvImport}
-              disabled={csvImporting || !csvText.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button onClick={handleCsvImport} disabled={csvImporting || !csvText.trim()}>
               {csvImporting ? 'インポート中...' : 'インポート実行'}
-            </button>
-            <button
-              onClick={() => { setShowCsvImport(false); setCsvText(''); }}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm"
-            >
+            </Button>
+            <Button variant="ghost" onClick={() => { setShowCsvImport(false); setCsvText(''); }}>
               キャンセル
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Create Form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+        <Card>
+        <form onSubmit={handleCreate} className="space-y-4">
           <h2 className="text-lg font-bold">新規ブランド登録</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ブランド名</label>
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">ブランド名</label>
               <input
                 type="text"
                 required
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="例: MyBrand"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ドメイン</label>
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">ドメイン</label>
               <input
                 type="text"
                 required
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value })}
                 placeholder="例: mybrand.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">組織</label>
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">組織</label>
               {organizations.length > 0 ? (
                 <select
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
                   value={form.organizationId}
                   onChange={(e) => setForm({ ...form, organizationId: e.target.value, newOrgName: '' })}
                 >
@@ -286,7 +276,7 @@ AnotherBrand,another.co.jp,アナザー`}
               {!form.organizationId && (
                 <input
                   type="text"
-                  className={`w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm ${organizations.length > 0 ? 'mt-2' : ''}`}
+                  className={`w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm ${organizations.length > 0 ? 'mt-2' : ''}`}
                   value={form.newOrgName}
                   onChange={(e) => setForm({ ...form, newOrgName: e.target.value })}
                   placeholder="新しい組織名を入力（例: 株式会社〇〇）"
@@ -294,31 +284,28 @@ AnotherBrand,another.co.jp,アナザー`}
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">検知キーワード（カンマ区切り）</label>
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">検知キーワード（カンマ区切り）</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
                 value={form.keywords}
                 onChange={(e) => setForm({ ...form, keywords: e.target.value })}
                 placeholder="例: マイブランド, mybrand, my-brand"
               />
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">
                 ブランドの別名・略称・日本語名など。なりすましドメインの検知精度が上がります。
               </p>
             </div>
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-xs text-[var(--text-tertiary)]">
             保有ドメイン・メール送信設定は、ブランド登録後に詳細ページで設定できます。
           </p>
           <div className="flex gap-2">
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-              登録
-            </button>
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-lg text-sm">
-              キャンセル
-            </button>
+            <Button type="submit">登録</Button>
+            <Button variant="ghost" type="button" onClick={() => setShowForm(false)}>キャンセル</Button>
           </div>
         </form>
+        </Card>
       )}
 
       {/* Brand List */}
@@ -327,57 +314,53 @@ AnotherBrand,another.co.jp,アナザー`}
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       ) : brands.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500 dark:text-gray-400 dark:text-gray-500">
+        <Card className="!p-12 text-center text-[var(--text-secondary)]">
           まだブランドが登録されていません
-        </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {brands.map((brand: any) => (
-            <div key={brand.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+            <Card key={brand.id}>
               {editingBrand?.id === brand.id ? (
                 <form onSubmit={handleUpdate} className="space-y-4">
                   <h3 className="text-lg font-bold">ブランド編集</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ブランド名</label>
+                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">ブランド名</label>
                       <input
                         type="text"
                         required
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                        className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ドメイン</label>
+                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">ドメイン</label>
                       <input
                         type="text"
                         required
-                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                        className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
                         value={editForm.domain}
                         onChange={(e) => setEditForm({ ...editForm, domain: e.target.value })}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">検知キーワード（カンマ区切り）</label>
+                    <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">検知キーワード（カンマ区切り）</label>
                     <input
                       type="text"
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
                       value={editForm.keywords}
                       onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
                     />
                   </div>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                  <p className="text-xs text-[var(--text-tertiary)]">
                     保有ドメイン・メール送信設定は<a href={`/brands/${brand.id}`} className="text-blue-600 hover:underline">ブランド詳細ページ</a>で管理できます。
                   </p>
                   <div className="flex gap-2">
-                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-                      保存
-                    </button>
-                    <button type="button" onClick={() => setEditingBrand(null)} className="px-4 py-2 border rounded-lg text-sm">
-                      キャンセル
-                    </button>
+                    <Button type="submit">保存</Button>
+                    <Button variant="ghost" type="button" onClick={() => setEditingBrand(null)}>キャンセル</Button>
                   </div>
                 </form>
               ) : (
@@ -385,22 +368,22 @@ AnotherBrand,another.co.jp,アナザー`}
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
                       {brand.logoUrl ? (
-                        <img src={brand.logoUrl} alt={brand.name} className="w-10 h-10 rounded-lg object-contain border border-gray-200 dark:border-gray-600 flex-shrink-0" />
+                        <img src={brand.logoUrl} alt={brand.name} className="w-10 h-10 rounded-lg object-contain border border-[var(--border-default)] flex-shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-surface-elevated flex items-center justify-center flex-shrink-0">
                           <span className="text-lg text-gray-400">🏢</span>
                         </div>
                       )}
                       <div>
                         <a href={`/brands/${brand.id}`} className="font-bold text-lg hover:text-blue-600 transition-colors">{brand.name}</a>
-                      <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 text-sm font-mono">{brand.domain}</p>
+                      <p className="text-[var(--text-secondary)] text-sm font-mono">{brand.domain}</p>
                       {brand.senderEmail && (
                         <p className="text-xs text-green-600 mt-1">📧 {brand.senderEmail}</p>
                       )}
                       {brand.keywords && String(brand.keywords).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {String(brand.keywords).split(',').filter(Boolean).map((kw: string) => (
-                            <span key={kw} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">{kw.trim()}</span>
+                            <span key={kw} className="px-2 py-0.5 bg-surface-elevated rounded text-xs">{kw.trim()}</span>
                           ))}
                         </div>
                       )}
@@ -420,7 +403,7 @@ AnotherBrand,another.co.jp,アナザー`}
                         <div className="text-2xl font-bold text-blue-600">
                           {brand._count?.detectedDomains ?? 0}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">検知数</div>
+                        <div className="text-xs text-[var(--text-secondary)]">検知数</div>
                       </div>
                       {/* Monitoring Status Badge */}
                       {(() => {
@@ -434,7 +417,7 @@ AnotherBrand,another.co.jp,アナザー`}
                       })()}
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--border-subtle)]">
                     <button
                       onClick={() => handleScan(brand.id, 'ct_monitor')}
                       disabled={scanning === brand.id}
@@ -451,7 +434,7 @@ AnotherBrand,another.co.jp,アナザー`}
                     </button>
                     <button
                       onClick={() => startEdit(brand)}
-                      className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium hover:bg-gray-100 dark:bg-gray-700"
+                      className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 text-[var(--text-primary)] rounded-lg text-xs font-medium hover:bg-surface-elevated"
                     >
                       ✏️ 編集
                     </button>
@@ -464,7 +447,7 @@ AnotherBrand,another.co.jp,アナザー`}
                   </div>
                 </>
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}

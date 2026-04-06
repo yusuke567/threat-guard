@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ThreatTable from '@/components/ThreatTable';
 import Tooltip from '@/components/Tooltip';
 import { getThreats, getDashboardStats, getBrands } from '@/lib/api';
+import { PageHeader, Button, Card, Alert } from '@/components/ui';
 
 type FilterState = {
   brandId: string;
@@ -114,10 +115,10 @@ export default function Dashboard() {
 
   if (error && !threats) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
+      <Alert variant="error">
         <p className="font-medium">エラーが発生しました</p>
         <p className="text-sm mt-1">{error}</p>
-      </div>
+      </Alert>
     );
   }
 
@@ -140,37 +141,34 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Welcome Guide */}
       {showGuide && (
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-5 relative">
+        <Alert variant="info" className="p-5 relative">
           <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-blue-400 hover:text-blue-600 text-lg">✕</button>
           <h2 className="font-bold text-blue-900 dark:text-blue-200 text-lg">🛡️ ThreatGuardへようこそ</h2>
           <p className="text-blue-700 dark:text-blue-300 text-sm mt-2 leading-relaxed">
             このダッシュボードでブランドのなりすまし脅威を監視・管理できます。
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
-            <Link href="/brands" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+            <Link href="/brands" className="bg-surface-card/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
               <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">① ブランドを登録 →</p>
               <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">監視したいブランドとドメインを登録すると自動スキャンが開始されます</p>
             </Link>
-            <Link href="/alerts" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+            <Link href="/alerts" className="bg-surface-card/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
               <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">② 通知を設定 →</p>
               <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">メールやSlackで脅威検知の通知を受け取る設定をします</p>
             </Link>
-            <Link href="/threats" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+            <Link href="/threats" className="bg-surface-card/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
               <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">③ 脅威を確認 →</p>
               <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">自動スキャンで検知されたなりすまし脅威を確認します</p>
             </Link>
-            <Link href="/takedown-request" className="bg-white dark:bg-gray-800/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
+            <Link href="/takedown-request" className="bg-surface-card/60 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors cursor-pointer group">
               <p className="font-bold text-blue-900 dark:text-blue-200 text-sm group-hover:underline">④ 削除申請を送信 →</p>
               <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">リスクの高い脅威に対して削除申請を生成・送信します</p>
             </Link>
           </div>
-        </div>
+        </Alert>
       )}
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">脅威一覧</h1>
-        <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">検知されたなりすまし脅威の監視・管理</p>
-      </div>
+      <PageHeader title="脅威一覧" description="検知されたなりすまし脅威の監視・管理" />
 
       {/* Summary Cards - clickable filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -179,16 +177,16 @@ export default function Dashboard() {
           className={`text-left rounded-xl border-2 p-4 transition-all ${
             summaryFilter === 'action_needed'
               ? 'border-red-400 bg-red-50 dark:bg-red-900/30 ring-2 ring-red-200'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-red-200 dark:border-red-800 hover:bg-red-50 dark:bg-red-900/30/50'
+              : 'border-[var(--border-default)] bg-surface-card hover:border-red-200 dark:border-red-800 hover:bg-red-50 dark:bg-red-900/30/50'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🔴 対応が必要</p>
-              <p className="text-3xl font-bold text-red-600 mt-1">{actionNeeded}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
+              <p className="text-sm text-[var(--text-secondary)]">🔴 対応が必要</p>
+              <p className="text-3xl font-bold text-red-600 mt-1">{actionNeeded}<span className="text-base font-normal text-[var(--text-tertiary)] ml-1">件</span></p>
             </div>
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">リスクスコア60以上 — 削除申請を検討</p>
+          <p className="text-xs text-[var(--text-tertiary)] mt-2">リスクスコア60以上 — 削除申請を検討</p>
         </button>
 
         <button
@@ -196,16 +194,16 @@ export default function Dashboard() {
           className={`text-left rounded-xl border-2 p-4 transition-all ${
             summaryFilter === 'monitoring'
               ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 ring-2 ring-yellow-200'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-yellow-200 dark:border-yellow-800 hover:bg-yellow-50 dark:bg-yellow-900/30/50'
+              : 'border-[var(--border-default)] bg-surface-card hover:border-yellow-200 dark:border-yellow-800 hover:bg-yellow-50 dark:bg-yellow-900/30/50'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🟡 確認待ち</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-1">{monitoring}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
+              <p className="text-sm text-[var(--text-secondary)]">🟡 確認待ち</p>
+              <p className="text-3xl font-bold text-yellow-600 mt-1">{monitoring}<span className="text-base font-normal text-[var(--text-tertiary)] ml-1">件</span></p>
             </div>
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">リスクスコア40〜59 — 監視継続</p>
+          <p className="text-xs text-[var(--text-tertiary)] mt-2">リスクスコア40〜59 — 監視継続</p>
         </button>
 
         <button
@@ -213,24 +211,24 @@ export default function Dashboard() {
           className={`text-left rounded-xl border-2 p-4 transition-all ${
             summaryFilter === 'resolved'
               ? 'border-green-400 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-200'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-200 dark:border-green-800 hover:bg-green-50 dark:bg-green-900/30/50'
+              : 'border-[var(--border-default)] bg-surface-card hover:border-green-200 dark:border-green-800 hover:bg-green-50 dark:bg-green-900/30/50'
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">🟢 対応済み</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">{resolved}<span className="text-base font-normal text-gray-400 dark:text-gray-500 ml-1">件</span></p>
+              <p className="text-sm text-[var(--text-secondary)]">🟢 対応済み</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">{resolved}<span className="text-base font-normal text-[var(--text-tertiary)] ml-1">件</span></p>
             </div>
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">対応不要 or 削除完了</p>
+          <p className="text-xs text-[var(--text-tertiary)] mt-2">対応不要 or 削除完了</p>
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+      <Card padding="sm">
         <div className="flex flex-wrap gap-4 items-center">
           <select
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.brandId}
             onChange={(e) => updateFilter('brandId', e.target.value)}
           >
@@ -241,7 +239,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.period}
             onChange={(e) => updateFilter('period', e.target.value)}
           >
@@ -252,7 +250,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.status}
             onChange={(e) => updateFilter('status', e.target.value)}
           >
@@ -266,7 +264,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm"
+            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.minRiskScore}
             onChange={(e) => updateFilter('minRiskScore', e.target.value)}
           >
@@ -295,37 +293,38 @@ export default function Dashboard() {
             </button>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center justify-between">
+        <Alert variant="info" className="flex items-center justify-between">
           <span className="text-sm font-medium text-blue-800">
             {selectedIds.size}件を選択中
           </span>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSelectedIds(new Set())}
-              className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:text-gray-200"
+              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               選択解除
             </button>
-            <button
+            <Button
+              variant="danger"
               onClick={() => {
                 const ids = Array.from(selectedIds);
                 sessionStorage.setItem('takedown_threat_ids', JSON.stringify(ids));
                 router.push('/takedown-request');
               }}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+              className="flex items-center gap-2"
             >
               🗑️ {selectedIds.size}件を削除申請
-            </button>
+            </Button>
           </div>
-        </div>
+        </Alert>
       )}
 
       {/* Threat Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+      <Card>
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -346,8 +345,8 @@ export default function Dashboard() {
             />
             {/* Pagination */}
             {threats && threats.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border-subtle)]">
+                <p className="text-sm text-[var(--text-secondary)]">
                   {threats.total}件中 {(threats.page - 1) * threats.pageSize + 1}〜
                   {Math.min(threats.page * threats.pageSize, threats.total)}件
                 </p>
@@ -371,7 +370,7 @@ export default function Dashboard() {
             )}
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader, Button, Card } from '@/components/ui';
 import { getAlerts, getAlertSettings, updateAlertSettings, sendTestEmail, getSlackSettings, updateSlackSettings, sendSlackTestNotification } from '@/lib/api';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -166,14 +167,11 @@ export default function AlertsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">🔔 通知設定</h1>
-        <p className="text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-1">アラート通知の設定と送信履歴</p>
-      </div>
+      <PageHeader title="🔔 通知設定" description="アラート通知の設定と送信履歴" />
 
       {/* Section 1: Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">通知設定</h2>
+      <Card className="space-y-6">
+        <h2 className="text-lg font-bold text-[var(--text-primary)]">通知設定</h2>
 
         {settingsLoading ? (
           <div className="flex justify-center py-8">
@@ -184,8 +182,8 @@ export default function AlertsPage() {
             {/* Toggle */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100">メールアラート</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">脅威検知時にメールで通知を受け取る</p>
+                <p className="font-medium text-[var(--text-primary)]">メールアラート</p>
+                <p className="text-sm text-[var(--text-secondary)]">脅威検知時にメールで通知を受け取る</p>
               </div>
               <button
                 onClick={() => setAlertEnabled(!alertEnabled)}
@@ -194,7 +192,7 @@ export default function AlertsPage() {
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-800 transition-transform ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-surface-card transition-transform ${
                     alertEnabled ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
@@ -203,8 +201,8 @@ export default function AlertsPage() {
 
             {/* Threshold */}
             <div>
-              <label className="block font-medium text-gray-900 dark:text-gray-100 mb-1">リスクスコア閾値</label>
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500 mb-3">
+              <label className="block font-medium text-[var(--text-primary)] mb-1">リスクスコア閾値</label>
+              <p className="text-sm text-[var(--text-secondary)] mb-3">
                 この値以上のリスクスコアを持つ脅威のみ通知されます
               </p>
               <div className="flex items-center gap-4">
@@ -215,11 +213,11 @@ export default function AlertsPage() {
                   step={10}
                   value={alertThreshold}
                   onChange={(e) => setAlertThreshold(Number(e.target.value))}
-                  className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  className="flex-1 h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
                 <span className="text-lg font-bold text-blue-600 w-12 text-right">{alertThreshold}</span>
               </div>
-              <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1 px-0.5">
+              <div className="flex justify-between text-xs text-[var(--text-tertiary)] mt-1 px-0.5">
                 <span>0</span>
                 <span>50</span>
                 <span>100</span>
@@ -228,21 +226,12 @@ export default function AlertsPage() {
 
             {/* Save & Test */}
             <div className="flex items-center gap-3 pt-2 flex-wrap">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-              >
+              <Button onClick={handleSave} disabled={saving}>
                 {saving ? '保存中...' : '保存'}
-              </button>
-              <button
-                onClick={handleTestEmail}
-                disabled={sendingTest}
-                title="テストメールを送信"
-                className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              </Button>
+              <Button variant="secondary" onClick={handleTestEmail} disabled={sendingTest} title="テストメールを送信">
                 {sendingTest ? '送信中...' : '📧 テストメール送信'}
-              </button>
+              </Button>
               {saveMessage && (
                 <span
                   className={`text-sm font-medium ${
@@ -264,12 +253,12 @@ export default function AlertsPage() {
             </div>
           </>
         )}
-      </div>
+      </Card>
 
       {/* Section 2: Slack Notification Settings */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+      <Card className="space-y-6">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Slack通知設定</h2>
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Slack通知設定</h2>
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
             Slack
           </span>
@@ -284,8 +273,8 @@ export default function AlertsPage() {
             {/* Toggle */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100">Slackアラート</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">脅威検知時にSlackチャンネルに通知を送信</p>
+                <p className="font-medium text-[var(--text-primary)]">Slackアラート</p>
+                <p className="text-sm text-[var(--text-secondary)]">脅威検知時にSlackチャンネルに通知を送信</p>
               </div>
               <button
                 onClick={() => setSlackNotifyEnabled(!slackNotifyEnabled)}
@@ -294,7 +283,7 @@ export default function AlertsPage() {
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-800 transition-transform ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-surface-card transition-transform ${
                     slackNotifyEnabled ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
@@ -303,8 +292,8 @@ export default function AlertsPage() {
 
             {/* Webhook URL */}
             <div>
-              <label className="block font-medium text-gray-900 dark:text-gray-100 mb-1">Webhook URL</label>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              <label className="block font-medium text-[var(--text-primary)] mb-1">Webhook URL</label>
+              <p className="text-sm text-[var(--text-secondary)] mb-2">
                 SlackのIncoming Webhook URLを設定してください
               </p>
               {slackWebhookConfigured && !slackWebhookUrl && (
@@ -315,14 +304,14 @@ export default function AlertsPage() {
                 value={slackWebhookUrl}
                 onChange={(e) => setSlackWebhookUrl(e.target.value)}
                 placeholder={slackWebhookConfigured ? '新しいURLで上書き（変更しない場合は空欄）' : 'https://hooks.slack.com/services/...'}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm bg-white dark:bg-gray-900 text-[var(--text-primary)] placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
 
             {/* Threshold */}
             <div>
-              <label className="block font-medium text-gray-900 dark:text-gray-100 mb-1">リスクスコア閾値</label>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              <label className="block font-medium text-[var(--text-primary)] mb-1">リスクスコア閾値</label>
+              <p className="text-sm text-[var(--text-secondary)] mb-3">
                 この値以上のリスクスコアを持つ脅威のみSlack通知されます
               </p>
               <div className="flex items-center gap-4">
@@ -333,11 +322,11 @@ export default function AlertsPage() {
                   step={10}
                   value={slackNotifyThreshold}
                   onChange={(e) => setSlackNotifyThreshold(Number(e.target.value))}
-                  className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                  className="flex-1 h-2 bg-surface-elevated rounded-lg appearance-none cursor-pointer accent-purple-600"
                 />
                 <span className="text-lg font-bold text-purple-600 w-12 text-right">{slackNotifyThreshold}</span>
               </div>
-              <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1 px-0.5">
+              <div className="flex justify-between text-xs text-[var(--text-tertiary)] mt-1 px-0.5">
                 <span>0</span>
                 <span>50</span>
                 <span>100</span>
@@ -346,7 +335,7 @@ export default function AlertsPage() {
 
             {/* Notification types */}
             <div>
-              <label className="block font-medium text-gray-900 dark:text-gray-100 mb-2">通知タイプ</label>
+              <label className="block font-medium text-[var(--text-primary)] mb-2">通知タイプ</label>
               <div className="flex flex-wrap gap-2">
                 {SLACK_TYPE_OPTIONS.map((opt) => {
                   const active = slackNotifyTypes.split(',').map((t) => t.trim()).includes(opt.value);
@@ -357,7 +346,7 @@ export default function AlertsPage() {
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                         active
                           ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300'
-                          : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          : 'bg-gray-50 dark:bg-gray-900 border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-gray-100 dark:hover:bg-gray-800'
                       }`}
                     >
                       {active ? '✓ ' : ''}{opt.label}
@@ -397,35 +386,35 @@ export default function AlertsPage() {
             </div>
           </>
         )}
-      </div>
+      </Card>
 
       {/* Section 3: Alert History */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">アラート履歴</h2>
+      <Card className="space-y-4">
+        <h2 className="text-lg font-bold text-[var(--text-primary)]">アラート履歴</h2>
 
         {alertsLoading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
         ) : alerts.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400 dark:text-gray-500">アラート履歴はまだありません</div>
+          <div className="text-center py-8 text-[var(--text-secondary)]">アラート履歴はまだありません</div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700 text-left">
-                    <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">日時</th>
-                    <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">タイプ</th>
-                    <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">ドメイン</th>
-                    <th className="py-2 pr-3 font-medium text-gray-600 dark:text-gray-300">件名</th>
-                    <th className="py-2 font-medium text-gray-600 dark:text-gray-300">ステータス</th>
+                  <tr className="border-b border-[var(--border-default)] text-left">
+                    <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">日時</th>
+                    <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">タイプ</th>
+                    <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">ドメイン</th>
+                    <th className="py-2 pr-3 font-medium text-[var(--text-secondary)]">件名</th>
+                    <th className="py-2 font-medium text-[var(--text-secondary)]">ステータス</th>
                   </tr>
                 </thead>
                 <tbody>
                   {alerts.map((alert: any) => (
-                    <tr key={alert.id} className="border-b border-gray-100 dark:border-gray-700">
-                      <td className="py-2 pr-3 text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 whitespace-nowrap">
+                    <tr key={alert.id} className="border-b border-[var(--border-subtle)]">
+                      <td className="py-2 pr-3 text-xs text-[var(--text-secondary)] whitespace-nowrap">
                         {new Date(alert.createdAt).toLocaleString('ja-JP')}
                       </td>
                       <td className="py-2 pr-3">
@@ -454,21 +443,21 @@ export default function AlertsPage() {
 
             {/* Pagination */}
             <div className="flex items-center justify-between pt-2">
-              <p className="text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
+              <p className="text-sm text-[var(--text-secondary)]">
                 ページ {page} / {totalPages}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 border border-[var(--border-default)] rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   前へ
                 </button>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 border border-[var(--border-default)] rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   次へ
                 </button>
@@ -476,7 +465,7 @@ export default function AlertsPage() {
             </div>
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
