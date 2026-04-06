@@ -224,6 +224,7 @@ async function getEligibleUsers(brandId: string, riskScore: number) {
       organizationId: brand.organizationId,
       alertEnabled: true,
       alertThreshold: { lte: riskScore },
+      deletedAt: null,
     },
   });
 }
@@ -364,6 +365,7 @@ export async function emailNotifyScanSummary(
     where: {
       organizationId: brand.organizationId,
       alertEnabled: true,
+      deletedAt: null,
     },
   });
   if (users.length === 0) return;

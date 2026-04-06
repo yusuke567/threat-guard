@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import AdminGuard from '@/components/AdminGuard';
-import { getOrganization, updateOrganization, getOrgUsers, createOrgUser, deleteOrgUser } from '@/lib/api';
+import { getOrganization, updateOrganization, getOrgUsers, createOrgUser, deleteOrgUser, getDeletedOrgUsers, restoreOrgUser } from '@/lib/api';
 
 interface OrgDetail {
   id: string;
@@ -18,6 +18,7 @@ interface OrgUser {
   name: string | null;
   role: string;
   createdAt: string;
+  deletedAt?: string | null;
 }
 
 export default function AdminOrgDetailPage() {
@@ -26,6 +27,8 @@ export default function AdminOrgDetailPage() {
 
   const [org, setOrg] = useState<OrgDetail | null>(null);
   const [users, setUsers] = useState<OrgUser[]>([]);
+  const [deletedUsers, setDeletedUsers] = useState<OrgUser[]>([]);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,13 +46,15 @@ export default function AdminOrgDetailPage() {
 
   const load = async () => {
     try {
-      const [orgData, usersData] = await Promise.all([
+      const [orgData, usersData, deletedData] = await Promise.all([
         getOrganization(orgId),
         getOrgUsers(orgId),
+        getDeletedOrgUsers(orgId),
       ]);
       setOrg(orgData);
       setEditName(orgData.name);
       setUsers(usersData);
+      setDeletedUsers(deletedData);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -103,13 +108,26 @@ export default function AdminOrgDetailPage() {
   };
 
   const handleDeleteUser = async (userId: string, email: string) => {
-    if (!confirm(`${email} を削除しますか？`)) return;
+    if (!confirm(`${email} を無効化しますか？`)) return;
     setError('');
     setSuccess('');
     try {
       await deleteOrgUser(orgId, userId);
-      setSuccess('ユーザーを削除しました');
-      setUsers(prev => prev.filter(u => u.id !== userId));
+      setSuccess('ユーザーを無効化しました');
+      await load();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleRestoreUser = async (userId: string, email: string) => {
+    if (!confirm(`${email} を復元しますか？`)) return;
+    setError('');
+    setSuccess('');
+    try {
+      await restoreOrgUser(orgId, userId);
+      setSuccess('ユーザーを復元しました');
+      await load();
     } catch (e: any) {
       setError(e.message);
     }
@@ -218,7 +236,7 @@ export default function AdminOrgDetailPage() {
                         onClick={() => handleDeleteUser(u.id, u.email)}
                         className="text-red-500 hover:text-red-700 dark:text-red-300 text-xs font-medium"
                       >
-                        削除
+                        無効化
                       </button>
                     </td>
                   </tr>
@@ -229,6 +247,53 @@ export default function AdminOrgDetailPage() {
             <p className="text-sm text-gray-400 dark:text-gray-500">ユーザーがいません</p>
           )}
         </div>
+
+        {/* Deleted Users */}
+        {deletedUsers.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+            <button
+              onClick={() => setShowDeleted(prev => !prev)}
+              className="text-sm font-semibold text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              {showDeleted ? '削除済みユーザーを非表示' : `削除済みユーザーを表示 (${deletedUsers.length}件)`}
+            </button>
+            {showDeleted && (
+              <table className="w-full text-sm mt-3">
+                <thead className="border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">メール</th>
+                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">名前</th>
+                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">ロール</th>
+                    <th className="text-left py-2 font-medium text-gray-600 dark:text-gray-300">削除日</th>
+                    <th className="py-2"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {deletedUsers.map(u => (
+                    <tr key={u.id} className="opacity-60 hover:opacity-100">
+                      <td className="py-2 text-gray-500 dark:text-gray-400">{u.email}</td>
+                      <td className="py-2 text-gray-500 dark:text-gray-400">{u.name || '—'}</td>
+                      <td className="py-2">
+                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="py-2 text-gray-500 dark:text-gray-400">{u.deletedAt ? new Date(u.deletedAt).toLocaleDateString('ja-JP') : '—'}</td>
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => handleRestoreUser(u.id, u.email)}
+                          className="text-blue-500 hover:text-blue-700 dark:text-blue-300 text-xs font-medium"
+                        >
+                          復元
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
 
         {/* Invite User */}
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">

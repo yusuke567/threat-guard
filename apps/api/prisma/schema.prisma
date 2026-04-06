@@ -20,6 +20,7 @@ model User {
   alertLogs      AlertLog[]
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
 
   @@index([organizationId])
 }

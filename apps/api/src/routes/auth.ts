@@ -22,7 +22,7 @@ router.post('/login', async (req, res) => {
     where: { email: parsed.data.email },
     include: { organization: true },
   });
-  if (!user) return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません。' });
+  if (!user || user.deletedAt) return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません。' });
 
   const valid = await bcrypt.compare(parsed.data.password, user.hashedPassword);
   if (!valid) return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません。' });
@@ -63,7 +63,7 @@ router.post('/forgot-password', async (req, res) => {
     const successResponse = { message: 'パスワードリセット用のメールを送信しました。' };
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    if (!user || user.deletedAt) {
       return res.json(successResponse);
     }
 

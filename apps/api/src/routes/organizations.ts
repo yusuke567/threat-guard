@@ -57,7 +57,7 @@ router.put('/:id', requireSuperAdmin, async (req, res) => {
 router.get('/:id/users', requireSuperAdmin, async (req, res) => {
   const { id } = req.params;
   const users = await prisma.user.findMany({
-    where: { organizationId: id },
+    where: { organizationId: id, deletedAt: null },
     select: { id: true, email: true, name: true, role: true, createdAt: true },
     orderBy: { createdAt: 'desc' },
   });
@@ -77,7 +77,7 @@ router.post('/:id/users', requireSuperAdmin, async (req, res) => {
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
+  if (existing && !existing.deletedAt) {
     return res.status(409).json({ error: 'このメールアドレスはすでに使用されています。' });
   }
 
@@ -87,6 +87,23 @@ router.post('/:id/users', requireSuperAdmin, async (req, res) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Re-activate soft-deleted user with new credentials
+  if (existing?.deletedAt) {
+    const user = await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        name: name || null,
+        hashedPassword,
+        role: role === 'admin' ? 'admin' : 'member',
+        organizationId,
+        deletedAt: null,
+      },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
+    });
+    return res.status(201).json(user);
+  }
+
   const user = await prisma.user.create({
     data: {
       email,
@@ -116,8 +133,38 @@ router.delete('/:id/users/:userId', requireSuperAdmin, async (req, res) => {
     return res.status(400).json({ error: '自分自身を削除することはできません。' });
   }
 
-  await prisma.user.delete({ where: { id: userId } });
+  await prisma.user.update({ where: { id: userId }, data: { deletedAt: new Date() } });
   res.json({ success: true });
+});
+
+// GET /api/organizations/:id/users/deleted — list soft-deleted users (admin)
+router.get('/:id/users/deleted', requireSuperAdmin, async (req, res) => {
+  const { id } = req.params;
+  const users = await prisma.user.findMany({
+    where: { organizationId: id, deletedAt: { not: null } },
+    select: { id: true, email: true, name: true, role: true, createdAt: true, deletedAt: true },
+    orderBy: { deletedAt: 'desc' },
+  });
+  res.json(users);
+});
+
+// PATCH /api/organizations/:id/users/:userId/restore — restore soft-deleted user (admin)
+router.patch('/:id/users/:userId/restore', requireSuperAdmin, async (req, res) => {
+  const { id: organizationId, userId } = req.params;
+
+  const user = await prisma.user.findFirst({
+    where: { id: userId, organizationId, deletedAt: { not: null } },
+  });
+  if (!user) {
+    return res.status(404).json({ error: '復元対象のユーザーが見つかりません。' });
+  }
+
+  const restored = await prisma.user.update({
+    where: { id: userId },
+    data: { deletedAt: null },
+    select: { id: true, email: true, name: true, role: true, createdAt: true },
+  });
+  res.json(restored);
 });
 
 // GET /api/organizations/:id — single org detail (admin)
