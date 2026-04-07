@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
-    apple: '/icon-192.png',
+    apple: '/favicon.svg',
   },
   openGraph: {
     title: 'ThreatGuard - ブランド保護ダッシュボード',
