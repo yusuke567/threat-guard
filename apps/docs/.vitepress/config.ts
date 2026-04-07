@@ -10,6 +10,7 @@ export default defineConfig({
   base: '/threat-guard/',
 
   head: [
+    ['link', { rel: 'icon', href: '/threat-guard/favicon.svg', type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#0052ff' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'ThreatGuard' }],

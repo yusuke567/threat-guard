@@ -8,7 +8,11 @@
   <rect width="1200" height="630" fill="url(#bg)"/>
   <circle cx="1050" cy="120" r="200" fill="rgba(255,255,255,0.04)"/>
   <circle cx="1100" cy="400" r="300" fill="rgba(255,255,255,0.03)"/>
-  <text x="80" y="250" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="#ffffff">ThreatGuard</text>
+  <g transform="translate(80, 190) scale(1.8)">
+    <path d="M16 2C16 2 4 6.5 4 6.5V15c0 8.5 5.5 15.5 12 17 6.5-1.5 12-8.5 12-17V6.5L16 2Z" fill="rgba(255,255,255,0.9)"/>
+    <path d="M13.5 17.5L11 15l-1.5 1.5 4 4 8-8L20 11l-6.5 6.5Z" fill="#0052ff"/>
+  </g>
+  <text x="145" y="250" font-family="system-ui,-apple-system,sans-serif" font-size="72" font-weight="700" fill="#ffffff">ThreatGuard</text>
   <text x="80" y="330" font-family="system-ui,-apple-system,sans-serif" font-size="30" fill="rgba(255,255,255,0.85)">ブランドなりすまし検知・テイクダウン支援</text>
   <text x="80" y="390" font-family="system-ui,-apple-system,sans-serif" font-size="22" fill="rgba(255,255,255,0.6)">フィッシング詐欺から顧客とブランドを守るSaaS</text>
   <line x1="80" y1="520" x2="1120" y2="520" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
