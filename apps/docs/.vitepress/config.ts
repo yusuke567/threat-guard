@@ -19,6 +19,7 @@ export default defineConfig({
       { text: '機能', link: '/features/' },
       { text: '技術詳細', link: '/technical/' },
       { text: '料金', link: '/pricing/' },
+      { text: 'Changelog', link: '/changelog' },
     ],
 
     sidebar: {

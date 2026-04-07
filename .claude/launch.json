@@ -12,6 +12,12 @@
       "runtimeExecutable": "/bin/sh",
       "runtimeArgs": ["-c", "cd /Users/yusuke56/threat-guard/apps/web && PATH=/opt/homebrew/bin:$PATH /opt/homebrew/bin/node /Users/yusuke56/threat-guard/node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000"],
       "port": 3000
+    },
+    {
+      "name": "docs",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "cd /Users/yusuke56/threat-guard/apps/docs && PATH=/opt/homebrew/bin:$PATH /opt/homebrew/bin/npx vitepress dev --port 5174"],
+      "port": 5174
     }
   ]
 }
