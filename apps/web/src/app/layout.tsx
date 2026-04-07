@@ -6,6 +6,7 @@ import AuthGuard from '@/components/AuthGuard';
 import ThemeProvider from '@/components/ThemeProvider';
 import LayoutContent from '@/components/LayoutContent';
 import { ToastProvider } from '@/components/ui';
+import { AnnouncementProvider } from '@/components/announcements/AnnouncementProvider';
 
 const notoSansJP = Noto_Sans_JP({
   subsets: ['latin'],
@@ -61,7 +62,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ToastProvider>
             <AuthProvider>
               <AuthGuard>
-                <LayoutContent>{children}</LayoutContent>
+                <AnnouncementProvider>
+                  <LayoutContent>{children}</LayoutContent>
+                </AnnouncementProvider>
               </AuthGuard>
             </AuthProvider>
           </ToastProvider>
