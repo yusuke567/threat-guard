@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import ThemeToggle from './ThemeToggle';
 import { Icon } from './ui';
+import WhatsNewTrigger from './announcements/WhatsNewTrigger';
 
 interface NavItem {
   href: string;
@@ -86,6 +87,8 @@ export default function NavBar() {
               {item.label}
             </a>
           ))}
+
+          <WhatsNewTrigger />
 
           {/* 管理ドロップダウン */}
           <div className="relative" ref={settingsRef}>
@@ -182,6 +185,11 @@ export default function NavBar() {
               {item.label}
             </a>
           ))}
+
+          {/* お知らせ */}
+          <div className="pt-2 mt-2 border-t border-[var(--border-subtle)]">
+            <WhatsNewTrigger />
+          </div>
 
           {/* 管理 */}
           <div className="pt-2 mt-2 border-t border-[var(--border-subtle)] space-y-2">
