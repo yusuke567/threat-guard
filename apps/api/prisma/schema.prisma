@@ -340,3 +340,26 @@ model AlertLog {
   @@index([detectedDomainId])
   @@index([sentAt])
 }
+
+model ActivityLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  userEmail      String
+  userName       String?
+  organizationId String?
+  action         String
+  category       String
+  method         String
+  path           String
+  statusCode     Int?
+  ipAddress      String?
+  metadata       String?
+  duration       Int?
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([category])
+  @@index([createdAt])
+  @@index([userEmail])
+}

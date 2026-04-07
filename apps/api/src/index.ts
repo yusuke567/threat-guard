@@ -17,8 +17,10 @@ import takedownBatchRouter from './routes/takedown-batch.js';
 import socialMonitorRouter from './routes/social-monitor.js';
 import publicDiagnoseRouter from './routes/public-diagnose.js';
 import browserReportsRouter from './routes/browser-reports.js';
+import activityLogsRouter from './routes/activity-logs.js';
 import { startScheduler } from './services/scheduler.js';
-import { authMiddleware, requireOrg } from './lib/auth-middleware.js';
+import { authMiddleware, requireOrg, requireSuperAdmin } from './lib/auth-middleware.js';
+import { activityLogger } from './lib/activity-logger.js';
 
 // Prevent unhandled rejections from crashing the process
 process.on('unhandledRejection', (reason, promise) => {
@@ -30,6 +32,7 @@ const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use(activityLogger);
 
 // Persistent data directory (Railway Volume mount point or cwd fallback)
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
@@ -179,6 +182,7 @@ app.use('/api/alerts', authMiddleware, alertsRouter);
 app.use('/api/takedown-batches', authMiddleware, requireOrg, takedownBatchRouter);
 app.use('/api/social-posts', authMiddleware, requireOrg, socialMonitorRouter);
 app.use('/api/browser-reports', authMiddleware, requireOrg, browserReportsRouter);
+app.use('/api/activity-logs', authMiddleware, requireSuperAdmin, activityLogsRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
