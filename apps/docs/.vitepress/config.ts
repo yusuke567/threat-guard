@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitepress'
 
+const SITE_URL = 'https://yusuke567.github.io/threat-guard'
+
 export default defineConfig({
   lang: 'ja-JP',
   title: 'ThreatGuard',
@@ -8,10 +10,30 @@ export default defineConfig({
   base: '/threat-guard/',
 
   head: [
-    ['meta', { name: 'theme-color', content: '#3b82f6' }],
-    ['meta', { name: 'og:type', content: 'website' }],
-    ['meta', { name: 'og:site_name', content: 'ThreatGuard' }],
+    ['meta', { name: 'theme-color', content: '#0052ff' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'ThreatGuard' }],
+    ['meta', { property: 'og:image', content: `${SITE_URL}/og-image.svg` }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: `${SITE_URL}/og-image.svg` }],
   ],
+
+  transformHead({ pageData }) {
+    const head: Array<[string, Record<string, string>]> = []
+    const title = pageData.frontmatter.title || pageData.title || 'ThreatGuard'
+    const description = pageData.frontmatter.description || 'ブランドなりすまし検知・テイクダウン支援SaaS'
+    const path = pageData.relativePath
+      .replace(/index\.md$/, '')
+      .replace(/\.md$/, '.html')
+    const url = `${SITE_URL}/${path}`
+
+    head.push(['meta', { property: 'og:title', content: title }])
+    head.push(['meta', { property: 'og:description', content: description }])
+    head.push(['meta', { property: 'og:url', content: url }])
+    head.push(['link', { rel: 'canonical', href: url }])
+
+    return head
+  },
 
   themeConfig: {
     nav: [

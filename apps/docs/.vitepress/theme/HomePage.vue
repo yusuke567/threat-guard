@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useScrollAnimation } from './composables/useScrollAnimation'
+
+useScrollAnimation()
+
 const features = [
   {
     icon: '🔍',
@@ -69,7 +73,7 @@ const problems = [
     </section>
 
     <!-- Stats -->
-    <section class="cb-stats">
+    <section class="cb-stats animate-on-scroll">
       <div>
         <div class="cb-stat-number">6</div>
         <div class="cb-stat-label">検知手法</div>
@@ -87,12 +91,12 @@ const problems = [
     <!-- Features -->
     <section class="home-features">
       <h2 class="section-heading">主要機能</h2>
-      <div class="feature-grid">
+      <div class="feature-grid animate-stagger">
         <a
           v-for="feature in features"
           :key="feature.title"
           :href="feature.link"
-          class="feature-card"
+          class="feature-card animate-on-scroll"
         >
           <div class="feature-icon">{{ feature.icon }}</div>
           <div class="feature-badge">
@@ -106,7 +110,7 @@ const problems = [
     </section>
 
     <!-- Dark Section: Why ThreatGuard -->
-    <section class="home-dark-section">
+    <section class="home-dark-section animate-on-scroll">
       <h2 class="dark-section-title">ThreatGuardが選ばれる理由</h2>
       <p class="dark-section-subtitle">従来のフィッシング対策の限界を解決</p>
 
@@ -134,8 +138,8 @@ const problems = [
     <!-- Process Flow -->
     <section class="home-process">
       <h2 class="section-heading">ワークフロー</h2>
-      <div class="process-grid">
-        <div v-for="step in steps" :key="step.number" class="process-step">
+      <div class="process-grid animate-stagger">
+        <div v-for="step in steps" :key="step.number" class="process-step animate-on-scroll">
           <div class="step-number">{{ step.number }}</div>
           <h3 class="step-title">{{ step.title }}</h3>
           <p class="step-description">{{ step.description }}</p>
@@ -144,7 +148,7 @@ const problems = [
     </section>
 
     <!-- CTA -->
-    <section class="home-cta">
+    <section class="home-cta animate-on-scroll">
       <h2 class="cta-title">まずは無料診断から</h2>
       <p class="cta-subtitle">14日間、1ドメインの脅威検知を無料でお試しいただけます</p>
       <div class="cta-actions">

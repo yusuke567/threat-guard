@@ -1,18 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { data as entries } from '../changelog.data'
+import type { ChangeItem, ChangelogEntry } from '../changelog.data'
+import { useScrollAnimation } from './composables/useScrollAnimation'
 
-interface ChangeItem {
-  type: 'feature' | 'improvement' | 'fix' | 'breaking'
-  title: string
-  details: string[]
-}
-
-interface ChangelogEntry {
-  date: string
-  title: string
-  version: string
-  changes: ChangeItem[]
-}
+useScrollAnimation()
 
 const typeLabels: Record<string, string> = {
   feature: 'New',
@@ -37,150 +29,6 @@ const filterLabels: Record<string, string> = {
   fix: 'Bug Fixes',
 }
 
-const entries: ChangelogEntry[] = [
-  {
-    date: '2026-04-07',
-    title: 'ドキュメント v5 アップデート',
-    version: 'v5.0',
-    changes: [
-      {
-        type: 'feature',
-        title: '新規ドキュメント 7ページ追加',
-        details: [
-          'SNS監視機能ガイド',
-          'フィッシングパターンレポート',
-          '通知設定マニュアル',
-          '無料診断ツール解説',
-          '一括テイクダウン手順',
-          '組織管理ガイド',
-          'APIリファレンス完全版',
-        ],
-      },
-      {
-        type: 'improvement',
-        title: '技術精度の向上',
-        details: [
-          'ドメインスキャン: CTログソースの詳細を追記',
-          'リスクスコアリング: アルゴリズムの精度改善を反映',
-          '画像類似度検知: pHashからMAEベースへの移行を文書化',
-          'テイクダウン手続き: 最新のプロセスフローに更新',
-        ],
-      },
-      {
-        type: 'improvement',
-        title: 'システムアーキテクチャ文書の拡充',
-        details: [
-          '実際のテックスタック詳細を追加',
-          'インフラ構成図の更新',
-          'データフローの可視化',
-        ],
-      },
-    ],
-  },
-  {
-    date: '2026-03-25',
-    title: 'ブラウザレベル削除対応',
-    version: 'v4.0',
-    changes: [
-      {
-        type: 'feature',
-        title: 'Google Chrome 削除リクエスト',
-        details: [
-          'フィッシング警告をChrome上で直接表示',
-          'Safe Browsing APIとの連携',
-          '自動通報フローの実装',
-        ],
-      },
-      {
-        type: 'feature',
-        title: 'Microsoft Edge SmartScreen 削除リクエスト',
-        details: [
-          'Edge SmartScreenへの削除申請機能',
-          'ブラウザ横断でのフィッシング警告表示',
-          'レポートステータスのリアルタイム追跡',
-        ],
-      },
-      {
-        type: 'improvement',
-        title: 'ドキュメント整備',
-        details: [
-          '新機能に対応した複数ページの更新',
-          '操作手順のスクリーンショット追加',
-        ],
-      },
-    ],
-  },
-  {
-    date: '2026-03-19',
-    title: 'ユーザー管理と監視機能の強化',
-    version: 'v3.0',
-    changes: [
-      {
-        type: 'feature',
-        title: '招待ベースのユーザー登録',
-        details: [
-          '組織招待によるセキュアなオンボーディング',
-          '商標関連文書のアップロード機能',
-          'セットアップチェックリストの導入',
-        ],
-      },
-      {
-        type: 'feature',
-        title: 'リアルタイム監視ステータス表示',
-        details: [
-          '監視状況のリアルタイムダッシュボード',
-          'スクリーンショット比較機能',
-          'ステータス変更履歴の追跡',
-        ],
-      },
-      {
-        type: 'improvement',
-        title: 'ドメイン管理の2層システム',
-        details: [
-          'プライマリ/セカンダリドメインの階層管理',
-          'ダークモード対応',
-          '一括削除リクエスト機能',
-        ],
-      },
-      {
-        type: 'fix',
-        title: 'メールインフラの改善',
-        details: [
-          'Resend APIへの移行',
-          'メール配信の信頼性向上',
-          'テンプレートシステムの刷新',
-        ],
-      },
-    ],
-  },
-  {
-    date: '2026-03-05',
-    title: 'ドキュメントサイト初回リリース',
-    version: 'v1.0',
-    changes: [
-      {
-        type: 'feature',
-        title: 'VitePressによる包括的ドキュメント',
-        details: [
-          '16ページの詳細なドキュメントサイトを公開',
-          '機能ガイド・技術詳細・料金プランを網羅',
-          'レスポンシブデザイン対応',
-          'ローカル検索機能の実装',
-        ],
-      },
-      {
-        type: 'improvement',
-        title: 'セキュリティレビュー対応',
-        details: [
-          'セキュリティ観点でのドキュメント整備',
-          'API連携ガイドの公開',
-          'アーキテクチャドキュメントの作成',
-        ],
-      },
-    ],
-  },
-]
-
 const filteredEntries = computed(() => {
   if (activeFilter.value === 'all') return entries
   return entries
@@ -191,14 +39,14 @@ const filteredEntries = computed(() => {
     .filter((entry) => entry.changes.length > 0)
 })
 
-const stats = {
+const stats = computed(() => ({
   pages: 23,
   updates: entries.length,
   features: entries.reduce(
-    (sum, e) => sum + e.changes.filter((c) => c.type === 'feature').length,
+    (sum: number, e: ChangelogEntry) => sum + e.changes.filter((c: ChangeItem) => c.type === 'feature').length,
     0
   ),
-}
+}))
 </script>
 
 <template>
@@ -212,7 +60,7 @@ const stats = {
     </div>
 
     <!-- Stats -->
-    <div class="changelog-stats">
+    <div class="changelog-stats animate-on-scroll">
       <div class="stat-item">
         <div class="stat-number">{{ stats.pages }}</div>
         <div class="stat-label">ドキュメント</div>
@@ -244,7 +92,7 @@ const stats = {
       <div
         v-for="entry in filteredEntries"
         :key="entry.version"
-        class="changelog-entry"
+        class="changelog-entry animate-on-scroll"
       >
         <div class="entry-header">
           <div class="entry-date">{{ entry.date }}</div>
