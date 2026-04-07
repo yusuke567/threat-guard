@@ -265,3 +265,10 @@ export const submitMicrosoftReport = (detectedDomainId: string) =>
   fetchAPI<any>('/browser-reports/microsoft', { method: 'POST', body: JSON.stringify({ detectedDomainId }) });
 export const submitBulkBrowserReports = (detectedDomainIds: string[], providers: string[]) =>
   fetchAPI<any>('/browser-reports/bulk', { method: 'POST', body: JSON.stringify({ detectedDomainIds, providers }) });
+
+// Activity Logs (superadmin)
+export const getActivityLogs = (params?: Record<string, string>) => {
+  const query = params ? '?' + new URLSearchParams(params).toString() : '';
+  return fetchAPI<any>(`/activity-logs${query}`);
+};
+export const getActivityLogStats = () => fetchAPI<any>('/activity-logs/stats');

@@ -44,7 +44,10 @@ export default function NavBar() {
   const isSuperAdmin = user?.role === 'superadmin';
 
   const isSettingsActive = SETTINGS_NAV_ITEMS.some((item) => isActive(pathname, item))
-    || (isSuperAdmin && isActive(pathname, { href: '/admin/organizations', label: '' }));
+    || (isSuperAdmin && (
+      isActive(pathname, { href: '/admin/organizations', label: '' })
+      || isActive(pathname, { href: '/admin/activity-logs', label: '' })
+    ));
 
   // 外側クリックでドロップダウンを閉じる
   useEffect(() => {
@@ -128,6 +131,13 @@ export default function NavBar() {
                     >
                       組織管理
                     </a>
+                    <a
+                      href="/admin/activity-logs"
+                      className={dropdownLinkClass({ href: '/admin/activity-logs', label: 'アクティビティログ' })}
+                      onClick={() => setSettingsOpen(false)}
+                    >
+                      アクティビティログ
+                    </a>
                   </>
                 )}
 
@@ -200,12 +210,20 @@ export default function NavBar() {
               </a>
             ))}
             {isSuperAdmin && (
-              <a
-                href="/admin/organizations"
-                className={mobileLinkClass({ href: '/admin/organizations', label: '組織管理' })}
-              >
-                組織管理
-              </a>
+              <>
+                <a
+                  href="/admin/organizations"
+                  className={mobileLinkClass({ href: '/admin/organizations', label: '組織管理' })}
+                >
+                  組織管理
+                </a>
+                <a
+                  href="/admin/activity-logs"
+                  className={mobileLinkClass({ href: '/admin/activity-logs', label: 'アクティビティログ' })}
+                >
+                  アクティビティログ
+                </a>
+              </>
             )}
           </div>
 
