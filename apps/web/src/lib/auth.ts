@@ -47,12 +47,14 @@ export function useAuthState(): AuthContextType {
     // Store token separately
     localStorage.setItem('threatguard_token', data.token);
     localStorage.setItem('threatguard_user', JSON.stringify(data.user));
+    localStorage.setItem('threatguard_session_start', String(Date.now()));
     setUser(data.user);
   };
 
   const logout = () => {
     localStorage.removeItem('threatguard_token');
     localStorage.removeItem('threatguard_user');
+    localStorage.removeItem('threatguard_session_start');
     setUser(null);
   };
 
