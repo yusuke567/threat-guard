@@ -3,14 +3,14 @@
   "configurations": [
     {
       "name": "api",
-      "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["/Users/yusuke56/threat-guard/node_modules/.bin/tsx", "watch", "src/index.ts"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "cd /Users/yusuke56/threat-guard/apps/api && PATH=/opt/homebrew/bin:$PATH /opt/homebrew/bin/node /Users/yusuke56/threat-guard/node_modules/.bin/tsx watch src/index.ts"],
       "port": 3001
     },
     {
       "name": "web",
       "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": ["-c", "cd /Users/yusuke56/threat-guard/apps/web && PATH=/usr/local/bin:$PATH /usr/local/bin/node /Users/yusuke56/threat-guard/node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000"],
+      "runtimeArgs": ["-c", "cd /Users/yusuke56/threat-guard/apps/web && PATH=/opt/homebrew/bin:$PATH /opt/homebrew/bin/node /Users/yusuke56/threat-guard/node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000"],
       "port": 3000
     }
   ]
