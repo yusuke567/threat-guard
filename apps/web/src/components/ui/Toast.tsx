@@ -64,7 +64,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
     <div
       className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-200 ${
         variantStyles[toast.variant]
-      } ${exiting ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}
+      } ${exiting ? 'opacity-0 translate-x-4 scale-95' : 'opacity-100 translate-x-0 scale-100 animate-scale-in'}`}
       role="alert"
     >
       <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0">

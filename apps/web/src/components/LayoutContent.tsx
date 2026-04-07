@@ -18,7 +18,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-screen">
       <NavBar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main key={pathname} className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 animate-fade-in-up">
         {children}
       </main>
     </div>

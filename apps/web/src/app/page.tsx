@@ -174,7 +174,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => handleSummaryClick('action_needed')}
-          className={`text-left rounded-xl border-2 p-4 transition-all ${
+          className={`text-left rounded-xl border-2 p-4 transition-all animate-fade-in-up stagger-1 ${
             summaryFilter === 'action_needed'
               ? 'border-red-400 bg-red-50 dark:bg-red-900/30 ring-2 ring-red-200'
               : 'border-[var(--border-default)] bg-surface-card hover:border-red-200 dark:border-red-800 hover:bg-red-50 dark:bg-red-900/30/50'
@@ -191,7 +191,7 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleSummaryClick('monitoring')}
-          className={`text-left rounded-xl border-2 p-4 transition-all ${
+          className={`text-left rounded-xl border-2 p-4 transition-all animate-fade-in-up stagger-2 ${
             summaryFilter === 'monitoring'
               ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 ring-2 ring-yellow-200'
               : 'border-[var(--border-default)] bg-surface-card hover:border-yellow-200 dark:border-yellow-800 hover:bg-yellow-50 dark:bg-yellow-900/30/50'
@@ -208,7 +208,7 @@ export default function Dashboard() {
 
         <button
           onClick={() => handleSummaryClick('resolved')}
-          className={`text-left rounded-xl border-2 p-4 transition-all ${
+          className={`text-left rounded-xl border-2 p-4 transition-all animate-fade-in-up stagger-3 ${
             summaryFilter === 'resolved'
               ? 'border-green-400 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-200'
               : 'border-[var(--border-default)] bg-surface-card hover:border-green-200 dark:border-green-800 hover:bg-green-50 dark:bg-green-900/30/50'

@@ -105,7 +105,7 @@ export default function NavBar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden mt-3 pt-3 border-t border-[var(--border-default)] space-y-2">
+        <div className="md:hidden mt-3 pt-3 border-t border-[var(--border-default)] space-y-2 animate-slide-down overflow-hidden">
           {NAV_ITEMS.map((item) => (
             <a key={item.href} href={item.href} className={mobileLinkClass(item)}>
               {item.label}

@@ -28,7 +28,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-surface-base flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
+      <div className="max-w-md w-full animate-fade-in-up">
         <div className="text-center mb-8">
           <span className="text-5xl">🛡️</span>
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mt-4">ThreatGuard</h1>

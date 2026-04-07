@@ -232,7 +232,7 @@ export default function ThreatTable({ threats, onSelect, expandable = false, sel
               {/* Layer 2: Expanded Detail Panel */}
               {expandable && expandedRowId === threat.id && (
                 <tr>
-                  <td colSpan={selectable ? 7 : 6} className="bg-surface-elevated border-b border-[var(--border-default)]">
+                  <td colSpan={selectable ? 7 : 6} className="bg-surface-elevated border-b border-[var(--border-default)] animate-fade-in">
                     <div className="p-5 space-y-4">
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Screenshot */}
