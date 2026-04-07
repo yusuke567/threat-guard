@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import { Button, Card, Alert } from '@/components/ui';
@@ -12,6 +12,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState('');
+
+  useEffect(() => {
+    const msg = sessionStorage.getItem('threatguard_logout_message');
+    if (msg) {
+      setLogoutMessage(msg);
+      sessionStorage.removeItem('threatguard_logout_message');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +46,12 @@ export default function LoginPage() {
 
         <Card padding="lg">
         <form onSubmit={handleSubmit} className="space-y-5">
+          {logoutMessage && (
+            <Alert variant="warning" className="p-3 text-sm">
+              {logoutMessage}
+            </Alert>
+          )}
+
           {error && (
             <Alert variant="error" className="p-3 text-sm">
               {error}
