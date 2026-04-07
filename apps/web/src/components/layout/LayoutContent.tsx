@@ -2,8 +2,8 @@
 
 import { usePathname } from 'next/navigation';
 import NavBar from './NavBar';
-import GlobalBanner from './announcements/GlobalBanner';
-import PageSpotlightAlerts from './announcements/SpotlightAlert';
+import GlobalBanner from '@/components/announcements/GlobalBanner';
+import PageSpotlightAlerts from '@/components/announcements/SpotlightAlert';
 
 const PUBLIC_PATHS = ['/login', '/forgot-password', '/reset-password', '/diagnose'];
 

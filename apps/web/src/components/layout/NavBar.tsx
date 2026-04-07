@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import ThemeToggle from './ThemeToggle';
-import { Icon } from './ui';
-import WhatsNewTrigger from './announcements/WhatsNewTrigger';
+import { Icon } from '@/components/ui';
+import WhatsNewTrigger from '@/components/announcements/WhatsNewTrigger';
 
 interface NavItem {
   href: string;
