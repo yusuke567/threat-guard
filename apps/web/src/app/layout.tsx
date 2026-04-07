@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
-import { AuthProvider } from '@/components/AuthProvider';
-import AuthGuard from '@/components/AuthGuard';
-import ThemeProvider from '@/components/ThemeProvider';
-import LayoutContent from '@/components/LayoutContent';
+import { AuthProvider } from '@/components/layout/AuthProvider';
+import AuthGuard from '@/components/layout/AuthGuard';
+import ThemeProvider from '@/components/layout/ThemeProvider';
+import LayoutContent from '@/components/layout/LayoutContent';
 import { ToastProvider } from '@/components/ui';
 import { AnnouncementProvider } from '@/components/announcements/AnnouncementProvider';
 

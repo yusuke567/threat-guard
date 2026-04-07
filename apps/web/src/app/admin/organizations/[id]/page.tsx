@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import AdminGuard from '@/components/AdminGuard';
+import AdminGuard from '@/components/layout/AdminGuard';
 import { getOrganization, updateOrganization, getOrgUsers, createOrgUser, deleteOrgUser, getDeletedOrgUsers, restoreOrgUser } from '@/lib/api';
 
 interface OrgDetail {

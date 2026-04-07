@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { PageHeader, Button } from '@/components/ui';
 import StatCard from '@/components/StatCard';
 import { RiskBadgeCompact } from '@/components/RiskBadge';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth } from '@/components/layout/AuthProvider';
 import {
   getSocialPosts,
   getSocialPostStats,

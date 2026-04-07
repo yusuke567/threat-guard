@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth } from '@/components/layout/AuthProvider';
 import { Button, Card, Alert } from '@/components/ui';
 
 export default function LoginPage() {

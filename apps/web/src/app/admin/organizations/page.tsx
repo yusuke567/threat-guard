@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { PageHeader, Button, Card, Alert } from '@/components/ui';
-import AdminGuard from '@/components/AdminGuard';
+import AdminGuard from '@/components/layout/AdminGuard';
 import { getAllOrganizations, createOrganization } from '@/lib/api';
 
 interface Org {
