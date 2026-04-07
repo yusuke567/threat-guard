@@ -2,20 +2,30 @@
 
 ThreatGuardは、**検知 → 分析 → 対応 → 報告** の一連のフローを自動化します。
 
-## 機能マップ
+## ワークフロー
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      ThreatGuard                            │
-├─────────────┬─────────────┬─────────────┬─────────────────-─┤
-│   検知      │   分析      │   対応      │   報告            │
-├─────────────┼─────────────┼─────────────┼──────────────────-┤
-│ 類似ドメイン │ AIリスク判定 │ テイクダウン │ 月次レポート      │
-│ CT監視      │ リスクスコア │ Abuse報告   │ 金融庁Excel       │
-│ SNS監視     │ コンテンツ分析│ ブラウザ報告 │ カスタムレポート   │
-│ Webプローブ │             │             │                   │
-└─────────────┴─────────────┴─────────────┴───────────────────┘
-```
+<div class="cb-card-grid" style="grid-template-columns: repeat(4, 1fr);">
+  <div class="cb-card" style="text-align: center;">
+    <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+    <div style="font-weight: 600; margin-bottom: 4px;">検知</div>
+    <div style="font-size: 13px; color: #5b616e;">ドメイン・CT・SNS・Web</div>
+  </div>
+  <div class="cb-card" style="text-align: center;">
+    <div style="font-size: 32px; margin-bottom: 8px;">🤖</div>
+    <div style="font-weight: 600; margin-bottom: 4px;">分析</div>
+    <div style="font-size: 13px; color: #5b616e;">AIリスク判定・スコア</div>
+  </div>
+  <div class="cb-card" style="text-align: center;">
+    <div style="font-size: 32px; margin-bottom: 8px;">📝</div>
+    <div style="font-weight: 600; margin-bottom: 4px;">対応</div>
+    <div style="font-size: 13px; color: #5b616e;">テイクダウン・報告</div>
+  </div>
+  <div class="cb-card" style="text-align: center;">
+    <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+    <div style="font-weight: 600; margin-bottom: 4px;">報告</div>
+    <div style="font-size: 13px; color: #5b616e;">PDF・Excel・カスタム</div>
+  </div>
+</div>
 
 ## 機能一覧
 
@@ -68,12 +78,32 @@ ThreatGuardは、**検知 → 分析 → 対応 → 報告** の一連のフロ�
 
 詳細は[料金プラン](/pricing/)をご覧ください。
 
-## 次のステップ
+## 各機能の詳細
 
-各機能の詳細は以下のページをご覧ください：
-
-- [脅威検知](/features/threat-detection)
-- [AIリスク判定](/features/ai-risk-scoring)
-- [テイクダウン申請](/features/takedown)
-- [レポート](/features/reports)
-- [無料診断](/features/free-diagnosis)
+<div class="cb-card-grid">
+  <a href="/threat-guard/features/threat-detection" class="cb-card" style="text-decoration: none; display: block;">
+    <div style="font-size: 24px; margin-bottom: 8px;">🔍</div>
+    <div style="font-weight: 600; color: var(--cb-near-black); margin-bottom: 4px;">脅威検知</div>
+    <div style="font-size: 14px; color: #5b616e;">6つの手法で脅威を24時間監視</div>
+  </a>
+  <a href="/threat-guard/features/ai-risk-scoring" class="cb-card" style="text-decoration: none; display: block;">
+    <div style="font-size: 24px; margin-bottom: 8px;">🤖</div>
+    <div style="font-weight: 600; color: var(--cb-near-black); margin-bottom: 4px;">AIリスク判定</div>
+    <div style="font-size: 14px; color: #5b616e;">Claude AIによる5段階自動分類</div>
+  </a>
+  <a href="/threat-guard/features/takedown" class="cb-card" style="text-decoration: none; display: block;">
+    <div style="font-size: 24px; margin-bottom: 8px;">📝</div>
+    <div style="font-weight: 600; color: var(--cb-near-black); margin-bottom: 4px;">テイクダウン申請</div>
+    <div style="font-size: 14px; color: #5b616e;">削除申請の自動化・進捗管理</div>
+  </a>
+  <a href="/threat-guard/features/reports" class="cb-card" style="text-decoration: none; display: block;">
+    <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+    <div style="font-weight: 600; color: var(--cb-near-black); margin-bottom: 4px;">レポート</div>
+    <div style="font-size: 14px; color: #5b616e;">PDF・Excel・カスタムレポート生成</div>
+  </a>
+  <a href="/threat-guard/features/free-diagnosis" class="cb-card" style="text-decoration: none; display: block;">
+    <div style="font-size: 24px; margin-bottom: 8px;">🎯</div>
+    <div style="font-weight: 600; color: var(--cb-near-black); margin-bottom: 4px;">無料診断</div>
+    <div style="font-size: 14px; color: #5b616e;">14日間の無料脅威検知トライアル</div>
+  </a>
+</div>

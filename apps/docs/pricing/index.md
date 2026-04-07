@@ -128,7 +128,7 @@ ThreatGuardは、企業規模・ニーズに合わせた4つのプランをご�
 - **無料相談**: オンラインMTGを予約
 
 <div style="text-align: center; margin: 2rem 0;">
-  <a href="https://app.threatguard.jp/contact" style="display: inline-block; padding: 16px 32px; background: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">お問い合わせ →</a>
+  <a href="https://app.threatguard.jp/contact" class="cb-cta">お問い合わせ →</a>
 </div>
 
 ## FAQ
