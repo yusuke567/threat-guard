@@ -59,7 +59,7 @@ export default function TakedownsPage() {
 
       {/* Summary Cards */}
       {data?.summary && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { key: 'total', label: '全件', color: 'bg-gray-50 dark:bg-gray-900 border-[var(--border-default)]', textColor: 'text-[var(--text-primary)]' },
             { key: 'sent', label: '送信済み', color: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800', textColor: 'text-blue-700 dark:text-blue-300' },
@@ -102,7 +102,7 @@ export default function TakedownsPage() {
           data?.groups?.map((group: any, gi: number) => (
             <Card key={gi} className="!p-0 overflow-hidden">
               {/* Group Header */}
-              <div className="px-6 py-4 border-b border-[var(--border-subtle)] bg-gray-50 dark:bg-gray-900">
+              <div className="px-4 sm:px-6 py-4 border-b border-[var(--border-subtle)] bg-gray-50 dark:bg-gray-900">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
@@ -123,7 +123,7 @@ export default function TakedownsPage() {
               {/* Individual Items */}
               <div className="divide-y divide-gray-100">
                 {group.items.map((item: any) => (
-                  <div key={item.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
+                  <div key={item.id} className="px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 hover:bg-gray-50 dark:hover:bg-gray-700 dark:bg-gray-900">
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className="min-w-0">
                         <div className="font-mono text-sm font-medium truncate">{item.domain}</div>

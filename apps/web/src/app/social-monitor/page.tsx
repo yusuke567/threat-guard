@@ -207,7 +207,7 @@ export default function SocialMonitorPage() {
         <select
           value={filters.status}
           onChange={(e) => handleFilterChange('status', e.target.value)}
-          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
+          className="w-full sm:w-auto px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
         >
           <option value="">すべてのステータス</option>
           <option value="new">🆕 未対応</option>
@@ -218,7 +218,7 @@ export default function SocialMonitorPage() {
         <select
           value={filters.brandId}
           onChange={(e) => handleFilterChange('brandId', e.target.value)}
-          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
+          className="w-full sm:w-auto px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
         >
           <option value="">すべてのブランド</option>
           {brands.map((b) => (
@@ -231,7 +231,7 @@ export default function SocialMonitorPage() {
         <select
           value={filters.sortBy}
           onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
+          className="w-full sm:w-auto px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)]"
         >
           <option value="createdAt">検知日時</option>
           <option value="riskScore">リスクスコア</option>
@@ -246,7 +246,7 @@ export default function SocialMonitorPage() {
               page: '1',
             }))
           }
-          className="px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)] hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="w-full sm:w-auto px-3 py-2 border border-[var(--border-default)] rounded-lg bg-surface-card text-sm text-[var(--text-primary)] hover:bg-gray-50 dark:hover:bg-gray-700"
         >
           {filters.order === 'desc' ? '↓ 降順' : '↑ 昇順'}
         </button>

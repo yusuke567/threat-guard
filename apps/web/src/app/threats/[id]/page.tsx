@@ -1583,7 +1583,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
                 }
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-wrap gap-3 pt-2">
                 <Button variant="primary" onClick={onGenerate}>
                   削除申請文面を生成
                 </Button>
@@ -1626,7 +1626,7 @@ function TakedownModal({ threat, step, error, success, registrar, abuseEmail, te
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-wrap gap-3 pt-2">
                 {currentTakedownId && (
                   <Button
                     variant="ghost"

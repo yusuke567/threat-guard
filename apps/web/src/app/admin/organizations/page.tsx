@@ -86,6 +86,7 @@ export default function AdminOrganizationsPage() {
           </div>
         ) : (
           <Card className="!p-0 overflow-hidden">
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-900 border-b border-[var(--border-default)]">
                 <tr>
@@ -122,6 +123,7 @@ export default function AdminOrganizationsPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </Card>
         )}
       </div>

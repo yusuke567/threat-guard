@@ -366,13 +366,13 @@ export default function TakedownRequestPage() {
             <Button
               variant="primary"
               onClick={() => router.push('/takedowns')}
-              className="px-6"
+              className="px-4 sm:px-6"
             >
               進捗を確認する
             </Button>
             <button
               onClick={() => router.push('/')}
-              className="px-6 py-2 bg-surface-elevated text-[var(--text-primary)] rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600"
+              className="px-4 sm:px-6 py-2 bg-surface-elevated text-[var(--text-primary)] rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600"
             >
               脅威一覧に戻る
             </button>
@@ -577,7 +577,7 @@ export default function TakedownRequestPage() {
               variant="primary"
               onClick={goToStep2}
               disabled={activeThreats.length === 0}
-              className="px-6"
+              className="px-4 sm:px-6"
             >
               次へ: 申請内容 →
             </Button>
@@ -911,7 +911,7 @@ export default function TakedownRequestPage() {
                 (sendToPolice && (!policeGroupState.template || policeGroupState.loading)) ||
                 (sendToJpcert && (!jpcertGroupState.template || jpcertGroupState.loading))
               }
-              className="px-6"
+              className="px-4 sm:px-6"
             >
               次へ: 確認・送信 →
             </Button>
@@ -1009,7 +1009,7 @@ export default function TakedownRequestPage() {
               variant="danger"
               onClick={handleSubmit}
               disabled={sending}
-              className="px-6 flex items-center gap-2"
+              className="px-4 sm:px-6 flex items-center gap-2"
             >
               {sending ? (
                 <>

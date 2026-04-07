@@ -228,7 +228,7 @@ export default function Dashboard() {
       <Card padding="sm">
         <div className="flex flex-wrap gap-4 items-center">
           <select
-            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.brandId}
             onChange={(e) => updateFilter('brandId', e.target.value)}
           >
@@ -239,7 +239,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.period}
             onChange={(e) => updateFilter('period', e.target.value)}
           >
@@ -250,7 +250,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.status}
             onChange={(e) => updateFilter('status', e.target.value)}
           >
@@ -264,7 +264,7 @@ export default function Dashboard() {
           </select>
 
           <select
-            className="border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-[var(--border-default)] rounded-lg px-3 py-2 text-sm"
             value={filters.minRiskScore}
             onChange={(e) => updateFilter('minRiskScore', e.target.value)}
           >
@@ -301,7 +301,7 @@ export default function Dashboard() {
           <span className="text-sm font-medium text-blue-800">
             {selectedIds.size}件を選択中
           </span>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={() => setSelectedIds(new Set())}
               className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
