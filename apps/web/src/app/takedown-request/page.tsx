@@ -492,105 +492,7 @@ export default function TakedownRequestPage() {
             <h3 className="font-bold text-[var(--text-primary)]">送信先を選択</h3>
             <p className="text-sm text-[var(--text-secondary)]">削除申請の送信先を選択してください。複数の送信先を同時に選択できます。</p>
 
-            {/* 1. ドメインレジストラへの削除申請 */}
-            <div className="border border-[var(--border-default)] rounded-lg p-4">
-              <h4 className="font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                <span className="text-lg">📧</span>
-                ドメインレジストラへの削除申請
-              </h4>
-              <p className="text-xs text-[var(--text-secondary)] mb-3">
-                各ドメインのレジストラ（登録管理会社）に直接削除を依頼します
-              </p>
-              {registrarGroups.length > 0 ? (
-                <div className="space-y-2 pl-2">
-                  {registrarGroups.map((g, i) => (
-                    <div key={`reg-${i}`} className="flex items-center gap-3 py-1.5 bg-surface-base rounded px-3">
-                      <span className="font-medium text-sm flex-1">{g.registrar}</span>
-                      {g.abuseEmail ? (
-                        <span className="text-xs text-[var(--text-secondary)]">({g.abuseEmail})</span>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-orange-600">⚠️ 送信先を入力</span>
-                          <input
-                            type="email"
-                            placeholder="abuse@example.com"
-                            value={g.manualEmail || ''}
-                            onChange={(e) => {
-                              const updated = [...groups];
-                              const idx = g.originalIndex;
-                              if (idx >= 0) {
-                                updated[idx] = { ...updated[idx], manualEmail: e.target.value };
-                                setGroups(updated);
-                              }
-                            }}
-                            className="border border-[var(--border-default)] rounded px-2 py-1 text-sm w-56"
-                          />
-                        </div>
-                      )}
-                      <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{g.threats.length}件</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-[var(--text-tertiary)] pl-2">対象のドメインがありません</p>
-              )}
-            </div>
-
-            {/* 2. 警視庁へのフィッシング報告 */}
-            {policeRecipient && (
-              <div className={`border rounded-lg p-4 transition-colors ${sendToPolice ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-[var(--border-default)]'}`}>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendToPolice}
-                    onChange={(e) => setSendToPolice(e.target.checked)}
-                    className="rounded border-[var(--border-default)] text-blue-600 w-4 h-4 mt-1"
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
-                      <span className="text-lg">🚔</span>
-                      警視庁へのフィッシング報告
-                    </h4>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">
-                      {policeRecipient.name}（{policeRecipient.email}）に情報提供します
-                    </p>
-                    <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                      ※ レジストラへの申請とは別に、並行して警視庁サイバー犯罪対策課にも報告します
-                    </p>
-                  </div>
-                  <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
-                </label>
-              </div>
-            )}
-
-            {/* 3. JPCERT/CCへの報告 */}
-            {jpcertRecipient && (
-              <div className={`border rounded-lg p-4 transition-colors ${sendToJpcert ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-[var(--border-default)]'}`}>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendToJpcert}
-                    onChange={(e) => setSendToJpcert(e.target.checked)}
-                    className="rounded border-[var(--border-default)] text-blue-600 w-4 h-4 mt-1"
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
-                      <ShieldLogo size={20} />
-                      JPCERT/CCへのフィッシング報告
-                    </h4>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">
-                      {jpcertRecipient.name}（{jpcertRecipient.email}）にフィッシング報告を送信します
-                    </p>
-                    <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                      ※ JPCERT/CCは日本のセキュリティインシデント対応機関で、フィッシングサイトの早期閉鎖を支援します
-                    </p>
-                  </div>
-                  <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
-                </label>
-              </div>
-            )}
-
-            {/* 4. ブラウザベンダーへの報告 */}
+            {/* 1. ブラウザベンダーへの報告 */}
             <div className={`border rounded-lg p-4 transition-colors ${sendToBrowser ? 'border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-900/20' : 'border-[var(--border-default)]'}`}>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
@@ -636,6 +538,104 @@ export default function TakedownRequestPage() {
                 <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
               </label>
             </div>
+
+            {/* 2. ドメインレジストラへの削除申請 */}
+            <div className="border border-[var(--border-default)] rounded-lg p-4">
+              <h4 className="font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                <span className="text-lg">📧</span>
+                ドメインレジストラへの削除申請
+              </h4>
+              <p className="text-xs text-[var(--text-secondary)] mb-3">
+                各ドメインのレジストラ（登録管理会社）に直接削除を依頼します
+              </p>
+              {registrarGroups.length > 0 ? (
+                <div className="space-y-2 pl-2">
+                  {registrarGroups.map((g, i) => (
+                    <div key={`reg-${i}`} className="flex items-center gap-3 py-1.5 bg-surface-base rounded px-3">
+                      <span className="font-medium text-sm flex-1">{g.registrar}</span>
+                      {g.abuseEmail ? (
+                        <span className="text-xs text-[var(--text-secondary)]">({g.abuseEmail})</span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-orange-600">⚠️ 送信先を入力</span>
+                          <input
+                            type="email"
+                            placeholder="abuse@example.com"
+                            value={g.manualEmail || ''}
+                            onChange={(e) => {
+                              const updated = [...groups];
+                              const idx = g.originalIndex;
+                              if (idx >= 0) {
+                                updated[idx] = { ...updated[idx], manualEmail: e.target.value };
+                                setGroups(updated);
+                              }
+                            }}
+                            className="border border-[var(--border-default)] rounded px-2 py-1 text-sm w-56"
+                          />
+                        </div>
+                      )}
+                      <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{g.threats.length}件</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--text-tertiary)] pl-2">対象のドメインがありません</p>
+              )}
+            </div>
+
+            {/* 3. 警視庁へのフィッシング報告 */}
+            {policeRecipient && (
+              <div className={`border rounded-lg p-4 transition-colors ${sendToPolice ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-[var(--border-default)]'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendToPolice}
+                    onChange={(e) => setSendToPolice(e.target.checked)}
+                    className="rounded border-[var(--border-default)] text-blue-600 w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+                      <span className="text-lg">🚔</span>
+                      警視庁へのフィッシング報告
+                    </h4>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">
+                      {policeRecipient.name}（{policeRecipient.email}）に情報提供します
+                    </p>
+                    <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                      ※ レジストラへの申請とは別に、並行して警視庁サイバー犯罪対策課にも報告します
+                    </p>
+                  </div>
+                  <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
+                </label>
+              </div>
+            )}
+
+            {/* 4. JPCERT/CCへの報告 */}
+            {jpcertRecipient && (
+              <div className={`border rounded-lg p-4 transition-colors ${sendToJpcert ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-[var(--border-default)]'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendToJpcert}
+                    onChange={(e) => setSendToJpcert(e.target.checked)}
+                    className="rounded border-[var(--border-default)] text-blue-600 w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+                      <ShieldLogo size={20} />
+                      JPCERT/CCへのフィッシング報告
+                    </h4>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">
+                      {jpcertRecipient.name}（{jpcertRecipient.email}）にフィッシング報告を送信します
+                    </p>
+                    <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                      ※ JPCERT/CCは日本のセキュリティインシデント対応機関で、フィッシングサイトの早期閉鎖を支援します
+                    </p>
+                  </div>
+                  <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between">
@@ -663,6 +663,27 @@ export default function TakedownRequestPage() {
           <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-800">
             送信先ごとに文面を自動生成しました。内容を確認・編集してください。
           </div>
+
+          {/* Browser report note */}
+          {sendToBrowser && browserProviders.length > 0 && (
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
+              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 mb-2">
+                🌐 ブラウザベンダーへの報告
+                <span className="text-sm font-normal text-[var(--text-secondary)]">({activeThreats.length}件)</span>
+              </h3>
+              <p className="text-sm text-[var(--text-secondary)]">
+                ブラウザベンダーへの報告はAPIを通じて自動送信されます。テンプレートの編集は不要です。
+              </p>
+              <div className="flex gap-2 mt-2">
+                {browserProviders.includes('GOOGLE_SAFE_BROWSING') && (
+                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">Google Safe Browsing</span>
+                )}
+                {browserProviders.includes('MICROSOFT_SMARTSCREEN') && (
+                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">Microsoft SmartScreen</span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Registrar groups */}
           {registrarGroups.map((g, i) => {
@@ -968,27 +989,6 @@ export default function TakedownRequestPage() {
             </div>
           )}
 
-          {/* Browser report note */}
-          {sendToBrowser && browserProviders.length > 0 && (
-            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
-              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 mb-2">
-                🌐 ブラウザベンダーへの報告
-                <span className="text-sm font-normal text-[var(--text-secondary)]">({activeThreats.length}件)</span>
-              </h3>
-              <p className="text-sm text-[var(--text-secondary)]">
-                ブラウザベンダーへの報告はAPIを通じて自動送信されます。テンプレートの編集は不要です。
-              </p>
-              <div className="flex gap-2 mt-2">
-                {browserProviders.includes('GOOGLE_SAFE_BROWSING') && (
-                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">Google Safe Browsing</span>
-                )}
-                {browserProviders.includes('MICROSOFT_SMARTSCREEN') && (
-                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">Microsoft SmartScreen</span>
-                )}
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-between">
             <Button
               variant="ghost"
@@ -1017,6 +1017,27 @@ export default function TakedownRequestPage() {
         <div className="space-y-4">
           <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
             <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">以下の内容で削除申請を送信します</h2>
+
+            {/* Browser report */}
+            {sendToBrowser && browserProviders.length > 0 && (
+              <div className="border-b border-[var(--border-subtle)] py-4 last:border-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-[var(--text-primary)]">
+                    🌐 ブラウザベンダーへの報告 — {activeThreats.length}件
+                  </h3>
+                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-bold">ブラウザ報告</span>
+                </div>
+                <div className="text-sm text-[var(--text-secondary)] space-y-1">
+                  <div>送信先: {browserProviders.map((p) =>
+                    p === 'GOOGLE_SAFE_BROWSING' ? 'Google Safe Browsing' : 'Microsoft SmartScreen'
+                  ).join(' / ')}</div>
+                  <div>送信方法: API自動送信</div>
+                  <div className="text-xs text-[var(--text-tertiary)] mt-1">
+                    対象: {activeThreats.map((t) => t.domain).join(', ')}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Registrar groups */}
             {registrarGroups.map((g, i) => {
@@ -1086,29 +1107,8 @@ export default function TakedownRequestPage() {
               </div>
             )}
 
-            {/* Browser report */}
-            {sendToBrowser && browserProviders.length > 0 && (
-              <div className="border-b border-[var(--border-subtle)] py-4 last:border-0">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium text-[var(--text-primary)]">
-                    🌐 ブラウザベンダーへの報告 — {activeThreats.length}件
-                  </h3>
-                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-bold">ブラウザ報告</span>
-                </div>
-                <div className="text-sm text-[var(--text-secondary)] space-y-1">
-                  <div>送信先: {browserProviders.map((p) =>
-                    p === 'GOOGLE_SAFE_BROWSING' ? 'Google Safe Browsing' : 'Microsoft SmartScreen'
-                  ).join(' / ')}</div>
-                  <div>送信方法: API自動送信</div>
-                  <div className="text-xs text-[var(--text-tertiary)] mt-1">
-                    対象: {activeThreats.map((t) => t.domain).join(', ')}
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="mt-4 pt-4 border-t border-[var(--border-default)] text-sm text-[var(--text-primary)] font-medium">
-              合計: {activeThreats.length}件の脅威 → {registrarGroups.length + (sendToPolice ? 1 : 0) + (sendToJpcert ? 1 : 0)}通のメール{sendToBrowser && browserProviders.length > 0 ? ` + ブラウザ報告（${browserProviders.length}社）` : ''}を送信
+              合計: {activeThreats.length}件の脅威 → {sendToBrowser && browserProviders.length > 0 ? `ブラウザ報告（${browserProviders.length}社） + ` : ''}{registrarGroups.length + (sendToPolice ? 1 : 0) + (sendToJpcert ? 1 : 0)}通のメールを送信
             </div>
           </div>
 
