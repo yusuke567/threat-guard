@@ -253,7 +253,7 @@ export async function generatePoliceTemplate(
 
   const reportDate = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' JST';
   const discoveryDate = domain.firstSeen.toISOString().replace('T', ' ').slice(0, 19) + ' JST';
-  const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+  const siteStatus = webProbe?.httpStatus ? `稼働中 (HTTP ${webProbe.httpStatus})` : '確認中';
   const riskScoreText = domain.riskScore !== null ? `${domain.riskScore}/100` : '未算出';
   const categoryText = analysis?.category === 'phishing'
     ? 'フィッシング'
@@ -348,7 +348,7 @@ export async function generatePoliceTemplateBatch(
     const discoveryDate = t.firstSeen
       ? new Date(t.firstSeen).toISOString().replace('T', ' ').slice(0, 19) + ' JST'
       : '不明';
-    const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+    const siteStatus = webProbe?.httpStatus ? `稼働中 (HTTP ${webProbe.httpStatus})` : '確認中';
     const riskScoreText = t.riskScore !== null ? `${t.riskScore}/100` : '未算出';
     const categoryText = analysis?.category === 'phishing'
       ? 'フィッシング'
@@ -435,7 +435,7 @@ export async function generateJpcertTemplate(
 
   const reportDate = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' JST';
   const discoveryDate = domain.firstSeen.toISOString().replace('T', ' ').slice(0, 19) + ' JST';
-  const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+  const siteStatus = webProbe?.httpStatus ? `稼働中 (HTTP ${webProbe.httpStatus})` : '確認中';
   const riskScoreText = domain.riskScore !== null ? `${domain.riskScore}/100` : '未算出';
   const categoryText = analysis?.category === 'phishing'
     ? 'フィッシング'
@@ -530,7 +530,7 @@ export async function generateJpcertTemplateBatch(
     const discoveryDate = t.firstSeen
       ? new Date(t.firstSeen).toISOString().replace('T', ' ').slice(0, 19) + ' JST'
       : '不明';
-    const siteStatus = webProbe?.statusCode ? `稼働中 (HTTP ${webProbe.statusCode})` : '確認中';
+    const siteStatus = webProbe?.httpStatus ? `稼働中 (HTTP ${webProbe.httpStatus})` : '確認中';
     const riskScoreText = t.riskScore !== null ? `${t.riskScore}/100` : '未算出';
     const categoryText = analysis?.category === 'phishing'
       ? 'フィッシング'

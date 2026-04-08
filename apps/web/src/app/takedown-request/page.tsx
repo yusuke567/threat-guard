@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getBulkAbuseContacts, generateBatchTemplate, submitBatchTakedown } from '@/lib/api';
+import { getBulkAbuseContacts, generateBatchTemplate, submitBatchTakedown, submitBulkBrowserReports } from '@/lib/api';
 import { Button, ShieldLogo } from '@/components/ui';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -78,6 +78,8 @@ export default function TakedownRequestPage() {
   const [sendToPolice, setSendToPolice] = useState(false);
   const [jpcertRecipient, setJpcertRecipient] = useState<JpcertRecipient | null>(null);
   const [sendToJpcert, setSendToJpcert] = useState(false);
+  const [sendToBrowser, setSendToBrowser] = useState(false);
+  const [browserProviders, setBrowserProviders] = useState<string[]>(['GOOGLE_SAFE_BROWSING', 'MICROSOFT_SMARTSCREEN']);
 
   // Step 3 result
   const [result, setResult] = useState<any>(null);
@@ -319,14 +321,25 @@ export default function TakedownRequestPage() {
         }
       }
 
-      if (items.length === 0) {
+      if (items.length === 0 && !(sendToBrowser && browserProviders.length > 0)) {
         setError('送信可能な申請がありません。送信先メールアドレスと文面を確認してください。');
         setSending(false);
         return;
       }
 
-      const res = await submitBatchTakedown(items);
-      setResult(res);
+      // Send takedown emails and browser reports in parallel
+      const [takedownRes, browserRes] = await Promise.all([
+        items.length > 0 ? submitBatchTakedown(items) : null,
+        sendToBrowser && browserProviders.length > 0
+          ? submitBulkBrowserReports(activeThreats.map((t) => t.threatId), browserProviders).catch((err: any) => ({
+              results: [],
+              summary: { total: 0, success: 0, error: activeThreats.length * browserProviders.length },
+              error: err.message,
+            }))
+          : null,
+      ]);
+
+      setResult({ ...takedownRes, browserReport: browserRes });
       sessionStorage.removeItem('takedown_threat_ids');
     } catch (err: any) {
       setError(err.message);
@@ -352,7 +365,13 @@ export default function TakedownRequestPage() {
           <div className="text-5xl mb-4">✅</div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">削除申請を送信しました</h1>
           <p className="text-[var(--text-secondary)] mb-6">
-            {result.sentCount}/{result.totalCount}件のメールを送信しました。
+            {result.sentCount != null ? `${result.sentCount}/${result.totalCount}件のメールを送信しました。` : ''}
+            {result.browserReport && (
+              <span>
+                {result.sentCount != null ? ' ' : ''}
+                ブラウザ報告: {result.browserReport.summary?.success ?? 0}/{result.browserReport.summary?.total ?? 0}件成功
+              </span>
+            )}
           </p>
           {result.errors?.length > 0 && (
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-left mb-6">
@@ -360,6 +379,12 @@ export default function TakedownRequestPage() {
               {result.errors.map((e: any, i: number) => (
                 <p key={i} className="text-sm text-red-600">{e.error}</p>
               ))}
+            </div>
+          )}
+          {result.browserReport?.error && (
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-left mb-6">
+              <p className="text-sm font-medium text-red-800 mb-2">⚠️ ブラウザ報告でエラーが発生しました:</p>
+              <p className="text-sm text-red-600">{result.browserReport.error}</p>
             </div>
           )}
           <div className="flex gap-3 justify-center">
@@ -564,6 +589,53 @@ export default function TakedownRequestPage() {
                 </label>
               </div>
             )}
+
+            {/* 4. ブラウザベンダーへの報告 */}
+            <div className={`border rounded-lg p-4 transition-colors ${sendToBrowser ? 'border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-900/20' : 'border-[var(--border-default)]'}`}>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendToBrowser}
+                  onChange={(e) => setSendToBrowser(e.target.checked)}
+                  className="rounded border-[var(--border-default)] text-purple-600 w-4 h-4 mt-1"
+                />
+                <div className="flex-1">
+                  <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+                    <span className="text-lg">🌐</span>
+                    ブラウザベンダーへの報告
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">
+                    Google Safe Browsing / Microsoft SmartScreen にフィッシングURLを報告します
+                  </p>
+                  <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                    ※ ブラウザがフィッシングサイトへのアクセスを警告・ブロックするようになります（API自動送信）
+                  </p>
+                  {sendToBrowser && (
+                    <div className="flex flex-wrap gap-4 mt-3 pl-1">
+                      {[
+                        { key: 'GOOGLE_SAFE_BROWSING', label: 'Google Safe Browsing' },
+                        { key: 'MICROSOFT_SMARTSCREEN', label: 'Microsoft SmartScreen' },
+                      ].map(({ key, label }) => (
+                        <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={browserProviders.includes(key)}
+                            onChange={(e) => {
+                              setBrowserProviders((prev) =>
+                                e.target.checked ? [...prev, key] : prev.filter((p) => p !== key)
+                              );
+                            }}
+                            className="rounded border-[var(--border-default)] text-purple-600"
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-between">
@@ -896,6 +968,27 @@ export default function TakedownRequestPage() {
             </div>
           )}
 
+          {/* Browser report note */}
+          {sendToBrowser && browserProviders.length > 0 && (
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
+              <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2 mb-2">
+                🌐 ブラウザベンダーへの報告
+                <span className="text-sm font-normal text-[var(--text-secondary)]">({activeThreats.length}件)</span>
+              </h3>
+              <p className="text-sm text-[var(--text-secondary)]">
+                ブラウザベンダーへの報告はAPIを通じて自動送信されます。テンプレートの編集は不要です。
+              </p>
+              <div className="flex gap-2 mt-2">
+                {browserProviders.includes('GOOGLE_SAFE_BROWSING') && (
+                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">Google Safe Browsing</span>
+                )}
+                {browserProviders.includes('MICROSOFT_SMARTSCREEN') && (
+                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">Microsoft SmartScreen</span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between">
             <Button
               variant="ghost"
@@ -993,8 +1086,29 @@ export default function TakedownRequestPage() {
               </div>
             )}
 
+            {/* Browser report */}
+            {sendToBrowser && browserProviders.length > 0 && (
+              <div className="border-b border-[var(--border-subtle)] py-4 last:border-0">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-[var(--text-primary)]">
+                    🌐 ブラウザベンダーへの報告 — {activeThreats.length}件
+                  </h3>
+                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-xs font-bold">ブラウザ報告</span>
+                </div>
+                <div className="text-sm text-[var(--text-secondary)] space-y-1">
+                  <div>送信先: {browserProviders.map((p) =>
+                    p === 'GOOGLE_SAFE_BROWSING' ? 'Google Safe Browsing' : 'Microsoft SmartScreen'
+                  ).join(' / ')}</div>
+                  <div>送信方法: API自動送信</div>
+                  <div className="text-xs text-[var(--text-tertiary)] mt-1">
+                    対象: {activeThreats.map((t) => t.domain).join(', ')}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 pt-4 border-t border-[var(--border-default)] text-sm text-[var(--text-primary)] font-medium">
-              合計: {activeThreats.length}件の脅威 → {registrarGroups.length + (sendToPolice ? 1 : 0) + (sendToJpcert ? 1 : 0)}通のメールを送信
+              合計: {activeThreats.length}件の脅威 → {registrarGroups.length + (sendToPolice ? 1 : 0) + (sendToJpcert ? 1 : 0)}通のメール{sendToBrowser && browserProviders.length > 0 ? ` + ブラウザ報告（${browserProviders.length}社）` : ''}を送信
             </div>
           </div>
 
