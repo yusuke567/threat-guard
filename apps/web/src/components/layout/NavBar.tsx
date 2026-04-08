@@ -47,6 +47,7 @@ export default function NavBar() {
     || (isSuperAdmin && (
       isActive(pathname, { href: '/admin/organizations', label: '' })
       || isActive(pathname, { href: '/admin/activity-logs', label: '' })
+      || isActive(pathname, { href: '/admin/system', label: '' })
     ));
 
   // 外側クリックでドロップダウンを閉じる
@@ -138,6 +139,13 @@ export default function NavBar() {
                     >
                       アクティビティログ
                     </a>
+                    <a
+                      href="/admin/system"
+                      className={dropdownLinkClass({ href: '/admin/system', label: 'システム管理' })}
+                      onClick={() => setSettingsOpen(false)}
+                    >
+                      システム管理
+                    </a>
                   </>
                 )}
 
@@ -222,6 +230,12 @@ export default function NavBar() {
                   className={mobileLinkClass({ href: '/admin/activity-logs', label: 'アクティビティログ' })}
                 >
                   アクティビティログ
+                </a>
+                <a
+                  href="/admin/system"
+                  className={mobileLinkClass({ href: '/admin/system', label: 'システム管理' })}
+                >
+                  システム管理
                 </a>
               </>
             )}

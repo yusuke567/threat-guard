@@ -126,6 +126,11 @@ export const getScans = (brandId?: string) => {
   const query = brandId ? `?brandId=${brandId}` : '';
   return fetchAPI<any[]>(`/scans${query}`);
 };
+export const triggerWhoisBackfill = (limit = 50, delay = 2000) =>
+  fetchAPI<{ message: string; processing: number; totalMissing: number }>(
+    `/scans/backfill-whois?limit=${limit}&delay=${delay}`,
+    { method: 'POST' },
+  );
 
 // Takedowns
 export const generateTakedown = (detectedDomainId: string) =>
