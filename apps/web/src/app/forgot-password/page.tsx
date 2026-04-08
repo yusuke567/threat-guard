@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Button, Card, Alert } from '@/components/ui';
+import { Button, Card, Alert, ShieldLogo } from '@/components/ui';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-surface-base flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <span className="text-5xl">🛡️</span>
+          <ShieldLogo size={48} />
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mt-4">ThreatGuard</h1>
           <p className="text-[var(--text-secondary)] mt-1">パスワードの再設定</p>
         </div>

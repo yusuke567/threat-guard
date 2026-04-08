@@ -191,7 +191,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 app.listen(Number(port), '0.0.0.0', () => {
-  console.log(`🛡️  ThreatGuard API running on http://0.0.0.0:${port}`);
+  console.log(`[ThreatGuard] API running on http://0.0.0.0:${port}`);
   startScheduler();
 });
 

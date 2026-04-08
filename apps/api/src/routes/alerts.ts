@@ -91,7 +91,7 @@ router.post('/test-email', async (req, res) => {
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
 <tr><td style="background:#1e293b;padding:20px 24px;">
-  <h1 style="margin:0;color:#fff;font-size:18px;">🛡️ ThreatGuard</h1>
+  <h1 style="margin:0;color:#fff;font-size:18px;"><img src="https://app.threatguard.jp/favicon.svg" width="20" height="20" style="vertical-align:middle;margin-right:6px;" alt="" />ThreatGuard</h1>
 </td></tr>
 <tr><td style="padding:24px;">
   <h2 style="margin:0 0 12px;color:#1e293b;">✅ メール送信テスト成功</h2>

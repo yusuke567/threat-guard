@@ -229,7 +229,7 @@ export async function notifyScanSummary(
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `🛡️ *スキャン完了: ${brandName}*\n• 新規脅威: *${newThreats}*\n• 高リスク (≥80): *${highRiskCount}*`,
+          text: `*[ThreatGuard] スキャン完了: ${brandName}*\n• 新規脅威: *${newThreats}*\n• 高リスク (≥80): *${highRiskCount}*`,
         },
       },
     ],

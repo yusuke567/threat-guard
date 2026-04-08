@@ -6,7 +6,7 @@ import Link from 'next/link';
 import ThreatTable from '@/components/ThreatTable';
 import Tooltip from '@/components/Tooltip';
 import { getThreats, getDashboardStats, getBrands } from '@/lib/api';
-import { PageHeader, Button, Card, Alert } from '@/components/ui';
+import { PageHeader, Button, Card, Alert, ShieldLogo } from '@/components/ui';
 
 type FilterState = {
   brandId: string;
@@ -143,7 +143,7 @@ export default function Dashboard() {
       {showGuide && (
         <Alert variant="info" className="p-5 relative">
           <button onClick={() => setShowGuide(false)} className="absolute top-3 right-3 text-blue-400 hover:text-blue-600 text-lg">✕</button>
-          <h2 className="font-bold text-blue-900 dark:text-blue-200 text-lg">🛡️ ThreatGuardへようこそ</h2>
+          <h2 className="font-bold text-blue-900 dark:text-blue-200 text-lg flex items-center gap-2"><ShieldLogo size={24} /> ThreatGuardへようこそ</h2>
           <p className="text-blue-700 dark:text-blue-300 text-sm mt-2 leading-relaxed">
             このダッシュボードでブランドのなりすまし脅威を監視・管理できます。
           </p>

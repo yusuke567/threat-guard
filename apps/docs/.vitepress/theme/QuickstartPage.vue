@@ -36,7 +36,7 @@ const steps: Step[] = [
   },
   {
     number: 3,
-    icon: '🛡️',
+    icon: '✓',
     title: '保護対象ブランドの登録',
     description: 'フィッシング攻撃から守りたいブランドを登録',
     details: [

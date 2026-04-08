@@ -12,7 +12,7 @@ import {
 import { RiskBadgeFull } from '@/components/RiskBadge';
 import GlossaryTerm from '@/components/GlossaryTerm';
 import Image from 'next/image';
-import { Button, useToast } from '@/components/ui';
+import { Button, useToast, ShieldLogo } from '@/components/ui';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -777,7 +777,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
             className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
           >
             <div className="flex items-center gap-3">
-              <span className="text-xl">🛡️</span>
+              <ShieldLogo size={24} />
               <div className="text-left">
                 <h3 className="font-medium text-[var(--text-primary)]">ブラウザ削除申請</h3>
                 <p className="text-xs text-[var(--text-secondary)]">Google Safe Browsing / Microsoft SmartScreen</p>
@@ -959,7 +959,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
               className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="text-xl">🛡️</span>
+                <ShieldLogo size={24} />
                 <div className="text-left">
                   <h3 className="font-medium text-[var(--text-primary)]">JPCERT/CCへのフィッシング報告</h3>
                   <p className="text-xs text-[var(--text-secondary)]">日本のセキュリティインシデント対応機関</p>
@@ -1080,7 +1080,7 @@ function BrowserReportSection({ threat }: { threat: any }) {
   return (
     <div className="bg-surface-card rounded-xl border border-[var(--border-default)] p-6">
       <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-        🛡️ ブラウザ削除申請
+        <ShieldLogo size={20} /> ブラウザ削除申請
       </h2>
       <p className="text-sm text-[var(--text-secondary)] mb-4">
         ブラウザのフィッシング保護機能にこのURLを報告し、ユーザーがアクセスした際に警告を表示させます。

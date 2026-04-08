@@ -1,4 +1,4 @@
-# ThreatGuard 🛡️
+# ThreatGuard
 
 ブランドなりすまし検知・テイクダウン支援SaaS
 

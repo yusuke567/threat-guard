@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBulkAbuseContacts, generateBatchTemplate, submitBatchTakedown } from '@/lib/api';
-import { Button } from '@/components/ui';
+import { Button, ShieldLogo } from '@/components/ui';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface ThreatInfo {
@@ -550,7 +550,7 @@ export default function TakedownRequestPage() {
                   />
                   <div className="flex-1">
                     <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
-                      <span className="text-lg">🛡️</span>
+                      <ShieldLogo size={20} />
                       JPCERT/CCへのフィッシング報告
                     </h4>
                     <p className="text-xs text-[var(--text-secondary)] mt-1">
@@ -813,7 +813,7 @@ export default function TakedownRequestPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                    🛡️ {jpcertRecipient.name}
+                    <ShieldLogo size={18} className="inline-block" /> {jpcertRecipient.name}
                     <span className="text-sm font-normal text-[var(--text-secondary)]">({activeThreats.length}件)</span>
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)]">送信先: {jpcertRecipient.email}</p>
@@ -976,7 +976,7 @@ export default function TakedownRequestPage() {
               <div className="border-b border-[var(--border-subtle)] py-4 last:border-0">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-medium text-[var(--text-primary)]">
-                    🛡️ {jpcertRecipient.name} — {activeThreats.length}件
+                    <ShieldLogo size={18} className="inline-block" /> {jpcertRecipient.name} — {activeThreats.length}件
                   </h3>
                   <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs font-bold">JPCERT報告</span>
                 </div>
