@@ -6,6 +6,7 @@ import { scanDomainVariations } from '../services/domain-generator.js';
 import { analyzeThreat } from '../services/threat-analyzer.js';
 import { calculateRiskScore } from '../services/risk-scorer.js';
 import { notifyNewThreat, notifyScanSummary } from '../services/slack-notifier.js';
+import { lookupWhois } from '../services/whois-lookup.js';
 
 const router = Router();
 
@@ -77,6 +78,52 @@ router.get('/', async (req, res) => {
     take: 50,
   });
   res.json(jobs);
+});
+
+/**
+ * POST /api/scans/backfill-whois
+ * 既存DetectedDomainのwhoisData未取得レコードにRDAPデータを一括補完。
+ * superadmin専用。
+ */
+router.post('/backfill-whois', async (req, res) => {
+  if (req.user?.role !== 'superadmin') {
+    return res.status(403).json({ error: 'superadmin権限が必要です。' });
+  }
+
+  const limit = Math.min(parseInt(String(req.query.limit) || '50', 10), 200);
+  const delayMs = parseInt(String(req.query.delay) || '2000', 10);
+
+  const targets = await prisma.detectedDomain.findMany({
+    where: { whoisData: null },
+    select: { id: true, domain: true },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+
+  const totalMissing = await prisma.detectedDomain.count({ where: { whoisData: null } });
+
+  // Run in background
+  (async () => {
+    let success = 0;
+    let failed = 0;
+    for (const target of targets) {
+      try {
+        const result = await lookupWhois(target.id);
+        if (result) success++;
+        else failed++;
+      } catch {
+        failed++;
+      }
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    console.log(`[BackfillWhois] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}`);
+  })();
+
+  res.status(202).json({
+    message: `${targets.length}件のWHOISバックフィルを開始しました（残り${totalMissing}件中）`,
+    processing: targets.length,
+    totalMissing,
+  });
 });
 
 export default router;
