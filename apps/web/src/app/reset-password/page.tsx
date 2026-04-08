@@ -155,7 +155,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-surface-base flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <ShieldLogo size={48} />
+          <ShieldLogo size={48} className="mx-auto" />
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mt-4">ThreatGuard</h1>
           <p className="text-[var(--text-secondary)] mt-1">パスワードの再設定</p>
         </div>
