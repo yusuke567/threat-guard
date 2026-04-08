@@ -9,6 +9,7 @@ import { emailNotifyNewThreat, emailNotifyScanSummary, emailNotifySiteChange } f
 import { probeDomain } from './web-prober.js';
 import { analyzeContent } from './content-analyzer.js';
 import { monitorTwitter } from './twitter-monitor.js';
+import { lookupWhois } from './whois-lookup.js';
 
 export async function runFullScan(brandId: string, brandName: string) {
   console.log(`[Scheduler] Starting scan for brand: ${brandName} (${brandId})`);
@@ -39,6 +40,9 @@ export async function runFullScan(brandId: string, brandName: string) {
 
       for (const domain of newDomains) {
         try {
+          // Fetch WHOIS/RDAP data before analysis (used by risk scorer)
+          await lookupWhois(domain.id);
+
           const analysis = await analyzeThreat(domain.id);
           const score = await calculateRiskScore(domain.id);
 

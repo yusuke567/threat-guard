@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js';
+import { extractRegistrableDomain } from './whois-lookup.js';
 
 interface AbuseContact {
   registrar: string;
@@ -49,14 +50,12 @@ function extractFromWhoisText(text: string): { registrar: string; abuseEmail: st
  * RDAP lookup via public RDAP bootstrap (works on any server, no CLI needed)
  */
 async function rdapLookup(domain: string): Promise<{ registrar: string; abuseEmail: string | null }> {
-  // Extract the registrable domain (last two parts)
-  const parts = domain.split('.');
-  const baseDomain = parts.length > 2 ? parts.slice(-2).join('.') : domain;
+  const baseDomain = extractRegistrableDomain(domain);
 
   const url = `https://rdap.org/domain/${baseDomain}`;
   const res = await fetch(url, {
     headers: { Accept: 'application/rdap+json' },
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!res.ok) throw new Error(`RDAP returned ${res.status}`);

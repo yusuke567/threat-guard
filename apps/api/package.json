@@ -28,6 +28,7 @@
     "playwright": "^1.41.0",
     "resend": "^6.9.3",
     "sharp": "^0.34.5",
+    "tldts": "^7.0.28",
     "zod": "^3.22.0"
   },
   "devDependencies": {

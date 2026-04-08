@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { prisma } from '../lib/prisma.js';
 import { anthropic } from '../lib/anthropic.js';
+import { lookupWhoisRaw } from './whois-lookup.js';
 
 const DATA_DIR = process.env.DATA_DIR || process.cwd();
 const SCREENSHOTS_DIR = path.join(DATA_DIR, 'screenshots');
@@ -213,6 +214,13 @@ export async function runFreeDiagnosis(diagnosisId: string): Promise<void> {
           console.error(`[FreeDiagnosis] Error closing browser:`, closeErr);
         }
       }
+    }
+
+    // 2.5. WHOIS/RDAP lookup
+    try {
+      whoisData = await lookupWhoisRaw(domain);
+    } catch (whoisErr) {
+      console.error(`[FreeDiagnosis] WHOIS lookup failed for ${domain}:`, whoisErr);
     }
 
     // 3. AI analysis with Claude

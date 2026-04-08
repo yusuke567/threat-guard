@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { lookupWhois } from '../services/whois-lookup.js';
 
 const router = Router();
 
@@ -344,6 +345,11 @@ router.post('/phishing-patterns/:id/apply', async (req, res) => {
     await prisma.phishingPattern.update({
       where: { id: pattern.id },
       data: { status: 'rule_created' },
+    });
+
+    // WHOIS/RDAPデータを取得
+    lookupWhois(detectedDomain.id).catch((err) => {
+      console.error(`[PhishingPatterns] WHOIS lookup failed for ${pattern.domain}:`, err);
     });
 
     // グローバル検知ルールにも登録（他社にも適用されるよう）
