@@ -174,7 +174,7 @@ router.post('/brands/:brandId/phishing-patterns/import-csv', async (req, res) =>
     const brand = await verifyBrandOrg(brandId, orgId, isSuperadmin);
     if (!brand) return res.status(404).json({ error: '指定されたブランドが見つかりません。' });
 
-    const { csv } = req.body;
+    const { csv, autoApply = true } = req.body;
     if (!csv || typeof csv !== 'string') {
       return res.status(400).json({ error: 'CSVデータが必要です。' });
     }
@@ -214,6 +214,7 @@ router.post('/brands/:brandId/phishing-patterns/import-csv', async (req, res) =>
 
     const created: any[] = [];
     const errors: { line: number; message: string }[] = [];
+    let applied = 0;
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -287,6 +288,41 @@ router.post('/brands/:brandId/phishing-patterns/import-csv', async (req, res) =>
           },
         });
         created.push(pattern);
+
+        // Auto-apply: DetectedDomainに登録 + GlobalDetectionRule更新
+        if (autoApply && pattern.domain) {
+          try {
+            const existingDomain = await prisma.detectedDomain.findFirst({
+              where: { brandId, domain: pattern.domain },
+            });
+
+            if (existingDomain) {
+              applied++;
+            } else {
+              const detectedDomain = await prisma.detectedDomain.create({
+                data: {
+                  brandId,
+                  domain: pattern.domain,
+                  source: 'user_report',
+                  status: 'confirmed_threat',
+                },
+              });
+              lookupWhois(detectedDomain.id).catch((err) => {
+                console.error(`[CSV Import] WHOIS lookup failed for ${pattern.domain}:`, err);
+              });
+              applied++;
+            }
+
+            await prisma.phishingPattern.update({
+              where: { id: pattern.id },
+              data: { status: 'rule_created' },
+            });
+
+            await upsertGlobalDetectionRule(pattern);
+          } catch (applyErr) {
+            console.error(`[CSV Import] Auto-apply failed for ${pattern.domain}:`, applyErr);
+          }
+        }
       } catch (err) {
         errors.push({ line: i + 1, message: '登録エラー' });
       }
@@ -295,6 +331,7 @@ router.post('/brands/:brandId/phishing-patterns/import-csv', async (req, res) =>
     res.json({
       success: true,
       created: created.length,
+      applied,
       errors: errors.length,
       errorDetails: errors.slice(0, 10), // Return first 10 errors
     });

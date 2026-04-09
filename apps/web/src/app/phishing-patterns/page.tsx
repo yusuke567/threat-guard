@@ -38,6 +38,7 @@ export default function PhishingPatternsPage() {
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvText, setCsvText] = useState('');
   const [csvImporting, setCsvImporting] = useState(false);
+  const [csvAutoApply, setCsvAutoApply] = useState(true);
   const [form, setForm] = useState({
     reportedBy: '',
     patternType: 'domain_spoof',
@@ -99,8 +100,11 @@ export default function PhishingPatternsPage() {
     if (!selectedBrand || !csvText.trim()) return;
     setCsvImporting(true);
     try {
-      const result = await importPhishingPatternsCSV(selectedBrand, csvText);
-      toast.success(`インポート完了: ${result.created}件登録${result.errors > 0 ? `、${result.errors}件エラー` : ''}`);
+      const result = await importPhishingPatternsCSV(selectedBrand, csvText, csvAutoApply);
+      const parts = [`${result.created}件登録`];
+      if (result.applied > 0) parts.push(`${result.applied}件適用`);
+      if (result.errors > 0) parts.push(`${result.errors}件エラー`);
+      toast.success(`インポート完了: ${parts.join('、')}`);
       setShowCsvImport(false);
       setCsvText('');
       reload();
@@ -300,6 +304,15 @@ email,,,不審なメール報告,medium,0`}
               onChange={(e) => setCsvText(e.target.value)}
             />
           </div>
+          <label className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
+            <input
+              type="checkbox"
+              checked={csvAutoApply}
+              onChange={(e) => setCsvAutoApply(e.target.checked)}
+              className="rounded border-[var(--border-default)]"
+            />
+            登録と同時に検知ドメインに適用（脅威確定として登録）
+          </label>
           <div className="flex gap-2">
             <Button
               onClick={handleCsvImport}
