@@ -92,15 +92,17 @@ router.post('/backfill-whois', async (req, res) => {
 
   const limit = Math.min(parseInt(String(req.query.limit) || '50', 10), 200);
   const delayMs = parseInt(String(req.query.delay) || '2000', 10);
+  const refresh = req.query.refresh === 'true';
 
+  const where = refresh ? {} : { whoisData: null };
   const targets = await prisma.detectedDomain.findMany({
-    where: { whoisData: null },
+    where,
     select: { id: true, domain: true },
     orderBy: { createdAt: 'desc' },
     take: limit,
   });
 
-  const totalMissing = await prisma.detectedDomain.count({ where: { whoisData: null } });
+  const totalTarget = await prisma.detectedDomain.count({ where });
 
   // Run in background
   (async () => {
@@ -108,7 +110,7 @@ router.post('/backfill-whois', async (req, res) => {
     let failed = 0;
     for (const target of targets) {
       try {
-        const result = await lookupWhois(target.id);
+        const result = await lookupWhois(target.id, { force: refresh });
         if (result) success++;
         else failed++;
       } catch {
@@ -116,13 +118,16 @@ router.post('/backfill-whois', async (req, res) => {
       }
       await new Promise((r) => setTimeout(r, delayMs));
     }
-    console.log(`[BackfillWhois] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}`);
+    console.log(
+      `[BackfillWhois] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}, refresh=${refresh}`,
+    );
   })();
 
   res.status(202).json({
-    message: `${targets.length}件のWHOISバックフィルを開始しました（残り${totalMissing}件中）`,
+    message: `${targets.length}件のWHOIS${refresh ? 'リフレッシュ' : 'バックフィル'}を開始しました（全${totalTarget}件中）`,
     processing: targets.length,
-    totalMissing,
+    totalTarget,
+    refresh,
   });
 });
 

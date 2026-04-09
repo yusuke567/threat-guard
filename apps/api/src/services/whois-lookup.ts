@@ -139,13 +139,16 @@ async function fetchRdap(domain: string): Promise<WhoisResult> {
  * Lookup WHOIS/RDAP data for a detected domain and save it to the database.
  * Returns the parsed result, or null if lookup failed.
  */
-export async function lookupWhois(detectedDomainId: string): Promise<WhoisResult | null> {
+export async function lookupWhois(
+  detectedDomainId: string,
+  options?: { force?: boolean },
+): Promise<WhoisResult | null> {
   const domain = await prisma.detectedDomain.findUniqueOrThrow({
     where: { id: detectedDomainId },
   });
 
-  // Skip if whoisData is already populated
-  if (domain.whoisData) {
+  // Skip if whoisData is already populated (unless force refresh)
+  if (domain.whoisData && !options?.force) {
     return null;
   }
 
