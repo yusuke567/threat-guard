@@ -358,15 +358,17 @@ email,,,不審なメール報告,medium,0`}
                       {p.status === 'new' && (
                         <button
                           onClick={() => handleStatusChange(p.id, 'confirmed')}
-                          className="px-2 py-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100"
+                          className="px-2 py-1 text-xs bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                          title="報告内容を確認済みとしてマーク"
                         >
-                          確認
+                          確認済にする
                         </button>
                       )}
                       {p.domain && p.status !== 'rule_created' && (
                         <button
                           onClick={() => handleApply(p.id)}
-                          className="px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded hover:bg-purple-100"
+                          className="px-2 py-1 text-xs bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
+                          title="このドメインを検知ルールに追加"
                         >
                           検知反映
                         </button>
@@ -374,16 +376,18 @@ email,,,不審なメール報告,medium,0`}
                       {p.status !== 'archived' && (
                         <button
                           onClick={() => handleStatusChange(p.id, 'archived')}
-                          className="px-2 py-1 text-xs bg-surface-base text-[var(--text-secondary)] rounded hover:bg-surface-elevated"
+                          className="px-2 py-1 text-xs bg-surface-base text-[var(--text-secondary)] rounded hover:bg-surface-elevated transition-colors"
+                          title="この報告をアーカイブ"
                         >
-                          📦
+                          アーカイブ
                         </button>
                       )}
                       <button
                         onClick={() => handleDelete(p.id)}
-                        className="px-2 py-1 text-xs bg-red-50 dark:bg-red-900/30 text-red-600 rounded hover:bg-red-100"
+                        className="px-2 py-1 text-xs bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                        title="この報告を削除"
                       >
-                        🗑
+                        削除
                       </button>
                     </div>
                   </td>
