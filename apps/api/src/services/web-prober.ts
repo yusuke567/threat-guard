@@ -119,6 +119,7 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
   let htmlSnippet: string | null = null;
   let headers: string | null = null;
   let screenshotPath: string | null = null;
+  let sslInfo: string | null = null;
   let error: string | null = null;
 
   // 1. DNS resolution
@@ -155,12 +156,14 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     });
 
     let response;
+    let httpsResponse; // Keep HTTPS response separately for SSL extraction
     try {
       console.log(`[WebProber] Trying HTTPS for ${domain.domain}`);
       response = await page.goto(`https://${domain.domain}`, {
         waitUntil: 'domcontentloaded',
         timeout: 45000,
       });
+      httpsResponse = response;
       // Wait for additional rendering
       await page.waitForTimeout(2000);
     } catch (httpsErr: any) {
@@ -197,6 +200,28 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
         const html = await page.content();
         htmlSnippet = html.slice(0, 5000);
       } catch { /* ignore */ }
+    }
+
+    // Extract SSL certificate info from HTTPS response
+    const sslSource = httpsResponse ?? response;
+    if (sslSource) {
+      try {
+        const securityDetails = await sslSource.securityDetails();
+        if (securityDetails) {
+          sslInfo = JSON.stringify({
+            issuer: securityDetails.issuer,
+            protocol: securityDetails.protocol,
+            subjectName: securityDetails.subjectName,
+            validFrom: securityDetails.validFrom,
+            validTo: securityDetails.validTo,
+          });
+          console.log(`[WebProber] SSL info extracted for ${domain.domain}: issuer=${securityDetails.issuer}`);
+        } else {
+          console.log(`[WebProber] No SSL certificate available for ${domain.domain}`);
+        }
+      } catch (sslErr: any) {
+        console.log(`[WebProber] SSL extraction failed for ${domain.domain}: ${sslErr.message}`);
+      }
     }
 
     // Screenshot — always attempt, even after timeout (captures partial page)
@@ -260,11 +285,15 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     },
   });
 
-  // Update screenshot on DetectedDomain if we got one
-  if (screenshotPath) {
+  // Update DetectedDomain with screenshot and SSL info
+  const domainUpdate: Record<string, unknown> = {};
+  if (screenshotPath) domainUpdate.screenshotUrl = screenshotPath;
+  if (sslInfo) domainUpdate.sslInfo = sslInfo;
+
+  if (Object.keys(domainUpdate).length > 0) {
     await prisma.detectedDomain.update({
       where: { id: detectedDomainId },
-      data: { screenshotUrl: screenshotPath },
+      data: domainUpdate,
     });
   }
 
