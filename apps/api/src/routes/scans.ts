@@ -138,7 +138,7 @@ router.post('/backfill-whois', async (req, res) => {
 
 /**
  * POST /api/scans/backfill-geocode
- * 既存WebProbeのcountryCode未取得レコードにIPジオロケーションを一括補完。
+ * ユニークIPごとにジオロケーションを取得し、同一IPのWebProbeを一括更新。
  * superadmin専用。
  */
 router.post('/backfill-geocode', async (req, res) => {
@@ -147,42 +147,44 @@ router.post('/backfill-geocode', async (req, res) => {
   }
 
   const limit = Math.min(parseInt(String(req.query.limit) || '100', 10), 500);
-  const offset = Math.max(parseInt(String(req.query.offset) || '0', 10), 0);
 
-  const targets = await prisma.webProbe.findMany({
-    where: { countryCode: null, ip: { not: null } },
-    select: { id: true, ip: true },
-    orderBy: { probeAt: 'desc' },
-    take: limit,
-    skip: offset,
-  });
+  // Get unique IPs that have no countryCode
+  const uniqueIps: { ip: string }[] = await prisma.$queryRaw`
+    SELECT DISTINCT ip FROM "WebProbe"
+    WHERE "countryCode" IS NULL AND ip IS NOT NULL
+    LIMIT ${limit}
+  `;
 
-  const totalMissing = await prisma.webProbe.count({
-    where: { countryCode: null, ip: { not: null } },
-  });
+  const totalUniqueIps: [{ count: bigint }] = await prisma.$queryRaw`
+    SELECT COUNT(DISTINCT ip) as count FROM "WebProbe"
+    WHERE "countryCode" IS NULL AND ip IS NOT NULL
+  `;
 
   res.status(202).json({
-    message: `${targets.length}件のジオコード補完を開始しました（残り${totalMissing}件）`,
-    processing: targets.length,
-    totalMissing,
+    message: `${uniqueIps.length}件のユニークIPのジオコード補完を開始しました（残り${totalUniqueIps[0].count}件）`,
+    processing: uniqueIps.length,
+    totalUniqueIps: Number(totalUniqueIps[0].count),
   });
 
   // Run in background — ip-api.com free tier: 45 req/min
   (async () => {
     let success = 0;
     let failed = 0;
-    for (const target of targets) {
+    let probesUpdated = 0;
+    for (const { ip } of uniqueIps) {
       try {
-        const geoRes = await fetch(`http://ip-api.com/json/${target.ip}?fields=countryCode`, {
+        const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode`, {
           signal: AbortSignal.timeout(5_000),
         });
         if (geoRes.ok) {
           const geo = await geoRes.json();
           if (geo.countryCode) {
-            await prisma.webProbe.update({
-              where: { id: target.id },
+            // Update ALL WebProbes with this IP at once
+            const result = await prisma.webProbe.updateMany({
+              where: { ip, countryCode: null },
               data: { countryCode: geo.countryCode },
             });
+            probesUpdated += result.count;
             success++;
           } else {
             failed++;
@@ -196,7 +198,7 @@ router.post('/backfill-geocode', async (req, res) => {
       // ip-api.com rate limit: 45/min → ~1.3s interval
       await new Promise((r) => setTimeout(r, 1400));
     }
-    console.log(`[BackfillGeocode] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}`);
+    console.log(`[BackfillGeocode] 完了: IP=${success}成功/${failed}失敗, Probe更新=${probesUpdated}件`);
   })();
 });
 
