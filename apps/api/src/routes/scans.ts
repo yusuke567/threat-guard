@@ -112,7 +112,7 @@ router.post('/backfill-whois', async (req, res) => {
     let failed = 0;
     for (const target of targets) {
       try {
-        const result = await lookupWhois(target.id, { force: refresh });
+        const result = await lookupWhois(target.id, { force: refresh, markFailures: true });
         if (result) success++;
         else failed++;
       } catch {

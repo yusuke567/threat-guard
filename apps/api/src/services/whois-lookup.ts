@@ -141,7 +141,7 @@ async function fetchRdap(domain: string): Promise<WhoisResult> {
  */
 export async function lookupWhois(
   detectedDomainId: string,
-  options?: { force?: boolean },
+  options?: { force?: boolean; markFailures?: boolean },
 ): Promise<WhoisResult | null> {
   const domain = await prisma.detectedDomain.findUniqueOrThrow({
     where: { id: detectedDomainId },
@@ -174,7 +174,22 @@ export async function lookupWhois(
     console.log(`[WhoisLookup] ${domain.domain}: registrar=${result.registrar}`);
     return result;
   } catch (err) {
-    console.error(`[WhoisLookup] Failed for ${domain.domain}:`, err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[WhoisLookup] Failed for ${domain.domain}: ${errMsg}`);
+
+    // Save failure marker so the domain is not retried in next batch
+    if (options?.markFailures) {
+      const failJson = {
+        error: errMsg,
+        fetchedAt: new Date().toISOString(),
+        source: 'rdap_failed',
+      };
+      await prisma.detectedDomain.update({
+        where: { id: detectedDomainId },
+        data: { whoisData: JSON.stringify(failJson) },
+      });
+    }
+
     return null;
   }
 }
