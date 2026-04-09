@@ -104,7 +104,13 @@ router.post('/backfill-whois', async (req, res) => {
     skip: offset,
   });
 
-  const totalTarget = await prisma.detectedDomain.count({ where });
+  // Return response immediately, count in background
+  res.status(202).json({
+    message: `${targets.length}件のWHOIS${refresh ? 'リフレッシュ' : 'バックフィル'}を開始しました`,
+    processing: targets.length,
+    offset,
+    refresh,
+  });
 
   // Run in background
   (async () => {
@@ -124,14 +130,6 @@ router.post('/backfill-whois', async (req, res) => {
       `[BackfillWhois] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}, refresh=${refresh}`,
     );
   })();
-
-  res.status(202).json({
-    message: `${targets.length}件のWHOIS${refresh ? 'リフレッシュ' : 'バックフィル'}を開始しました（全${totalTarget}件中）`,
-    processing: targets.length,
-    totalTarget,
-    offset,
-    refresh,
-  });
 });
 
 export default router;
