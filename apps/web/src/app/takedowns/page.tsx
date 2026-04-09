@@ -11,6 +11,7 @@ const statusLabels: Record<string, string> = {
   awaiting_response: '🟡 回答待ち',
   completed: '🟢 削除完了',
   rejected: '🔴 却下',
+  no_email: '⚪ 未申請（送信先不明）',
 };
 
 const statusColors: Record<string, string> = {
@@ -19,6 +20,7 @@ const statusColors: Record<string, string> = {
   awaiting_response: 'bg-yellow-100 text-yellow-800',
   completed: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
+  no_email: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200',
 };
 
 function daysSince(date: string): number {
@@ -59,13 +61,14 @@ export default function TakedownsPage() {
 
       {/* Summary Cards */}
       {data?.summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
           {[
             { key: 'total', label: '全件', color: 'bg-gray-50 dark:bg-gray-900 border-[var(--border-default)]', textColor: 'text-[var(--text-primary)]' },
             { key: 'sent', label: '送信済み', color: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800', textColor: 'text-blue-700 dark:text-blue-300' },
             { key: 'awaiting_response', label: '回答待ち', color: 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800', textColor: 'text-yellow-700 dark:text-yellow-300' },
             { key: 'completed', label: '削除完了', color: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800', textColor: 'text-green-700 dark:text-green-300' },
             { key: 'rejected', label: '却下', color: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800', textColor: 'text-red-700 dark:text-red-300' },
+            { key: 'no_email', label: '送信先不明', color: 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800', textColor: 'text-orange-700 dark:text-orange-300' },
           ].map(({ key, label, color, textColor }) => (
             <button
               key={key}

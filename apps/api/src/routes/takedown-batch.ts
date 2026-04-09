@@ -90,8 +90,15 @@ router.post('/', async (req, res) => {
       recipientType: z.enum(['registrar', 'police', 'jpcert']).default('registrar'),
       recipientName: z.string().optional(),
     });
+    const skippedItemSchema = z.object({
+      threatId: z.string().uuid(),
+      registrar: z.string(),
+    });
     const schema = z.object({
-      items: z.array(itemSchema).min(1).max(100),
+      items: z.array(itemSchema).max(100).default([]),
+      skippedItems: z.array(skippedItemSchema).max(100).default([]),
+    }).refine((data) => data.items.length > 0 || data.skippedItems.length > 0, {
+      message: '送信アイテムまたはスキップアイテムが1件以上必要です',
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -99,21 +106,26 @@ router.post('/', async (req, res) => {
     const brandIds = await orgBrandIds(req);
 
     // Verify all threats belong to org
-    const threatIds = parsed.data.items.map((i) => i.threatId);
+    const allThreatIds = [
+      ...parsed.data.items.map((i) => i.threatId),
+      ...parsed.data.skippedItems.map((i) => i.threatId),
+    ];
+    const uniqueThreatIds = [...new Set(allThreatIds)];
     const threats = await prisma.detectedDomain.findMany({
-      where: { id: { in: threatIds }, brandId: { in: brandIds } },
+      where: { id: { in: uniqueThreatIds }, brandId: { in: brandIds } },
       include: { brand: { include: { organization: true } }, analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 } },
     });
     const threatMap = new Map(threats.map((t) => [t.id, t]));
 
-    const missingIds = threatIds.filter((id) => !threatMap.has(id));
+    const missingIds = uniqueThreatIds.filter((id) => !threatMap.has(id));
     if (missingIds.length > 0) {
       return res.status(404).json({ error: `脅威が見つかりません: ${missingIds.join(', ')}` });
     }
 
     // Create batch
+    const totalCount = parsed.data.items.length + parsed.data.skippedItems.length;
     const batch = await prisma.takedownBatch.create({
-      data: { totalCount: parsed.data.items.length, status: 'draft' },
+      data: { totalCount, status: 'draft' },
     });
 
     // Create individual takedown requests
@@ -144,6 +156,26 @@ router.post('/', async (req, res) => {
         },
       });
       requests.push(takedown);
+    }
+
+    // Create skipped takedown requests (no_email status)
+    let skippedCount = 0;
+    for (const item of parsed.data.skippedItems) {
+      await prisma.takedownRequest.create({
+        data: {
+          detectedDomainId: item.threatId,
+          batchId: batch.id,
+          recipientType: 'registrar',
+          recipientName: item.registrar,
+          registrar: item.registrar,
+          abuseEmail: null,
+          template: '',
+          language: 'ja',
+          evidenceTypes: '',
+          status: 'no_email',
+        },
+      });
+      skippedCount++;
     }
 
     // Send emails
@@ -179,6 +211,7 @@ router.post('/', async (req, res) => {
       batchId: batch.id,
       totalCount: requests.length,
       sentCount,
+      skippedCount,
       errors,
     });
   } catch (err: any) {
@@ -261,6 +294,7 @@ router.get('/', async (req, res) => {
       awaiting_response: allTakedowns.filter((t) => t.status === 'awaiting_response').length,
       completed: allTakedowns.filter((t) => t.status === 'completed').length,
       rejected: allTakedowns.filter((t) => t.status === 'rejected').length,
+      no_email: allTakedowns.filter((t) => t.status === 'no_email').length,
     };
 
     res.json({

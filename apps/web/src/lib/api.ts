@@ -175,10 +175,10 @@ export const deletePhishingPattern = (id: string) =>
   fetchAPI<void>(`/phishing-patterns/${id}`, { method: 'DELETE' });
 export const applyPhishingPattern = (id: string) =>
   fetchAPI<any>(`/phishing-patterns/${id}/apply`, { method: 'POST' });
-export const importPhishingPatternsCSV = (brandId: string, csv: string) =>
-  fetchAPI<{ success: boolean; created: number; errors: number; errorDetails: { line: number; message: string }[] }>(
+export const importPhishingPatternsCSV = (brandId: string, csv: string, autoApply = true) =>
+  fetchAPI<{ success: boolean; created: number; applied: number; errors: number; errorDetails: { line: number; message: string }[] }>(
     `/brands/${brandId}/phishing-patterns/import-csv`,
-    { method: 'POST', body: JSON.stringify({ csv }) }
+    { method: 'POST', body: JSON.stringify({ csv, autoApply }) }
   );
 
 // Abuse contacts
@@ -192,8 +192,11 @@ export const getBulkAbuseContacts = (threatIds: string[]) =>
 export const generateBatchTemplate = (data: { threatIds: string[]; abuseEmail: string; registrar: string; language: string; recipientType?: string }) =>
   fetchAPI<{ template: string; language: string }>('/takedown-batches/generate-template', { method: 'POST', body: JSON.stringify(data) });
 
-export const submitBatchTakedown = (items: Array<{ threatId: string; abuseEmail: string; template: string; language: string; evidenceTypes: string; recipientType?: string; recipientName?: string }>) =>
-  fetchAPI<{ batchId: string; totalCount: number; sentCount: number; errors: any[] }>('/takedown-batches', { method: 'POST', body: JSON.stringify({ items }) });
+export const submitBatchTakedown = (
+  items: Array<{ threatId: string; abuseEmail: string; template: string; language: string; evidenceTypes: string; recipientType?: string; recipientName?: string }>,
+  skippedItems?: Array<{ threatId: string; registrar: string }>,
+) =>
+  fetchAPI<{ batchId: string; totalCount: number; sentCount: number; skippedCount: number; errors: any[] }>('/takedown-batches', { method: 'POST', body: JSON.stringify({ items, skippedItems }) });
 
 export const getTakedowns = (params?: Record<string, string>) => {
   const query = params ? '?' + new URLSearchParams(params).toString() : '';

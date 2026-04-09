@@ -276,9 +276,22 @@ export default function TakedownRequestPage() {
       const items: Array<{ threatId: string; abuseEmail: string; template: string; language: string; evidenceTypes: string; recipientType?: string; recipientName?: string }> = [];
 
       // Registrar items
+      const skippedItems: Array<{ threatId: string; registrar: string }> = [];
+      const skippedRegistrars: Array<{ registrar: string; domains: string[] }> = [];
       for (const g of registrarGroups) {
         const email = g.abuseEmail || g.manualEmail;
-        if (!email || !g.template) continue;
+        if (!email || !g.template) {
+          // Track skipped groups (no email)
+          if (!email) {
+            const domains: string[] = [];
+            for (const t of g.threats) {
+              skippedItems.push({ threatId: t.threatId, registrar: g.registrar });
+              domains.push(t.domain);
+            }
+            skippedRegistrars.push({ registrar: g.registrar, domains });
+          }
+          continue;
+        }
         for (const t of g.threats) {
           items.push({
             threatId: t.threatId,
@@ -321,7 +334,7 @@ export default function TakedownRequestPage() {
         }
       }
 
-      if (items.length === 0 && !(sendToBrowser && browserProviders.length > 0)) {
+      if (items.length === 0 && skippedItems.length === 0 && !(sendToBrowser && browserProviders.length > 0)) {
         setError('送信可能な申請がありません。送信先メールアドレスと文面を確認してください。');
         setSending(false);
         return;
@@ -329,7 +342,7 @@ export default function TakedownRequestPage() {
 
       // Send takedown emails and browser reports in parallel
       const [takedownRes, browserRes] = await Promise.all([
-        items.length > 0 ? submitBatchTakedown(items) : null,
+        (items.length > 0 || skippedItems.length > 0) ? submitBatchTakedown(items, skippedItems) : null,
         sendToBrowser && browserProviders.length > 0
           ? submitBulkBrowserReports(activeThreats.map((t) => t.threatId), browserProviders).catch((err: any) => ({
               results: [],
@@ -339,7 +352,7 @@ export default function TakedownRequestPage() {
           : null,
       ]);
 
-      setResult({ ...takedownRes, browserReport: browserRes });
+      setResult({ ...takedownRes, browserReport: browserRes, skippedRegistrars });
       sessionStorage.removeItem('takedown_threat_ids');
     } catch (err: any) {
       setError(err.message);
@@ -385,6 +398,24 @@ export default function TakedownRequestPage() {
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-left mb-6">
               <p className="text-sm font-medium text-red-800 mb-2">⚠️ ブラウザ報告でエラーが発生しました:</p>
               <p className="text-sm text-red-600">{result.browserReport.error}</p>
+            </div>
+          )}
+          {result.skippedRegistrars?.length > 0 && (
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-700 rounded-lg p-4 text-left mb-6">
+              <p className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">
+                ⚠️ 送信先メールアドレスが不明のため、以下のレジストラへの削除申請は送信されていません:
+              </p>
+              <ul className="list-disc list-inside text-sm text-orange-700 dark:text-orange-300 space-y-1">
+                {result.skippedRegistrars.map((s: any, i: number) => (
+                  <li key={i}>
+                    <span className="font-medium">{s.registrar}</span>
+                    <span className="text-orange-600 dark:text-orange-400">（{s.domains.length}件: {s.domains.join(', ')}）</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                進捗一覧で「未申請（送信先不明）」として記録されています。送信先が判明次第、個別に申請してください。
+              </p>
             </div>
           )}
           <div className="flex gap-3 justify-center">
