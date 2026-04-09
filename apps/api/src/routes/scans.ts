@@ -136,4 +136,68 @@ router.post('/backfill-whois', async (req, res) => {
   })();
 });
 
+/**
+ * POST /api/scans/backfill-geocode
+ * 既存WebProbeのcountryCode未取得レコードにIPジオロケーションを一括補完。
+ * superadmin専用。
+ */
+router.post('/backfill-geocode', async (req, res) => {
+  if (req.user?.role !== 'superadmin') {
+    return res.status(403).json({ error: 'superadmin権限が必要です。' });
+  }
+
+  const limit = Math.min(parseInt(String(req.query.limit) || '100', 10), 500);
+  const offset = Math.max(parseInt(String(req.query.offset) || '0', 10), 0);
+
+  const targets = await prisma.webProbe.findMany({
+    where: { countryCode: null, ip: { not: null } },
+    select: { id: true, ip: true },
+    orderBy: { probeAt: 'desc' },
+    take: limit,
+    skip: offset,
+  });
+
+  const totalMissing = await prisma.webProbe.count({
+    where: { countryCode: null, ip: { not: null } },
+  });
+
+  res.status(202).json({
+    message: `${targets.length}件のジオコード補完を開始しました（残り${totalMissing}件）`,
+    processing: targets.length,
+    totalMissing,
+  });
+
+  // Run in background — ip-api.com free tier: 45 req/min
+  (async () => {
+    let success = 0;
+    let failed = 0;
+    for (const target of targets) {
+      try {
+        const geoRes = await fetch(`http://ip-api.com/json/${target.ip}?fields=countryCode`, {
+          signal: AbortSignal.timeout(5_000),
+        });
+        if (geoRes.ok) {
+          const geo = await geoRes.json();
+          if (geo.countryCode) {
+            await prisma.webProbe.update({
+              where: { id: target.id },
+              data: { countryCode: geo.countryCode },
+            });
+            success++;
+          } else {
+            failed++;
+          }
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+      // ip-api.com rate limit: 45/min → ~1.3s interval
+      await new Promise((r) => setTimeout(r, 1400));
+    }
+    console.log(`[BackfillGeocode] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}`);
+  })();
+});
+
 export default router;
