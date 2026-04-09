@@ -75,10 +75,10 @@ export default function TakedownRequestPage() {
   const [groups, setGroups] = useState<AbuseGroup[]>([]);
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
   const [policeRecipient, setPoliceRecipient] = useState<PoliceRecipient | null>(null);
-  const [sendToPolice, setSendToPolice] = useState(false);
+  const [sendToPolice, setSendToPolice] = useState(true);
   const [jpcertRecipient, setJpcertRecipient] = useState<JpcertRecipient | null>(null);
-  const [sendToJpcert, setSendToJpcert] = useState(false);
-  const [sendToBrowser, setSendToBrowser] = useState(false);
+  const [sendToJpcert, setSendToJpcert] = useState(true);
+  const [sendToBrowser, setSendToBrowser] = useState(true);
   const [browserProviders, setBrowserProviders] = useState<string[]>(['GOOGLE_SAFE_BROWSING', 'MICROSOFT_SMARTSCREEN']);
 
   // Step 3 result
@@ -189,16 +189,32 @@ export default function TakedownRequestPage() {
     evidenceTypes: string[];
   }>({ template: '', loading: false, language: 'ja', evidenceTypes: ['screenshot', 'whois'] });
 
-  // Step 2: Generate templates for all groups (parallel)
+  // Step 2: Generate templates for all groups
+  // Each API call updates state independently on completion (no Promise.all blocking)
   const generateTemplates = useCallback(async () => {
-    // 1. Set all groups to loading state at once
-    const updated = groups.map((g) => {
-      const activeInGroup = g.threats.filter((t) => !excludedIds.has(t.threatId));
-      const email = g.abuseEmail || g.manualEmail;
-      if (activeInGroup.length === 0 || !email) return g;
-      return { ...g, loading: true };
-    });
-    setGroups(updated);
+    const TIMEOUT_MS = 30_000;
+
+    // Helper: fetch with timeout
+    const fetchWithTimeout = async (data: Parameters<typeof generateBatchTemplate>[0]) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        const res = await generateBatchTemplate(data, { signal: controller.signal });
+        return res.template;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    // 1. Set all registrar groups to loading (functional update to avoid stale state)
+    const snapshot = [...groups]; // capture for API calls
+    setGroups((prev) =>
+      prev.map((g) => {
+        const active = g.threats.filter((t) => !excludedIds.has(t.threatId));
+        const email = g.abuseEmail || g.manualEmail;
+        return (active.length > 0 && email) ? { ...g, loading: true } : g;
+      }),
+    );
 
     if (sendToPolice && policeRecipient && activeThreats.length > 0) {
       setPoliceGroupState((prev) => ({ ...prev, loading: true }));
@@ -207,75 +223,72 @@ export default function TakedownRequestPage() {
       setJpcertGroupState((prev) => ({ ...prev, loading: true }));
     }
 
-    // 2. Fire all API calls in parallel
-    const registrarPromises = updated.map(async (g, i) => {
-      const activeInGroup = g.threats.filter((t) => !excludedIds.has(t.threatId));
+    // 2. Fire API calls — each one updates state independently on completion
+    for (let i = 0; i < snapshot.length; i++) {
+      const g = snapshot[i];
+      const active = g.threats.filter((t) => !excludedIds.has(t.threatId));
       const email = g.abuseEmail || g.manualEmail;
-      if (activeInGroup.length === 0 || !email) return null;
-      try {
-        const res = await generateBatchTemplate({
-          threatIds: activeInGroup.map((t) => t.threatId),
-          abuseEmail: email,
-          registrar: g.registrar,
-          language: g.language || 'ja',
-          recipientType: 'registrar',
-        });
-        return { index: i, template: res.template };
-      } catch {
-        return { index: i, template: '(テンプレート生成に失敗しました。手動で入力してください。)' };
-      }
-    });
+      if (active.length === 0 || !email) continue;
 
-    const policePromise = (sendToPolice && policeRecipient && activeThreats.length > 0)
-      ? generateBatchTemplate({
-          threatIds: activeThreats.map((t) => t.threatId),
-          abuseEmail: policeRecipient.email,
-          registrar: '',
-          language: 'ja',
-          recipientType: 'police',
-        }).then((res) => res.template).catch(() => '(テンプレート生成に失敗しました。手動で入力してください。)')
-      : null;
-
-    const jpcertPromise = (sendToJpcert && jpcertRecipient && activeThreats.length > 0)
-      ? generateBatchTemplate({
-          threatIds: activeThreats.map((t) => t.threatId),
-          abuseEmail: jpcertRecipient.email,
-          registrar: '',
-          language: 'ja',
-          recipientType: 'jpcert',
-        }).then((res) => res.template).catch(() => '(テンプレート生成に失敗しました。手動で入力してください。)')
-      : null;
-
-    // 3. Wait for all results and apply at once
-    const [registrarResults, policeTemplate, jpcertTemplate] = await Promise.all([
-      Promise.all(registrarPromises),
-      policePromise,
-      jpcertPromise,
-    ]);
-
-    // Apply registrar templates in a single state update
-    setGroups((prev) => {
-      const next = [...prev];
-      for (const result of registrarResults) {
-        if (result) {
-          next[result.index] = { ...next[result.index], template: result.template, loading: false };
-        }
-      }
-      return next;
-    });
-
-    if (policeTemplate !== null) {
-      setPoliceGroupState((prev) => ({ ...prev, template: policeTemplate, loading: false }));
+      const idx = i; // capture index for closure
+      fetchWithTimeout({
+        threatIds: active.map((t) => t.threatId),
+        abuseEmail: email,
+        registrar: g.registrar,
+        language: g.language || 'ja',
+        recipientType: 'registrar',
+      }).then((template) => {
+        setGroups((prev) => prev.map((p, j) => j === idx ? { ...p, template, loading: false } : p));
+      }).catch(() => {
+        setGroups((prev) => prev.map((p, j) =>
+          j === idx ? { ...p, template: '(テンプレート生成に失敗しました。手動で入力してください。)', loading: false } : p,
+        ));
+      });
     }
-    if (jpcertTemplate !== null) {
-      setJpcertGroupState((prev) => ({ ...prev, template: jpcertTemplate, loading: false }));
+
+    // Police
+    if (sendToPolice && policeRecipient && activeThreats.length > 0) {
+      fetchWithTimeout({
+        threatIds: activeThreats.map((t) => t.threatId),
+        abuseEmail: policeRecipient.email,
+        registrar: '',
+        language: 'ja',
+        recipientType: 'police',
+      }).then((template) => {
+        setPoliceGroupState((prev) => ({ ...prev, template, loading: false }));
+      }).catch(() => {
+        setPoliceGroupState((prev) => ({
+          ...prev,
+          template: '(テンプレート生成に失敗しました。手動で入力してください。)',
+          loading: false,
+        }));
+      });
+    }
+
+    // JPCERT
+    if (sendToJpcert && jpcertRecipient && activeThreats.length > 0) {
+      fetchWithTimeout({
+        threatIds: activeThreats.map((t) => t.threatId),
+        abuseEmail: jpcertRecipient.email,
+        registrar: '',
+        language: 'ja',
+        recipientType: 'jpcert',
+      }).then((template) => {
+        setJpcertGroupState((prev) => ({ ...prev, template, loading: false }));
+      }).catch(() => {
+        setJpcertGroupState((prev) => ({
+          ...prev,
+          template: '(テンプレート生成に失敗しました。手動で入力してください。)',
+          loading: false,
+        }));
+      });
     }
   }, [groups, excludedIds, sendToPolice, policeRecipient, sendToJpcert, jpcertRecipient, activeThreats]);
 
   // Move to step 2
-  const goToStep2 = async () => {
+  const goToStep2 = () => {
     setStep(2);
-    await generateTemplates();
+    generateTemplates();
   };
 
   // Submit (Step 3 → send)

@@ -189,8 +189,11 @@ export const getAbuseContacts = (threatId: string) =>
 export const getBulkAbuseContacts = (threatIds: string[]) =>
   fetchAPI<any>('/takedown-batches/abuse-contacts', { method: 'POST', body: JSON.stringify({ threatIds }) });
 
-export const generateBatchTemplate = (data: { threatIds: string[]; abuseEmail: string; registrar: string; language: string; recipientType?: string }) =>
-  fetchAPI<{ template: string; language: string }>('/takedown-batches/generate-template', { method: 'POST', body: JSON.stringify(data) });
+export const generateBatchTemplate = (
+  data: { threatIds: string[]; abuseEmail: string; registrar: string; language: string; recipientType?: string },
+  opts?: { signal?: AbortSignal },
+) =>
+  fetchAPI<{ template: string; language: string }>('/takedown-batches/generate-template', { method: 'POST', body: JSON.stringify(data), signal: opts?.signal });
 
 export const submitBatchTakedown = (
   items: Array<{ threatId: string; abuseEmail: string; template: string; language: string; evidenceTypes: string; recipientType?: string; recipientName?: string }>,
