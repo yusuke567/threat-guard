@@ -7,6 +7,7 @@ interface WhoisResult {
   creationDate: string | null;
   expirationDate: string | null;
   nameServers: string[];
+  registrantCountry: string | null;
   raw: Record<string, unknown>;
 }
 
@@ -42,12 +43,30 @@ async function fetchRdap(domain: string): Promise<WhoisResult> {
   let abuseEmail: string | null = null;
   let creationDate: string | null = null;
   let expirationDate: string | null = null;
+  let registrantCountry: string | null = null;
   const nameServers: string[] = [];
+
+  // Extract country from vcard adr field
+  // vcard adr structure: ["adr", {}, "text", ["", "", street, city, region, postalCode, country]]
+  function extractCountryFromVcard(vcardArray: unknown[][]): string | null {
+    for (const field of vcardArray) {
+      if (field[0] === 'adr' && Array.isArray(field[3])) {
+        const country = field[3][6];
+        if (typeof country === 'string' && country.trim()) return country.trim();
+      }
+    }
+    return null;
+  }
 
   // Extract registrar from entities with "registrar" role
   if (data.entities) {
     for (const entity of data.entities) {
       const roles: string[] = entity.roles || [];
+
+      // Extract country from registrant entity
+      if (roles.includes('registrant') && entity.vcardArray?.[1]) {
+        registrantCountry = extractCountryFromVcard(entity.vcardArray[1]);
+      }
 
       if (roles.includes('registrar')) {
         // Registrar name from vcardArray
@@ -70,6 +89,11 @@ async function fetchRdap(domain: string): Promise<WhoisResult> {
               }
             }
           }
+        }
+
+        // Fallback: country from registrar entity if registrant had none
+        if (!registrantCountry && entity.vcardArray?.[1]) {
+          registrantCountry = extractCountryFromVcard(entity.vcardArray[1]);
         }
       }
 
@@ -108,7 +132,7 @@ async function fetchRdap(domain: string): Promise<WhoisResult> {
     }
   }
 
-  return { registrar, abuseEmail, creationDate, expirationDate, nameServers, raw: data };
+  return { registrar, abuseEmail, creationDate, expirationDate, nameServers, registrantCountry, raw: data };
 }
 
 /**
@@ -134,6 +158,7 @@ export async function lookupWhois(detectedDomainId: string): Promise<WhoisResult
       creationDate: result.creationDate,
       expirationDate: result.expirationDate,
       nameServers: result.nameServers,
+      registrantCountry: result.registrantCountry,
       fetchedAt: new Date().toISOString(),
       source: 'rdap',
     };
@@ -165,6 +190,7 @@ export async function lookupWhoisRaw(domain: string): Promise<string | null> {
       creationDate: result.creationDate,
       expirationDate: result.expirationDate,
       nameServers: result.nameServers,
+      registrantCountry: result.registrantCountry,
       fetchedAt: new Date().toISOString(),
       source: 'rdap',
     };
