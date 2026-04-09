@@ -95,16 +95,20 @@ router.post('/backfill-whois', async (req, res) => {
   const offset = Math.max(parseInt(String(req.query.offset) || '0', 10), 0);
   const refresh = req.query.refresh === 'true';
 
-  const where = refresh ? {} : { whoisData: null };
-  const targets = await prisma.detectedDomain.findMany({
-    where,
-    select: { id: true, domain: true },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-    skip: offset,
-  });
+  // Use raw SQL for fast NULL check on unindexed column
+  const targets: { id: string; domain: string }[] = refresh
+    ? await prisma.$queryRawUnsafe(
+        `SELECT id, domain FROM "DetectedDomain" ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`,
+        limit,
+        offset,
+      )
+    : await prisma.$queryRawUnsafe(
+        `SELECT id, domain FROM "DetectedDomain" WHERE "whoisData" IS NULL ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`,
+        limit,
+        offset,
+      );
 
-  // Return response immediately, count in background
+  // Return response immediately
   res.status(202).json({
     message: `${targets.length}件のWHOIS${refresh ? 'リフレッシュ' : 'バックフィル'}を開始しました`,
     processing: targets.length,
