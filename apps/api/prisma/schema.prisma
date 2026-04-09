@@ -194,6 +194,7 @@ model WebProbe {
   httpStatus       Int?
   finalUrl         String?
   ip               String?
+  countryCode      String?
   htmlSnippet      String?
   headers          String?
   screenshotPath   String?

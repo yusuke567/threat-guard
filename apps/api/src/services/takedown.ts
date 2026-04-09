@@ -57,15 +57,20 @@ export async function generateTakedownTemplate(
     include: {
       brand: { include: { organization: true } },
       analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
+      webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
     },
   });
 
   const analysis = domain.analyses[0];
   const whois = domain.whoisData ? JSON.parse(domain.whoisData) : {};
   const registrar = whois?.registrar || 'Unknown Registrar';
+  const latestProbe = domain.webProbes?.[0];
 
   let template = '';
-  const useJapanese = isJapaneseRegistrar(registrar);
+  // IP geolocation (JP) → Japanese, otherwise → English, fallback to registrar name check
+  const useJapanese = latestProbe?.countryCode
+    ? latestProbe.countryCode === 'JP'
+    : isJapaneseRegistrar(registrar);
 
   if (process.env.ANTHROPIC_API_KEY) {
     try {

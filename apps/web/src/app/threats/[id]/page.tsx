@@ -562,7 +562,7 @@ function OverviewTab({ threat, latestAnalysis, contentAnalysis, whois, ssl, prob
           />
           <InfoItem label="ホスティング" value={probe?.ip || '—'} mono />
           <InfoItem label="IPアドレス" value={probe?.ip || '—'} mono />
-          <InfoItem label="国" value={whois?.registrantCountry || '—'} />
+          <InfoItem label="国" value={probe?.countryCode === 'JP' ? '日本' : probe?.countryCode || '—'} />
           <InfoItem label="初回検知" value={formatDate(threat.firstSeen)} />
         </dl>
       </div>

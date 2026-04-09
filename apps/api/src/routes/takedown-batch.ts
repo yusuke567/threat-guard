@@ -374,6 +374,7 @@ router.post('/generate-template', async (req, res) => {
       include: {
         brand: { include: { organization: true } },
         analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
+        webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
       },
     });
 
@@ -384,33 +385,24 @@ router.post('/generate-template', async (req, res) => {
     const brand = threats[0].brand;
     const org = brand.organization;
 
+    // Auto-detect language from IP geolocation if not explicitly set
+    // If any domain in the group is hosted in JP, use Japanese
+    if (parsed.data.language === 'en') {
+      const hasJpHost = threats.some((t) => t.webProbes?.[0]?.countryCode === 'JP');
+      if (hasJpHost) {
+        parsed.data.language = 'ja';
+      }
+    }
+
     // Police template uses a separate generation path
     if (parsed.data.recipientType === 'police') {
-      // Include webProbes for IP address information
-      const threatsWithProbes = await prisma.detectedDomain.findMany({
-        where: { id: { in: parsed.data.threatIds }, brandId: { in: brandIds } },
-        include: {
-          brand: { include: { organization: true } },
-          analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
-          webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
-        },
-      });
-      const policeTemplate = await generatePoliceTemplateBatch(threatsWithProbes as any, req.user?.name || undefined);
+      const policeTemplate = await generatePoliceTemplateBatch(threats as any, req.user?.name || undefined);
       return res.json({ template: policeTemplate, language: 'ja' });
     }
 
     // JPCERT template uses JPCERT's official format
     if (parsed.data.recipientType === 'jpcert') {
-      // Include webProbes for IP address information
-      const threatsWithProbes = await prisma.detectedDomain.findMany({
-        where: { id: { in: parsed.data.threatIds }, brandId: { in: brandIds } },
-        include: {
-          brand: { include: { organization: true } },
-          analyses: { orderBy: { analyzedAt: 'desc' }, take: 1 },
-          webProbes: { orderBy: { probeAt: 'desc' }, take: 1 },
-        },
-      });
-      const jpcertTemplate = await generateJpcertTemplateBatch(threatsWithProbes as any, req.user?.name || undefined);
+      const jpcertTemplate = await generateJpcertTemplateBatch(threats as any, req.user?.name || undefined);
       return res.json({ template: jpcertTemplate, language: 'ja' });
     }
 

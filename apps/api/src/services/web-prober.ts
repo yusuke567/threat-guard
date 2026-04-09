@@ -227,13 +227,31 @@ export async function probeDomain(detectedDomainId: string): Promise<ProbeResult
     }
   }
 
-  // 3. Save to DB
+  // 3. IP geolocation (country code)
+  let countryCode: string | null = null;
+  if (ip) {
+    try {
+      const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode`, {
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (geoRes.ok) {
+        const geo = await geoRes.json();
+        countryCode = geo.countryCode || null;
+        console.log(`[WebProber] GeoIP: ${ip} -> ${countryCode}`);
+      }
+    } catch (e: any) {
+      console.log(`[WebProber] GeoIP lookup failed for ${ip}: ${e.message}`);
+    }
+  }
+
+  // 4. Save to DB
   const probe = await prisma.webProbe.create({
     data: {
       detectedDomainId,
       httpStatus,
       finalUrl,
       ip,
+      countryCode,
       htmlSnippet,
       headers,
       screenshotPath,
