@@ -92,6 +92,7 @@ router.post('/backfill-whois', async (req, res) => {
 
   const limit = Math.min(parseInt(String(req.query.limit) || '50', 10), 200);
   const delayMs = parseInt(String(req.query.delay) || '2000', 10);
+  const offset = Math.max(parseInt(String(req.query.offset) || '0', 10), 0);
   const refresh = req.query.refresh === 'true';
 
   const where = refresh ? {} : { whoisData: null };
@@ -100,6 +101,7 @@ router.post('/backfill-whois', async (req, res) => {
     select: { id: true, domain: true },
     orderBy: { createdAt: 'desc' },
     take: limit,
+    skip: offset,
   });
 
   const totalTarget = await prisma.detectedDomain.count({ where });
@@ -127,6 +129,7 @@ router.post('/backfill-whois', async (req, res) => {
     message: `${targets.length}件のWHOIS${refresh ? 'リフレッシュ' : 'バックフィル'}を開始しました（全${totalTarget}件中）`,
     processing: targets.length,
     totalTarget,
+    offset,
     refresh,
   });
 });
