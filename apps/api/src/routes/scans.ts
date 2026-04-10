@@ -94,25 +94,26 @@ router.post('/backfill-whois', async (req, res) => {
   const delayMs = parseInt(String(req.query.delay) || '2000', 10);
   const offset = Math.max(parseInt(String(req.query.offset) || '0', 10), 0);
   const refresh = req.query.refresh === 'true';
+  const retryFailed = req.query.retry === 'true';
 
-  // Use raw SQL for fast NULL check on unindexed column
-  const targets: { id: string; domain: string }[] = refresh
-    ? await prisma.$queryRawUnsafe(
-        `SELECT id, domain FROM "DetectedDomain" ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`,
-        limit,
-        offset,
-      )
-    : await prisma.$queryRawUnsafe(
-        `SELECT id, domain FROM "DetectedDomain" WHERE "whoisData" IS NULL ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`,
-        limit,
-        offset,
-      );
+  // Use raw SQL for fast queries on unindexed column
+  let sql: string;
+  if (retryFailed) {
+    // Retry only rdap_failed records
+    sql = `SELECT id, domain FROM "DetectedDomain" WHERE "whoisData" LIKE '%rdap_failed%' ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`;
+  } else if (refresh) {
+    sql = `SELECT id, domain FROM "DetectedDomain" ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`;
+  } else {
+    sql = `SELECT id, domain FROM "DetectedDomain" WHERE "whoisData" IS NULL ORDER BY "createdAt" DESC LIMIT $1 OFFSET $2`;
+  }
+  const targets: { id: string; domain: string }[] = await prisma.$queryRawUnsafe(sql, limit, offset);
 
   // Return response immediately
   res.status(202).json({
-    message: `${targets.length}件のWHOIS${refresh ? 'リフレッシュ' : 'バックフィル'}を開始しました`,
+    message: `${targets.length}件のWHOIS${retryFailed ? 'リトライ' : refresh ? 'リフレッシュ' : 'バックフィル'}を開始しました`,
     processing: targets.length,
     offset,
+    retryFailed,
     refresh,
   });
 
@@ -122,7 +123,7 @@ router.post('/backfill-whois', async (req, res) => {
     let failed = 0;
     for (const target of targets) {
       try {
-        const result = await lookupWhois(target.id, { force: refresh, markFailures: true });
+        const result = await lookupWhois(target.id, { force: retryFailed || refresh, markFailures: true });
         if (result) success++;
         else failed++;
       } catch {
@@ -131,7 +132,7 @@ router.post('/backfill-whois', async (req, res) => {
       await new Promise((r) => setTimeout(r, delayMs));
     }
     console.log(
-      `[BackfillWhois] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}, refresh=${refresh}`,
+      `[BackfillWhois] 完了: 成功=${success}, 失敗=${failed}, 対象=${targets.length}, retry=${retryFailed}, refresh=${refresh}`,
     );
   })();
 });
