@@ -37,7 +37,7 @@ interface AbuseGroup {
   abuseEmail: string | null;
   registrar: string;
   threats: ThreatInfo[];
-  recipientType?: 'registrar' | 'police' | 'jpcert';
+  recipientType?: 'registrar' | 'police' | 'jpcert' | 'hosting';
   recipientName?: string;
   // Step 2 fields
   template?: string;
@@ -80,6 +80,8 @@ export default function TakedownRequestPage() {
   const [sendToJpcert, setSendToJpcert] = useState(true);
   const [sendToBrowser, setSendToBrowser] = useState(true);
   const [browserProviders, setBrowserProviders] = useState<string[]>(['GOOGLE_SAFE_BROWSING', 'MICROSOFT_SMARTSCREEN']);
+  const [hostingGroups, setHostingGroups] = useState<AbuseGroup[]>([]);
+  const [sendToHosting, setSendToHosting] = useState(true);
 
   // Step 3 result
   const [result, setResult] = useState<any>(null);
@@ -113,6 +115,16 @@ export default function TakedownRequestPage() {
         }
         if (data.jpcertRecipient) {
           setJpcertRecipient(data.jpcertRecipient);
+        }
+        if (data.hostingGroups) {
+          setHostingGroups(data.hostingGroups.map((g: any) => ({
+            ...g,
+            recipientType: 'hosting' as const,
+            language: 'ja',
+            evidenceTypes: ['screenshot'],
+            template: '',
+            manualEmail: '',
+          })));
         }
       })
       .catch((err) => setError(err.message))
@@ -165,10 +177,23 @@ export default function TakedownRequestPage() {
         }
       : null;
 
+  // Hosting groups: group by hosting provider, filter excluded threats
+  const activeHostingGroups = sendToHosting
+    ? hostingGroups
+        .map((g, originalIndex) => ({
+          ...g,
+          originalIndex,
+          recipientType: 'hosting' as const,
+          threats: g.threats.filter((t) => !excludedIds.has(t.threatId)),
+        }))
+        .filter((g) => g.threats.length > 0)
+    : [];
+
   const activeGroups = [
     ...registrarGroups,
     ...(policeGroup ? [policeGroup] : []),
     ...(jpcertGroup ? [jpcertGroup] : []),
+    ...activeHostingGroups,
   ];
 
   const unresolvedCount = registrarGroups.filter((g) => !g.abuseEmail && !g.manualEmail).length;
@@ -188,6 +213,11 @@ export default function TakedownRequestPage() {
     language: string;
     evidenceTypes: string[];
   }>({ template: '', loading: false, language: 'ja', evidenceTypes: ['screenshot', 'whois'] });
+
+  // Hosting group states (one per hosting provider group)
+  const [hostingGroupStates, setHostingGroupStates] = useState<
+    Array<{ template: string; loading: boolean; language: string; evidenceTypes: string[] }>
+  >([]);
 
   // Step 2: Generate templates for all groups
   // Each API call updates state independently on completion (no Promise.all blocking)
@@ -221,6 +251,13 @@ export default function TakedownRequestPage() {
     }
     if (sendToJpcert && jpcertRecipient && activeThreats.length > 0) {
       setJpcertGroupState((prev) => ({ ...prev, loading: true }));
+    }
+
+    // Set hosting groups to loading
+    if (sendToHosting && activeHostingGroups.length > 0) {
+      setHostingGroupStates(activeHostingGroups.map(() => ({
+        template: '', loading: true, language: 'ja', evidenceTypes: ['screenshot'],
+      })));
     }
 
     // 2. Fire API calls — each one updates state independently on completion
@@ -283,7 +320,29 @@ export default function TakedownRequestPage() {
         }));
       });
     }
-  }, [groups, excludedIds, sendToPolice, policeRecipient, sendToJpcert, jpcertRecipient, activeThreats]);
+    // Hosting
+    if (sendToHosting && activeHostingGroups.length > 0) {
+      for (let i = 0; i < activeHostingGroups.length; i++) {
+        const hg = activeHostingGroups[i];
+        const email = hg.abuseEmail || hg.manualEmail;
+        if (!email || hg.threats.length === 0) continue;
+        const idx = i;
+        fetchWithTimeout({
+          threatIds: hg.threats.map((t) => t.threatId),
+          abuseEmail: email,
+          registrar: hg.registrar,
+          language: 'ja',
+          recipientType: 'hosting',
+        }).then((template) => {
+          setHostingGroupStates((prev) => prev.map((s, j) => j === idx ? { ...s, template, loading: false } : s));
+        }).catch(() => {
+          setHostingGroupStates((prev) => prev.map((s, j) =>
+            j === idx ? { ...s, template: '(テンプレート生成に失敗しました。手動で入力してください。)', loading: false } : s,
+          ));
+        });
+      }
+    }
+  }, [groups, excludedIds, sendToPolice, policeRecipient, sendToJpcert, jpcertRecipient, sendToHosting, activeHostingGroups, activeThreats]);
 
   // Move to step 2
   const goToStep2 = () => {
@@ -354,6 +413,27 @@ export default function TakedownRequestPage() {
             recipientType: 'jpcert',
             recipientName: jpcertRecipient.name,
           });
+        }
+      }
+
+      // Hosting items
+      if (sendToHosting && activeHostingGroups.length > 0) {
+        for (let i = 0; i < activeHostingGroups.length; i++) {
+          const hg = activeHostingGroups[i];
+          const state = hostingGroupStates[i];
+          const email = hg.abuseEmail || hg.manualEmail;
+          if (!email || !state?.template) continue;
+          for (const t of hg.threats) {
+            items.push({
+              threatId: t.threatId,
+              abuseEmail: email,
+              template: state.template,
+              language: state.language || 'ja',
+              evidenceTypes: (state.evidenceTypes || []).join(','),
+              recipientType: 'hosting',
+              recipientName: hg.registrar,
+            });
+          }
         }
       }
 
@@ -687,6 +767,63 @@ export default function TakedownRequestPage() {
                     </p>
                   </div>
                   <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
+                </label>
+              </div>
+            )}
+
+            {/* 5. ホスティング事業者への削除申請 */}
+            {activeHostingGroups.length > 0 && (
+              <div className={`border rounded-lg p-4 transition-colors ${sendToHosting ? 'border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-900/20' : 'border-[var(--border-default)]'}`}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendToHosting}
+                    onChange={(e) => setSendToHosting(e.target.checked)}
+                    className="rounded border-[var(--border-default)] text-green-600 w-4 h-4 mt-1"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+                      <span className="text-lg">🖥️</span>
+                      ホスティング事業者への削除申請
+                    </h4>
+                    <p className="text-xs text-[var(--text-secondary)] mt-1">
+                      フィッシングサイトをホストしているサーバー管理会社にコンテンツ削除を依頼します
+                    </p>
+                    <p className="text-xs text-[var(--text-tertiary)] mt-1">
+                      ※ IPアドレスからホスティング事業者を特定し、サーバー上のコンテンツ削除を要請します
+                    </p>
+                    {sendToHosting && (
+                      <div className="space-y-2 mt-3 pl-1">
+                        {activeHostingGroups.map((hg, i) => (
+                          <div key={`hosting-${i}`} className="flex items-center gap-3 py-1.5 bg-surface-base rounded px-3">
+                            <span className="font-medium text-sm flex-1">{hg.registrar}</span>
+                            {hg.abuseEmail ? (
+                              <span className="text-xs text-[var(--text-secondary)]">({hg.abuseEmail})</span>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-orange-600">⚠️ 送信先を入力</span>
+                                <input
+                                  type="email"
+                                  placeholder="abuse@example.com"
+                                  value={hg.manualEmail || ''}
+                                  onChange={(e) => {
+                                    const updated = [...hostingGroups];
+                                    const idx = hg.originalIndex;
+                                    if (idx >= 0) {
+                                      updated[idx] = { ...updated[idx], manualEmail: e.target.value };
+                                      setHostingGroups(updated);
+                                    }
+                                  }}
+                                  className="border border-[var(--border-default)] rounded px-2 py-1 text-sm w-56"
+                                />
+                              </div>
+                            )}
+                            <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{hg.threats.length}件</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </label>
               </div>
             )}
@@ -1042,6 +1179,104 @@ export default function TakedownRequestPage() {
               </div>
             </div>
           )}
+
+          {/* Hosting provider groups */}
+          {sendToHosting && activeHostingGroups.map((hg, i) => {
+            const state = hostingGroupStates[i];
+            if (!state) return null;
+            const email = hg.abuseEmail || hg.manualEmail;
+            return (
+              <div key={`hosting-${i}`} className="bg-surface-card rounded-xl border-2 border-green-300 dark:border-green-700 p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                      🖥️ {hg.registrar}
+                      <span className="text-sm font-normal text-[var(--text-secondary)]">({hg.threats.length}件)</span>
+                    </h3>
+                    <p className="text-xs text-[var(--text-secondary)]">送信先: {email || '未設定'}</p>
+                  </div>
+                  <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs font-bold">ホスティング事業者</span>
+                </div>
+
+                <div className="text-sm text-[var(--text-secondary)]">
+                  対象: {hg.threats.map((t) => t.domain).join(' / ')}
+                </div>
+
+                {state.loading ? (
+                  <div className="flex items-center gap-2 py-8 justify-center text-[var(--text-secondary)]">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600" />
+                    <span className="text-sm">ホスティング事業者向け削除申請文を生成中...</span>
+                  </div>
+                ) : (
+                  <textarea
+                    value={state.template}
+                    onChange={(e) => {
+                      setHostingGroupStates((prev) => prev.map((s, j) => j === i ? { ...s, template: e.target.value } : s));
+                    }}
+                    rows={14}
+                    className="w-full border border-[var(--border-default)] rounded-lg p-3 text-sm font-mono resize-y"
+                  />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (!email) return;
+                      setHostingGroupStates((prev) => prev.map((s, j) => j === i ? { ...s, loading: true } : s));
+                      try {
+                        const res = await generateBatchTemplate({
+                          threatIds: hg.threats.map((t) => t.threatId),
+                          abuseEmail: email,
+                          registrar: hg.registrar,
+                          language: 'ja',
+                          recipientType: 'hosting',
+                        });
+                        setHostingGroupStates((prev) => prev.map((s, j) => j === i ? { ...s, template: res.template, loading: false } : s));
+                      } catch {
+                        setHostingGroupStates((prev) => prev.map((s, j) => j === i ? { ...s, loading: false } : s));
+                      }
+                    }}
+                    className="text-green-600 hover:text-green-800"
+                  >
+                    🔄 再生成
+                  </Button>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">添付エビデンス:</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { key: 'screenshot', label: 'スクリーンショット' },
+                      { key: 'whois', label: 'WHOIS情報' },
+                    ].map(({ key, label }) => (
+                      <label key={key} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={state.evidenceTypes.includes(key)}
+                          onChange={(e) => {
+                            setHostingGroupStates((prev) => prev.map((s, j) => {
+                              if (j !== i) return s;
+                              const types = [...s.evidenceTypes];
+                              if (e.target.checked) types.push(key);
+                              else {
+                                const ti = types.indexOf(key);
+                                if (ti >= 0) types.splice(ti, 1);
+                              }
+                              return { ...s, evidenceTypes: types };
+                            }));
+                          }}
+                          className="rounded border-[var(--border-default)] text-green-600"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
           <div className="flex justify-between">
             <Button

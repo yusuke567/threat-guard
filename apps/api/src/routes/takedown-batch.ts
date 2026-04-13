@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
-import { getAbuseContacts } from '../services/whois-abuse.js';
-import { generateTakedownTemplate, generatePoliceTemplateBatch, generateJpcertTemplateBatch, POLICE_RECIPIENT, JPCERT_RECIPIENT, type RecipientType } from '../services/takedown.js';
+import { getAbuseContacts, getHostingAbuseContacts } from '../services/whois-abuse.js';
+import { generateTakedownTemplate, generatePoliceTemplateBatch, generateJpcertTemplateBatch, generateHostingTemplateBatch, POLICE_RECIPIENT, JPCERT_RECIPIENT, type RecipientType } from '../services/takedown.js';
 import { sendTakedownEmail } from '../services/takedown-export.js';
 
 const router = Router();
@@ -36,7 +36,10 @@ router.post('/abuse-contacts', async (req, res) => {
 
     const results = await Promise.all(
       threats.map(async (t) => {
-        const abuse = await getAbuseContacts(t.id);
+        const [abuse, hostingAbuse] = await Promise.all([
+          getAbuseContacts(t.id),
+          getHostingAbuseContacts(t.id),
+        ]);
         return {
           threatId: t.id,
           domain: t.domain,
@@ -49,6 +52,10 @@ router.post('/abuse-contacts', async (req, res) => {
           registrar: abuse.registrar,
           abuseEmail: abuse.abuseEmail,
           source: abuse.source,
+          hostingProvider: hostingAbuse.provider,
+          hostingAbuseEmail: hostingAbuse.abuseEmail,
+          hostingNetwork: hostingAbuse.network,
+          hostingSource: hostingAbuse.source,
           screenshotUrl: t.screenshotUrl,
           whoisData: t.whoisData,
         };
@@ -65,9 +72,21 @@ router.post('/abuse-contacts', async (req, res) => {
       groups[key].threats.push(r);
     }
 
+    // Group by hosting provider abuse email
+    const hostingGroups: Record<string, { abuseEmail: string | null; registrar: string; threats: typeof results }> = {};
+    for (const r of results) {
+      if (r.hostingSource === 'none') continue;
+      const key = r.hostingAbuseEmail || `manual:${r.hostingProvider}`;
+      if (!hostingGroups[key]) {
+        hostingGroups[key] = { abuseEmail: r.hostingAbuseEmail, registrar: r.hostingProvider, threats: [] };
+      }
+      hostingGroups[key].threats.push(r);
+    }
+
     res.json({
       threats: results,
       groups: Object.values(groups),
+      hostingGroups: Object.values(hostingGroups),
       policeRecipient: POLICE_RECIPIENT,
       jpcertRecipient: JPCERT_RECIPIENT,
     });
@@ -87,7 +106,7 @@ router.post('/', async (req, res) => {
       template: z.string().min(1),
       language: z.string().default('en'),
       evidenceTypes: z.string().default(''),
-      recipientType: z.enum(['registrar', 'police', 'jpcert']).default('registrar'),
+      recipientType: z.enum(['registrar', 'police', 'jpcert', 'hosting']).default('registrar'),
       recipientName: z.string().optional(),
     });
     const skippedItemSchema = z.object({
@@ -139,7 +158,9 @@ router.post('/', async (req, res) => {
         ? (item.recipientName || POLICE_RECIPIENT.name)
         : item.recipientType === 'jpcert'
           ? (item.recipientName || JPCERT_RECIPIENT.name)
-          : registrar;
+          : item.recipientType === 'hosting'
+            ? (item.recipientName || 'Hosting Provider')
+            : registrar;
 
       const takedown = await prisma.takedownRequest.create({
         data: {
@@ -363,7 +384,7 @@ router.post('/generate-template', async (req, res) => {
       abuseEmail: z.string().email(),
       registrar: z.string(),
       language: z.enum(['ja', 'en']).default('en'),
-      recipientType: z.enum(['registrar', 'police', 'jpcert']).default('registrar'),
+      recipientType: z.enum(['registrar', 'police', 'jpcert', 'hosting']).default('registrar'),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -404,6 +425,12 @@ router.post('/generate-template', async (req, res) => {
     if (parsed.data.recipientType === 'jpcert') {
       const jpcertTemplate = await generateJpcertTemplateBatch(threats as any, req.user?.name || undefined);
       return res.json({ template: jpcertTemplate, language: 'ja' });
+    }
+
+    // Hosting provider template
+    if (parsed.data.recipientType === 'hosting') {
+      const hostingTemplate = await generateHostingTemplateBatch(threats as any, parsed.data.registrar, req.user?.name || undefined);
+      return res.json({ template: hostingTemplate, language: parsed.data.language });
     }
 
     const useJapanese = parsed.data.language === 'ja';

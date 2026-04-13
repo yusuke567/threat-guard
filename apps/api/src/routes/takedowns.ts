@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
-import { generateTakedownTemplate, generatePoliceTemplate, generateJpcertTemplate, JPCERT_RECIPIENT } from '../services/takedown.js';
+import { generateTakedownTemplate, generatePoliceTemplate, generateJpcertTemplate, generateHostingTemplate, JPCERT_RECIPIENT } from '../services/takedown.js';
 import { generateTakedownPdf, sendTakedownEmail } from '../services/takedown-export.js';
 
 const router = Router();
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
   const orgId = req.user!.organizationId;
   const schema = z.object({
     detectedDomainId: z.string().uuid(),
-    recipientType: z.enum(['registrar', 'police', 'jpcert']).default('registrar'),
+    recipientType: z.enum(['registrar', 'police', 'jpcert', 'hosting']).default('registrar'),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -45,6 +45,8 @@ router.post('/', async (req, res) => {
     result = await generatePoliceTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);
   } else if (parsed.data.recipientType === 'jpcert') {
     result = await generateJpcertTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);
+  } else if (parsed.data.recipientType === 'hosting') {
+    result = await generateHostingTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);
   } else {
     result = await generateTakedownTemplate(parsed.data.detectedDomainId);
   }

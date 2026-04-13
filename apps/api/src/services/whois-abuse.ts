@@ -109,6 +109,102 @@ async function rdapLookup(domain: string): Promise<{ registrar: string; abuseEma
   return { registrar, abuseEmail };
 }
 
+// ─── IP-based RDAP lookup (hosting provider) ─────────────────────────────────
+
+export interface HostingAbuseContact {
+  provider: string;
+  abuseEmail: string | null;
+  network: string | null;
+  source: 'rdap' | 'none';
+}
+
+/**
+ * RDAP lookup for IP address → hosting provider abuse contact
+ */
+async function rdapIpLookup(ip: string): Promise<{ provider: string; abuseEmail: string | null; network: string | null }> {
+  const url = `https://rdap.org/ip/${ip}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/rdap+json' },
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) throw new Error(`RDAP IP returned ${res.status}`);
+  const data = await res.json();
+
+  let provider = data.name || 'Unknown';
+  let abuseEmail: string | null = null;
+  const network = data.startAddress && data.endAddress
+    ? `${data.startAddress} - ${data.endAddress}`
+    : null;
+
+  // Extract abuse contact from entities
+  if (data.entities) {
+    for (const entity of data.entities) {
+      const roles: string[] = entity.roles || [];
+
+      // Get provider name from registrant or administrative entity
+      if ((roles.includes('registrant') || roles.includes('administrative')) && entity.vcardArray?.[1]) {
+        for (const field of entity.vcardArray[1]) {
+          if (field[0] === 'fn' && field[3]) provider = field[3];
+        }
+      }
+
+      // Get abuse email from abuse role entity
+      if (roles.includes('abuse') && entity.vcardArray?.[1]) {
+        for (const field of entity.vcardArray[1]) {
+          if (field[0] === 'email') abuseEmail = field[3];
+        }
+      }
+
+      // Check nested entities for abuse contact
+      if (entity.entities) {
+        for (const sub of entity.entities) {
+          if ((sub.roles || []).includes('abuse') && sub.vcardArray?.[1]) {
+            for (const field of sub.vcardArray[1]) {
+              if (field[0] === 'email') abuseEmail = field[3];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Fallback: check remarks for abuse contact
+  if (!abuseEmail && data.remarks) {
+    for (const remark of data.remarks) {
+      const desc = (remark.description || []).join(' ');
+      const match = desc.match(/[\w.+-]+@[\w.-]+\.\w+/);
+      if (match && desc.toLowerCase().includes('abuse')) {
+        abuseEmail = match[0];
+      }
+    }
+  }
+
+  return { provider, abuseEmail, network };
+}
+
+/**
+ * Get hosting provider abuse contact for a detected domain via IP RDAP
+ */
+export async function getHostingAbuseContacts(detectedDomainId: string): Promise<HostingAbuseContact> {
+  const latestProbe = await prisma.webProbe.findFirst({
+    where: { detectedDomainId },
+    orderBy: { probeAt: 'desc' },
+  });
+
+  if (!latestProbe?.ip) {
+    return { provider: 'Unknown', abuseEmail: null, network: null, source: 'none' };
+  }
+
+  try {
+    const result = await rdapIpLookup(latestProbe.ip);
+    return { ...result, source: 'rdap' };
+  } catch (err) {
+    console.error('RDAP IP lookup failed for', latestProbe.ip, err);
+    return { provider: 'Unknown', abuseEmail: null, network: null, source: 'none' };
+  }
+}
+
 /**
  * Get abuse contact for a detected domain
  */

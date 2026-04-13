@@ -109,10 +109,13 @@ export default function TakedownsPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                      {group.recipientType === 'police' ? '🚔' : '📧'} {group.recipientName || group.registrar}
+                      {group.recipientType === 'police' ? '🚔' : group.recipientType === 'hosting' ? '🖥️' : '📧'} {group.recipientName || group.registrar}
                       <span className="text-sm font-normal text-[var(--text-secondary)]">— {group.items.length}件</span>
                       {group.recipientType === 'police' && (
                         <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-bold">警察通報</span>
+                      )}
+                      {group.recipientType === 'hosting' && (
+                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded text-xs font-bold">ホスティング事業者</span>
                       )}
                     </h3>
                     <p className="text-xs text-[var(--text-secondary)] mt-0.5">
