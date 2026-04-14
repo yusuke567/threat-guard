@@ -4,6 +4,8 @@
  */
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { runJpcertImport } from '../services/jpcert-importer.js';
+import { notifyFeedImportSummary, notifyFeedImportFailure } from '../services/slack-notifier.js';
 
 const router = Router();
 
@@ -71,6 +73,78 @@ router.get('/status', async (_req, res) => {
   );
 
   res.json(status);
+});
+
+// POST /api/admin/feed-imports/run — 手動でインポートを即時実行（バックグラウンド）
+// body: { source?: 'jpcert', from?: number, to?: number, notify?: boolean }
+// レスポンスは即時返り、実際の処理はバックグラウンドで走る。進捗は /status または Slack で確認。
+router.post('/run', async (req, res) => {
+  const source = (req.body?.source as string | undefined) ?? 'jpcert';
+  if (source !== 'jpcert') {
+    return res.status(400).json({ error: `未対応のソースです: ${source}` });
+  }
+
+  const currentYear = new Date().getFullYear();
+  const fromYear = Number(req.body?.from) || currentYear - 1;
+  const toYear = Number(req.body?.to) || currentYear;
+  const notify = req.body?.notify !== false;
+
+  if (fromYear < 2019 || toYear > currentYear || fromYear > toYear) {
+    return res.status(400).json({ error: `年の指定が不正です: from=${fromYear}, to=${toYear}` });
+  }
+
+  // 直近で running 状態のrunがあれば二重起動を防ぐ
+  const existingRunning = await prisma.feedImportRun.findFirst({
+    where: { source, status: 'running' },
+    orderBy: { startedAt: 'desc' },
+  });
+  if (existingRunning) {
+    const ageMin = (Date.now() - existingRunning.startedAt.getTime()) / (1000 * 60);
+    if (ageMin < 30) {
+      return res.status(409).json({
+        error: '別の取り込みが実行中です',
+        runningRunId: existingRunning.id,
+        startedAt: existingRunning.startedAt,
+      });
+    }
+  }
+
+  // バックグラウンド実行（レスポンスはすぐ返す）
+  const startedAt = Date.now();
+  (async () => {
+    try {
+      console.log(`[feed-imports/run] triggered manually: source=${source} from=${fromYear} to=${toYear}`);
+      const result = await runJpcertImport({ fromYear, toYear });
+      const totalInDb = await prisma.knownPhishingUrl.count({ where: { source: 'jpcert' } });
+      const durationSec = Math.round((Date.now() - startedAt) / 1000);
+      console.log(`[feed-imports/run] done: fetched=${result.fetchedCount} inserted=${result.insertedCount} hits=${result.brandHitCount}`);
+      if (notify) {
+        await notifyFeedImportSummary({
+          source: 'JPCERT/CC',
+          fetchedCount: result.fetchedCount,
+          insertedCount: result.insertedCount,
+          brandHitCount: result.brandHitCount,
+          alertedOrgCount: result.alertedOrgIds.length,
+          totalInDb,
+          durationSec,
+        });
+      }
+    } catch (err: any) {
+      console.error('[feed-imports/run] FAILED:', err);
+      if (notify) {
+        await notifyFeedImportFailure('JPCERT/CC', err?.message || String(err));
+      }
+    }
+  })();
+
+  res.status(202).json({
+    status: 'accepted',
+    source,
+    fromYear,
+    toYear,
+    notify,
+    message: 'バックグラウンドで取り込みを開始しました。進捗は /api/admin/feed-imports または Slack で確認してください。',
+  });
 });
 
 export default router;
