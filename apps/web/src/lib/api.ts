@@ -257,6 +257,38 @@ export const getFeedImports = (limit = 20, source?: string) => {
 };
 export const getFeedImportStatus = () => fetchAPI<FeedImportStatusDto[]>('/admin/feed-imports/status');
 
+// Admin: JPCERT学習済み検知パターン (Layer 4)
+export interface JpcertLearnedPatternDto {
+  id: string;
+  patternType: 'domain_keyword' | 'path_prefix' | 'tld_abuse' | 'subdomain';
+  pattern: string;
+  occurrences: number;
+  precision: number;
+  examples: string[];
+  lastSeen: string;
+  updatedAt: string;
+}
+export interface JpcertPatternSummary {
+  patternType: string;
+  count: number;
+  maxOccurrences: number | null;
+  lastSeen: string | null;
+}
+export interface JpcertPatternsResponse {
+  summary: JpcertPatternSummary[];
+  patterns: JpcertLearnedPatternDto[];
+}
+export const getJpcertPatterns = (type?: string, limit = 100) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (type) params.set('type', type);
+  return fetchAPI<JpcertPatternsResponse>(`/admin/jpcert-patterns?${params}`);
+};
+export const relearnJpcertPatterns = () =>
+  fetchAPI<{ status: string; durationSec: number; domainKeywords: number; pathPrefixes: number; tldAbuse: number; subdomains: number; totalExamined: number }>(
+    '/admin/jpcert-patterns/relearn',
+    { method: 'POST' },
+  );
+
 // Brand JPCERT history (Pro+ only for full data)
 export interface BrandJpcertHistoryDto {
   isPro: boolean;
@@ -266,6 +298,20 @@ export interface BrandJpcertHistoryDto {
 }
 export const getBrandJpcertHistory = (brandId: string) =>
   fetchAPI<BrandJpcertHistoryDto>(`/brands/${brandId}/jpcert-history`);
+
+// Brand attack intelligence (Layer 3 — Pro+ only)
+export interface BrandAttackIntelligenceDto {
+  isPro: boolean;
+  totalCount: number;
+  recent30dCount: number;
+  monthlyTimeline: { month: string; count: number }[];
+  topTlds: { tld: string; count: number; percentage: number }[];
+  commonPathPatterns: { pattern: string; count: number }[];
+  brandLabelVariants: { label: string; count: number }[];
+  peakMonth: { month: string; count: number } | null;
+}
+export const getBrandAttackIntelligence = (brandId: string) =>
+  fetchAPI<BrandAttackIntelligenceDto>(`/brands/${brandId}/attack-intelligence`);
 
 // Alerts
 export const getAlerts = (page?: number, limit?: number) => {

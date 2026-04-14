@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js';
 import { analyzeContent } from './content-analyzer.js';
+import { matchLearnedPatterns } from './pattern-learner.js';
 
 interface RiskFactors {
   domainSimilarity: number;   // 0-100, weight: 30%
@@ -164,7 +165,15 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
   });
   const jpcertBoost = jpcertHit ? 30 : 0;
 
-  const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost + globalRuleBoost + globalVictimBoost + jpcertBoost));
+  // Layer 4: JPCERTコーパスから学習した検知パターンによるブースト
+  // 未観測ドメインでも、既知フィッシングと類似のパターン（"-login", "/verify", ".xyz"等）
+  // を持つ場合にスコアを加算。最大+30点。
+  const learnedPatternMatch = jpcertHit
+    ? { score: 0, matched: false, matchedPatterns: [] } // 既にJPCERTヒットならパターンは冗長
+    : await matchLearnedPatterns({ domain: domain.domain });
+  const patternBoost = learnedPatternMatch.score;
+
+  const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost + globalRuleBoost + globalVictimBoost + jpcertBoost + patternBoost));
 
   // Update the domain's risk score
   await prisma.detectedDomain.update({

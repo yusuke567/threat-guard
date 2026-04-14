@@ -557,6 +557,134 @@ router.get('/:id/jpcert-history', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/brands/:id/attack-intelligence — ブランド別攻撃インテリジェンス（Layer 3）
+ *
+ * Pro+組織のみ詳細を返す。JPCERT観測データを以下の軸で集計:
+ *  - 月次タイムライン（過去24ヶ月）
+ *  - TLD分布（上位10）
+ *  - URLパス傾向（上位10の最初のパスセグメント）
+ *  - 偽装ブランド名バリアント
+ *  - ピーク月 / 直近30日観測数 / 全期間観測数
+ */
+router.get('/:id/attack-intelligence', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin
+      ? { id: req.params.id }
+      : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({
+      where,
+      include: { organization: { select: { plan: true } } },
+    });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    const isPro = isSuperadmin || isProOrAbove(brand.organization?.plan);
+
+    const keywords = (brand.keywords || '')
+      .split(',')
+      .map((k: string) => k.trim().toLowerCase())
+      .filter((k: string) => k.length >= 2);
+    const candidates = [...new Set([brand.name.toLowerCase(), ...keywords])].filter((c) => c.length >= 2);
+
+    if (candidates.length === 0) {
+      return res.json({
+        isPro, totalCount: 0, recent30dCount: 0,
+        monthlyTimeline: [], topTlds: [], commonPathPatterns: [], brandLabelVariants: [], peakMonth: null,
+      });
+    }
+
+    const matches = await prisma.knownPhishingUrl.findMany({
+      where: { OR: candidates.map((c) => ({ brandLabel: { contains: c, mode: 'insensitive' as const } })) },
+      select: { url: true, domain: true, brandLabel: true, observedAt: true },
+    });
+
+    const totalCount = matches.length;
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const recent30dCount = matches.filter((m) => m.observedAt.getTime() >= thirtyDaysAgo).length;
+
+    if (!isPro) {
+      return res.json({
+        isPro: false, totalCount, recent30dCount,
+        monthlyTimeline: [], topTlds: [], commonPathPatterns: [], brandLabelVariants: [], peakMonth: null,
+      });
+    }
+
+    // 月次タイムライン
+    const monthCounts = new Map<string, number>();
+    for (const m of matches) {
+      const d = m.observedAt;
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      monthCounts.set(key, (monthCounts.get(key) ?? 0) + 1);
+    }
+    const monthlyTimeline: { month: string; count: number }[] = [];
+    const cursor = new Date();
+    cursor.setUTCDate(1);
+    for (let i = 23; i >= 0; i--) {
+      const d = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() - i, 1));
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      monthlyTimeline.push({ month: key, count: monthCounts.get(key) ?? 0 });
+    }
+
+    // ピーク月
+    let peakMonth: { month: string; count: number } | null = null;
+    for (const [month, count] of monthCounts.entries()) {
+      if (!peakMonth || count > peakMonth.count) peakMonth = { month, count };
+    }
+
+    // TLD分布
+    const tldCounts = new Map<string, number>();
+    for (const m of matches) {
+      const parts = m.domain.split('.');
+      if (parts.length < 2) continue;
+      const tld = '.' + parts[parts.length - 1];
+      tldCounts.set(tld, (tldCounts.get(tld) ?? 0) + 1);
+    }
+    const topTlds = [...tldCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tld, count]) => ({
+        tld, count,
+        percentage: Math.round((count / totalCount) * 1000) / 10,
+      }));
+
+    // URLパス傾向
+    const pathCounts = new Map<string, number>();
+    for (const m of matches) {
+      try {
+        const u = new URL(m.url);
+        const seg = u.pathname.split('/').filter(Boolean)[0];
+        const normalized = seg ? '/' + seg.toLowerCase() : '/';
+        pathCounts.set(normalized, (pathCounts.get(normalized) ?? 0) + 1);
+      } catch { /* ignore */ }
+    }
+    const commonPathPatterns = [...pathCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([pattern, count]) => ({ pattern, count }));
+
+    // ブランドラベルバリアント
+    const labelCounts = new Map<string, number>();
+    for (const m of matches) {
+      labelCounts.set(m.brandLabel, (labelCounts.get(m.brandLabel) ?? 0) + 1);
+    }
+    const brandLabelVariants = [...labelCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([label, count]) => ({ label, count }));
+
+    res.json({
+      isPro: true,
+      totalCount, recent30dCount,
+      monthlyTimeline, topTlds, commonPathPatterns, brandLabelVariants, peakMonth,
+    });
+  } catch (err) {
+    console.error('GET /brands/:id/attack-intelligence error:', err);
+    res.status(500).json({ error: '攻撃インテリジェンスの取得に失敗しました。' });
+  }
+});
+
 router.get('/:id/domains', async (req, res) => {
   try {
     const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;

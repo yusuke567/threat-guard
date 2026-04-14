@@ -7,8 +7,11 @@ import {
   triggerWhoisBackfill,
   getFeedImportStatus,
   getFeedImports,
+  getJpcertPatterns,
+  relearnJpcertPatterns,
   type FeedImportStatusDto,
   type FeedImportRunDto,
+  type JpcertPatternsResponse,
 } from '@/lib/api';
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -58,6 +61,45 @@ export default function SystemAdminPage() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
 
+  // JPCERT learned patterns (Layer 4)
+  const [patterns, setPatterns] = useState<JpcertPatternsResponse | null>(null);
+  const [patternsLoading, setPatternsLoading] = useState(true);
+  const [patternsError, setPatternsError] = useState<string | null>(null);
+  const [patternsTypeFilter, setPatternsTypeFilter] = useState<string>('');
+  const [relearning, setRelearning] = useState(false);
+  const [relearnResult, setRelearnResult] = useState<string | null>(null);
+
+  const loadPatterns = async (type?: string) => {
+    setPatternsLoading(true);
+    setPatternsError(null);
+    try {
+      const data = await getJpcertPatterns(type || undefined, 200);
+      setPatterns(data);
+    } catch (e: any) {
+      setPatternsError(e?.message || '検知パターンの取得に失敗しました');
+    } finally {
+      setPatternsLoading(false);
+    }
+  };
+
+  const handleRelearn = async () => {
+    if (!confirm('JPCERTコーパスから検知パターンを再学習します。数秒〜数十秒かかります。よろしいですか？')) return;
+    setRelearning(true);
+    setRelearnResult(null);
+    try {
+      const r = await relearnJpcertPatterns();
+      setRelearnResult(
+        `再学習完了（${r.durationSec}秒）: コーパス ${r.totalExamined.toLocaleString()}件 → ` +
+        `ドメインkw ${r.domainKeywords} / パス ${r.pathPrefixes} / TLD ${r.tldAbuse} / サブドメイン ${r.subdomains}`,
+      );
+      await loadPatterns(patternsTypeFilter);
+    } catch (e: any) {
+      setRelearnResult('エラー: ' + (e?.message || '再学習に失敗しました'));
+    } finally {
+      setRelearning(false);
+    }
+  };
+
   const loadFeed = async () => {
     setFeedLoading(true);
     setFeedError(null);
@@ -74,6 +116,8 @@ export default function SystemAdminPage() {
 
   useEffect(() => {
     loadFeed();
+    loadPatterns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleBackfill = async () => {
@@ -230,6 +274,122 @@ export default function SystemAdminPage() {
 
               {!feedLoading && feedRuns && feedRuns.length === 0 && (
                 <p className="text-sm text-[var(--text-tertiary)]">実行履歴がまだありません。</p>
+              )}
+            </div>
+          </Card>
+
+          {/* JPCERT 学習済み検知パターン (Layer 4) */}
+          <Card>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                  JPCERT学習済み検知パターン
+                </h2>
+                <div className="flex gap-2">
+                  <select
+                    value={patternsTypeFilter}
+                    onChange={(e) => { setPatternsTypeFilter(e.target.value); loadPatterns(e.target.value); }}
+                    className="text-sm px-2 py-1 rounded border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-primary)]"
+                  >
+                    <option value="">すべて</option>
+                    <option value="domain_keyword">ドメインキーワード</option>
+                    <option value="path_prefix">パスプレフィックス</option>
+                    <option value="tld_abuse">TLD乱用</option>
+                    <option value="subdomain">サブドメイン</option>
+                  </select>
+                  <Button variant="secondary" size="sm" onClick={handleRelearn} disabled={relearning}>
+                    {relearning ? '再学習中...' : '再学習を実行'}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-[var(--text-secondary)] mb-4">
+                JPCERT/CCコーパスから抽出した検知パターン。リスクスコアラーが新規ドメイン判定時に照合し、未観測ドメインでも高精度パターン一致で+最大30点加算します。
+              </p>
+
+              {relearnResult && (
+                <Alert variant={relearnResult.startsWith('エラー') ? 'error' : 'success'} className="mb-4">
+                  <div className="text-sm">{relearnResult}</div>
+                </Alert>
+              )}
+
+              {patternsError && (
+                <Alert variant="error" className="mb-4"><div className="text-sm">{patternsError}</div></Alert>
+              )}
+
+              {patternsLoading && (
+                <p className="text-sm text-[var(--text-tertiary)]">読み込み中...</p>
+              )}
+
+              {!patternsLoading && patterns && (
+                <div className="space-y-4">
+                  {/* サマリ */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {['domain_keyword', 'path_prefix', 'tld_abuse', 'subdomain'].map((t) => {
+                      const s = patterns.summary.find((x) => x.patternType === t);
+                      const labels: Record<string, string> = {
+                        domain_keyword: 'ドメインkw',
+                        path_prefix: 'パスプレフィックス',
+                        tld_abuse: 'TLD乱用',
+                        subdomain: 'サブドメイン',
+                      };
+                      return (
+                        <div key={t} className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-[var(--border-default)]">
+                          <div className="text-xs text-[var(--text-secondary)] mb-1">{labels[t]}</div>
+                          <div className="text-xl font-bold text-[var(--text-primary)]">{s?.count ?? 0} <span className="text-sm font-normal">件</span></div>
+                          {s?.maxOccurrences != null && (
+                            <div className="text-xs text-[var(--text-tertiary)]">最大 {s.maxOccurrences}回観測</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* パターン一覧 */}
+                  {patterns.patterns.length > 0 ? (
+                    <div className="overflow-x-auto rounded-lg border border-[var(--border-default)]">
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-50 dark:bg-gray-800 text-[var(--text-secondary)] uppercase tracking-wide">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-medium">タイプ</th>
+                            <th className="text-left px-3 py-2 font-medium">パターン</th>
+                            <th className="text-right px-3 py-2 font-medium">観測数</th>
+                            <th className="text-right px-3 py-2 font-medium">精度</th>
+                            <th className="text-left px-3 py-2 font-medium">例</th>
+                            <th className="text-left px-3 py-2 font-medium">最終観測</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--border-subtle)]">
+                          {patterns.patterns.map((p) => (
+                            <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                              <td className="px-3 py-2 text-[var(--text-secondary)] whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-900 text-[var(--text-primary)] text-[10px]">
+                                  {p.patternType}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 font-mono text-[var(--text-primary)]">{p.pattern}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[var(--text-primary)]">{p.occurrences}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-[var(--text-secondary)]">
+                                {(p.precision * 100).toFixed(2)}%
+                              </td>
+                              <td className="px-3 py-2 text-[var(--text-tertiary)] max-w-xs">
+                                <span className="block truncate" title={p.examples.join('\n')}>
+                                  {p.examples[0] ?? '—'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-[var(--text-secondary)] whitespace-nowrap">
+                                {new Date(p.lastSeen).toLocaleDateString('ja-JP')}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--text-tertiary)]">
+                      まだ学習されたパターンがありません。JPCERT取り込み後に自動実行されます（または「再学習を実行」で手動トリガー可能）。
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </Card>

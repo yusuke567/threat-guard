@@ -6,6 +6,7 @@ import { analyzeThreat } from './threat-analyzer.js';
 import { calculateRiskScore } from './risk-scorer.js';
 import { notifyNewThreat, notifyScanSummary, notifySiteChange, notifyFeedImportSummary, notifyFeedImportFailure } from './slack-notifier.js';
 import { runJpcertImport } from './jpcert-importer.js';
+import { learnPatterns } from './pattern-learner.js';
 import { emailNotifyNewThreat, emailNotifyScanSummary, emailNotifySiteChange } from './email-notifier.js';
 import { probeDomain } from './web-prober.js';
 import { analyzeContent } from './content-analyzer.js';
@@ -311,6 +312,20 @@ async function runJpcertImportJob() {
     });
 
     console.log(`[Scheduler] JPCERT import done. inserted=${result.insertedCount} brandHits=${result.brandHitCount}`);
+
+    // Layer 4: パターン学習（取り込み成功後に実行）
+    // コーパスから検知パターンを抽出し JpcertLearnedPattern に upsert。
+    // 失敗しても取り込み自体の成功は損なわない設計。
+    try {
+      const learned = await learnPatterns();
+      console.log(
+        `[Scheduler] Pattern learning done. ` +
+        `domain=${learned.domainKeywords} path=${learned.pathPrefixes} ` +
+        `tld=${learned.tldAbuse} sub=${learned.subdomains} examined=${learned.totalExamined}`,
+      );
+    } catch (learnErr) {
+      console.error('[Scheduler] Pattern learning failed (non-fatal):', learnErr);
+    }
   } catch (err: any) {
     await notifyFeedImportFailure('JPCERT/CC', err?.message || String(err));
     throw err;

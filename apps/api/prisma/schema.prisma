@@ -345,6 +345,28 @@ model KnownPhishingUrl {
   @@index([observedAt])
 }
 
+// Layer 4: JPCERTコーパスから機械的に抽出した検知パターン
+// domain_keyword: ドメインラベル内の高頻度n-gram（例: "login", "secure"）
+// path_prefix:    URLパスの最初のセグメント（例: "/signin", "/verify"）
+// tld_abuse:      フィッシングで比率が高いTLD（例: ".xyz"）
+// subdomain:      サブドメインで多用されるラベル（例: "secure-", "mail-"）
+model JpcertLearnedPattern {
+  id          String   @id @default(uuid())
+  patternType String   // "domain_keyword" | "path_prefix" | "tld_abuse" | "subdomain"
+  pattern     String   // パターン文字列
+  occurrences Int      @default(0)  // マッチしたKnownPhishingUrl件数
+  precision   Float    @default(0)  // 0.0-1.0: パターンの識別能力（高いほど偽陽性が少ない）
+  examples    String   @default("") // JSON配列: サンプルURL 3件
+  lastSeen    DateTime                // パターンを最後に観測した日時
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([patternType, pattern])
+  @@index([patternType])
+  @@index([precision])
+  @@index([occurrences])
+}
+
 // 外部脅威フィード（JPCERT等）取り込みの実行履歴
 // Layer B: 管理画面で更新状況を可視化、Layer A: Slack通知の元データ
 model FeedImportRun {
