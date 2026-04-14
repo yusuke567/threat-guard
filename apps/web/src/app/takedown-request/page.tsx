@@ -82,6 +82,8 @@ export default function TakedownRequestPage() {
   const [browserProviders, setBrowserProviders] = useState<string[]>(['GOOGLE_SAFE_BROWSING', 'MICROSOFT_SMARTSCREEN']);
   const [hostingGroups, setHostingGroups] = useState<AbuseGroup[]>([]);
   const [sendToHosting, setSendToHosting] = useState(true);
+  const [registrarExpanded, setRegistrarExpanded] = useState(false);
+  const [hostingExpanded, setHostingExpanded] = useState(false);
 
   // Step 3 result
   const [result, setResult] = useState<any>(null);
@@ -675,70 +677,89 @@ export default function TakedownRequestPage() {
 
             {/* 2. ドメインレジストラへの削除申請 */}
             <div className="border border-[var(--border-default)] rounded-lg p-4">
-              <h4 className="font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                <span className="text-lg">📧</span>
-                ドメインレジストラへの削除申請
-              </h4>
-              <p className="text-xs text-[var(--text-secondary)] mb-3">
-                各ドメインのレジストラ（登録管理会社）に直接削除を依頼します
-              </p>
-              {registrarGroups.length > 0 ? (
-                <div className="space-y-2 pl-2">
-                  {registrarGroups.map((g, i) => (
-                    <div key={`reg-${i}`} className="flex items-center gap-3 py-1.5 bg-surface-base rounded px-3">
-                      <span className="font-medium text-sm flex-1">{g.registrar}</span>
-                      {g.abuseEmail ? (
-                        <span className="text-xs text-[var(--text-secondary)]">({g.abuseEmail})</span>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-orange-600">⚠️ 送信先を入力</span>
-                          <input
-                            type="email"
-                            placeholder="abuse@example.com"
-                            value={g.manualEmail || ''}
-                            onChange={(e) => {
-                              const updated = [...groups];
-                              const idx = g.originalIndex;
-                              if (idx >= 0) {
-                                updated[idx] = { ...updated[idx], manualEmail: e.target.value };
-                                setGroups(updated);
-                              }
-                            }}
-                            className="border border-[var(--border-default)] rounded px-2 py-1 text-sm w-56"
-                          />
-                        </div>
-                      )}
-                      <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{g.threats.length}件</span>
-                    </div>
-                  ))}
+              <button
+                type="button"
+                onClick={() => setRegistrarExpanded(!registrarExpanded)}
+                className="w-full flex items-center justify-between"
+              >
+                <div>
+                  <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+                    <span className="text-lg">📧</span>
+                    ドメインレジストラへの削除申請
+                    <span className="text-xs font-normal text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{registrarGroups.length}社</span>
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1 text-left">
+                    各ドメインのレジストラ（登録管理会社）に直接削除を依頼します
+                  </p>
                 </div>
-              ) : (
-                <p className="text-sm text-[var(--text-tertiary)] pl-2">対象のドメインがありません</p>
+                <span className="text-gray-400 ml-2">{registrarExpanded ? '▲' : '▼'}</span>
+              </button>
+              {registrarExpanded && (
+                registrarGroups.length > 0 ? (
+                  <div className="space-y-2 pl-2 mt-3">
+                    {registrarGroups.map((g, i) => (
+                      <div key={`reg-${i}`} className="flex items-center gap-3 py-1.5 bg-surface-base rounded px-3">
+                        <span className="font-medium text-sm flex-1">{g.registrar}</span>
+                        {g.abuseEmail ? (
+                          <span className="text-xs text-[var(--text-secondary)]">({g.abuseEmail})</span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-orange-600">⚠️ 送信先を入力</span>
+                            <input
+                              type="email"
+                              placeholder="abuse@example.com"
+                              value={g.manualEmail || ''}
+                              onChange={(e) => {
+                                const updated = [...groups];
+                                const idx = g.originalIndex;
+                                if (idx >= 0) {
+                                  updated[idx] = { ...updated[idx], manualEmail: e.target.value };
+                                  setGroups(updated);
+                                }
+                              }}
+                              className="border border-[var(--border-default)] rounded px-2 py-1 text-sm w-56"
+                            />
+                          </div>
+                        )}
+                        <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{g.threats.length}件</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--text-tertiary)] pl-2 mt-3">対象のドメインがありません</p>
+                )
               )}
             </div>
 
             {/* 3. ホスティング事業者への削除申請 */}
             {activeHostingGroups.length > 0 && (
               <div className={`border rounded-lg p-4 transition-colors ${sendToHosting ? 'border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-900/20' : 'border-[var(--border-default)]'}`}>
-                <label className="flex items-start gap-3 cursor-pointer">
+                <div className="flex items-start gap-3">
                   <input
                     type="checkbox"
                     checked={sendToHosting}
                     onChange={(e) => setSendToHosting(e.target.checked)}
-                    className="rounded border-[var(--border-default)] text-green-600 w-4 h-4 mt-1"
+                    className="rounded border-[var(--border-default)] text-green-600 w-4 h-4 mt-1 cursor-pointer"
                   />
                   <div className="flex-1">
-                    <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
-                      <span className="text-lg">🖥️</span>
-                      ホスティング事業者への削除申請
-                    </h4>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">
-                      フィッシングサイトをホストしているサーバー管理会社にコンテンツ削除を依頼します
-                    </p>
-                    <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                      ※ IPアドレスからホスティング事業者を特定し、サーバー上のコンテンツ削除を要請します
-                    </p>
-                    {sendToHosting && (
+                    <button
+                      type="button"
+                      onClick={() => setHostingExpanded(!hostingExpanded)}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div className="text-left">
+                        <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
+                          <span className="text-lg">🖥️</span>
+                          ホスティング事業者への削除申請
+                          <span className="text-xs font-normal text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeHostingGroups.length}社</span>
+                        </h4>
+                        <p className="text-xs text-[var(--text-secondary)] mt-1">
+                          フィッシングサイトをホストしているサーバー管理会社にコンテンツ削除を依頼します
+                        </p>
+                      </div>
+                      <span className="text-gray-400 ml-2">{hostingExpanded ? '▲' : '▼'}</span>
+                    </button>
+                    {hostingExpanded && sendToHosting && (
                       <div className="space-y-2 mt-3 pl-1">
                         {activeHostingGroups.map((hg, i) => (
                           <div key={`hosting-${i}`} className="flex items-center gap-3 py-1.5 bg-surface-base rounded px-3">
@@ -770,7 +791,7 @@ export default function TakedownRequestPage() {
                       </div>
                     )}
                   </div>
-                </label>
+                </div>
               </div>
             )}
 
