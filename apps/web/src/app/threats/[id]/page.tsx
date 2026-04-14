@@ -914,103 +914,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
           )}
         </div>
 
-        {/* 3. 警視庁へのフィッシング報告 */}
-        {policeRecipient && (
-          <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
-            <button
-              onClick={() => setExpandedSection(expandedSection === 'police' ? null : 'police')}
-              className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">🚔</span>
-                <div className="text-left">
-                  <h3 className="font-medium text-[var(--text-primary)]">警視庁へのフィッシング報告</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">{policeRecipient.name}</p>
-                </div>
-              </div>
-              <span className="text-gray-400">{expandedSection === 'police' ? '▲' : '▼'}</span>
-            </button>
-            {expandedSection === 'police' && (
-              <div className="p-4 border-t border-[var(--border-default)] space-y-4">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  警視庁サイバー犯罪対策課に情報提供します。フィッシングサイトの捜査・対応に活用されます。
-                </p>
-                <div className="text-sm">
-                  <span className="text-[var(--text-secondary)]">送信先: </span>
-                  <span className="font-mono">{policeRecipient.email}</span>
-                </div>
-                {!policeTemplate ? (
-                  <Button variant="primary" onClick={() => generateTemplate('police')} disabled={generatingPolice}>
-                    {generatingPolice ? '生成中...' : 'フィッシング報告文面を生成'}
-                  </Button>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">情報提供内容（編集可能）</label>
-                      <textarea value={policeTemplate} onChange={(e) => setPoliceTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => generateTemplate('police')} disabled={generatingPolice}>再生成</Button>
-                      <Button variant="danger" onClick={() => handleSendTakedown('police')} disabled={submitting}>
-                        {submitting ? '送信中...' : '情報提供を送信'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 4. JPCERT/CCへのフィッシング報告 */}
-        {jpcertRecipient && (
-          <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
-            <button
-              onClick={() => setExpandedSection(expandedSection === 'jpcert' ? null : 'jpcert')}
-              className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <ShieldLogo size={24} />
-                <div className="text-left">
-                  <h3 className="font-medium text-[var(--text-primary)]">JPCERT/CCへのフィッシング報告</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">日本のセキュリティインシデント対応機関</p>
-                </div>
-              </div>
-              <span className="text-gray-400">{expandedSection === 'jpcert' ? '▲' : '▼'}</span>
-            </button>
-            {expandedSection === 'jpcert' && (
-              <div className="p-4 border-t border-[var(--border-default)] space-y-4">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  JPCERT/CCはフィッシングサイトの早期閉鎖を支援する機関です。報告することで対応が促進されます。
-                </p>
-                <div className="text-sm">
-                  <span className="text-[var(--text-secondary)]">送信先: </span>
-                  <span className="font-mono">{jpcertRecipient.email}</span>
-                </div>
-                {!jpcertTemplate ? (
-                  <Button variant="primary" onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert}>
-                    {generatingJpcert ? '生成中...' : 'フィッシング報告文面を生成'}
-                  </Button>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">報告内容（編集可能）</label>
-                      <textarea value={jpcertTemplate} onChange={(e) => setJpcertTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert}>再生成</Button>
-                      <Button variant="danger" onClick={() => handleSendTakedown('jpcert')} disabled={submitting}>
-                        {submitting ? '送信中...' : '報告を送信'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 5. ホスティング事業者への削除申請 */}
+        {/* 3. ホスティング事業者への削除申請 */}
         {hostingProvider && (
           <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
             <button
@@ -1071,6 +975,102 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
                       <Button variant="ghost" onClick={() => generateTemplate('hosting')} disabled={generatingHosting}>再生成</Button>
                       <Button variant="danger" onClick={() => handleSendTakedown('hosting')} disabled={submitting}>
                         {submitting ? '送信中...' : '削除申請を送信'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. 警視庁へのフィッシング報告 */}
+        {policeRecipient && (
+          <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
+            <button
+              onClick={() => setExpandedSection(expandedSection === 'police' ? null : 'police')}
+              className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🚔</span>
+                <div className="text-left">
+                  <h3 className="font-medium text-[var(--text-primary)]">警視庁へのフィッシング報告</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">{policeRecipient.name}</p>
+                </div>
+              </div>
+              <span className="text-gray-400">{expandedSection === 'police' ? '▲' : '▼'}</span>
+            </button>
+            {expandedSection === 'police' && (
+              <div className="p-4 border-t border-[var(--border-default)] space-y-4">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  警視庁サイバー犯罪対策課に情報提供します。フィッシングサイトの捜査・対応に活用されます。
+                </p>
+                <div className="text-sm">
+                  <span className="text-[var(--text-secondary)]">送信先: </span>
+                  <span className="font-mono">{policeRecipient.email}</span>
+                </div>
+                {!policeTemplate ? (
+                  <Button variant="primary" onClick={() => generateTemplate('police')} disabled={generatingPolice}>
+                    {generatingPolice ? '生成中...' : 'フィッシング報告文面を生成'}
+                  </Button>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">情報提供内容（編集可能）</label>
+                      <textarea value={policeTemplate} onChange={(e) => setPoliceTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" onClick={() => generateTemplate('police')} disabled={generatingPolice}>再生成</Button>
+                      <Button variant="danger" onClick={() => handleSendTakedown('police')} disabled={submitting}>
+                        {submitting ? '送信中...' : '情報提供を送信'}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5. JPCERT/CCへのフィッシング報告 */}
+        {jpcertRecipient && (
+          <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
+            <button
+              onClick={() => setExpandedSection(expandedSection === 'jpcert' ? null : 'jpcert')}
+              className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <ShieldLogo size={24} />
+                <div className="text-left">
+                  <h3 className="font-medium text-[var(--text-primary)]">JPCERT/CCへのフィッシング報告</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">日本のセキュリティインシデント対応機関</p>
+                </div>
+              </div>
+              <span className="text-gray-400">{expandedSection === 'jpcert' ? '▲' : '▼'}</span>
+            </button>
+            {expandedSection === 'jpcert' && (
+              <div className="p-4 border-t border-[var(--border-default)] space-y-4">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  JPCERT/CCはフィッシングサイトの早期閉鎖を支援する機関です。報告することで対応が促進されます。
+                </p>
+                <div className="text-sm">
+                  <span className="text-[var(--text-secondary)]">送信先: </span>
+                  <span className="font-mono">{jpcertRecipient.email}</span>
+                </div>
+                {!jpcertTemplate ? (
+                  <Button variant="primary" onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert}>
+                    {generatingJpcert ? '生成中...' : 'フィッシング報告文面を生成'}
+                  </Button>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">報告内容（編集可能）</label>
+                      <textarea value={jpcertTemplate} onChange={(e) => setJpcertTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" onClick={() => generateTemplate('jpcert')} disabled={generatingJpcert}>再生成</Button>
+                      <Button variant="danger" onClick={() => handleSendTakedown('jpcert')} disabled={submitting}>
+                        {submitting ? '送信中...' : '報告を送信'}
                       </Button>
                     </div>
                   </>
