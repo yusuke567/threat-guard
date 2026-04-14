@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { PageHeader, Button, Card } from '@/components/ui';
+import { JpcertAlertCard } from '@/components/JpcertAlertCard';
 import { getAlerts, getAlertSettings, updateAlertSettings, sendTestEmail, getSlackSettings, updateSlackSettings, sendSlackTestNotification } from '@/lib/api';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -168,6 +169,9 @@ export default function AlertsPage() {
   return (
     <div className="space-y-8">
       <PageHeader title="🔔 通知設定" description="アラート通知の設定と送信履歴" />
+
+      {/* JPCERT/CC連動アラート（Pro+限定） */}
+      <JpcertAlertCard />
 
       {/* Section 1: Settings */}
       <Card className="space-y-6">

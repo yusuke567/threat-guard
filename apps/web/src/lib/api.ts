@@ -215,8 +215,57 @@ export const resendTakedown = (id: string, template: string, language?: string) 
 // Admin: Organizations
 export const getAllOrganizations = () => fetchAPI<any[]>('/organizations/all');
 export const getOrganization = (id: string) => fetchAPI<any>(`/organizations/${id}`);
-export const updateOrganization = (id: string, name: string) =>
-  fetchAPI<any>(`/organizations/${id}`, { method: 'PUT', body: JSON.stringify({ name }) });
+export const updateOrganization = (id: string, payload: { name?: string; plan?: string } | string) => {
+  // 後方互換: 文字列を渡された場合は name のみ更新として扱う
+  const body = typeof payload === 'string' ? { name: payload } : payload;
+  return fetchAPI<any>(`/organizations/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+};
+
+// Current user's organization (returns first item with plan info)
+export const getMyOrganization = async (): Promise<{ id: string; name: string; plan: string } | null> => {
+  const list = await fetchAPI<any[]>('/organizations');
+  return list[0] ?? null;
+};
+
+// Admin: Feed Imports (JPCERT等の取り込み履歴)
+export interface FeedImportRunDto {
+  id: string;
+  source: string;
+  status: 'running' | 'success' | 'failed';
+  fetchedCount: number;
+  insertedCount: number;
+  brandHitCount: number;
+  alertedOrgIds: string[];
+  startedAt: string;
+  completedAt: string | null;
+  durationSec: number | null;
+  error: string | null;
+}
+export interface FeedImportStatusDto {
+  source: string;
+  lastSuccessAt: string | null;
+  hoursSinceLastSuccess: number | null;
+  isHealthy: boolean;
+  totalInDb: number;
+  lastInsertedCount: number;
+  lastBrandHitCount: number;
+}
+export const getFeedImports = (limit = 20, source?: string) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (source) params.set('source', source);
+  return fetchAPI<FeedImportRunDto[]>(`/admin/feed-imports?${params}`);
+};
+export const getFeedImportStatus = () => fetchAPI<FeedImportStatusDto[]>('/admin/feed-imports/status');
+
+// Brand JPCERT history (Pro+ only for full data)
+export interface BrandJpcertHistoryDto {
+  isPro: boolean;
+  totalCount: number;
+  topBrandLabels: { label: string; count: number }[];
+  items: { id: string; url: string; domain: string; brandLabel: string; observedAt: string; source: string }[] | null;
+}
+export const getBrandJpcertHistory = (brandId: string) =>
+  fetchAPI<BrandJpcertHistoryDto>(`/brands/${brandId}/jpcert-history`);
 
 // Alerts
 export const getAlerts = (page?: number, limit?: number) => {

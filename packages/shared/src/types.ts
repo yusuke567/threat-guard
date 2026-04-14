@@ -20,9 +20,12 @@ export type ScanJobStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 // === Core Interfaces ===
 
+export type OrganizationPlan = 'starter' | 'professional' | 'enterprise' | 'enterprise_plus';
+
 export interface Organization {
   id: string;
   name: string;
+  plan: OrganizationPlan;
   createdAt: Date;
   updatedAt: Date;
 }

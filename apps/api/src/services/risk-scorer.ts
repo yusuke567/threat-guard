@@ -156,7 +156,15 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
   const globalRuleBoost = globalRule ? 20 : 0;
   const globalVictimBoost = (globalRule?.victimCount ?? 0) > 0 ? 10 : 0;
 
-  const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost + globalRuleBoost + globalVictimBoost));
+  // JPCERT/CC等の第三者機関による過去フィッシング観測実績ブースト
+  // 同一ドメインで観測歴があれば極めて高い信頼度の悪性シグナル
+  const jpcertHit = await prisma.knownPhishingUrl.findFirst({
+    where: { domain: domain.domain },
+    select: { id: true },
+  });
+  const jpcertBoost = jpcertHit ? 30 : 0;
+
+  const finalScore = Math.min(100, Math.max(0, score + userReportBoost + victimBoost + globalRuleBoost + globalVictimBoost + jpcertBoost));
 
   // Update the domain's risk score
   await prisma.detectedDomain.update({

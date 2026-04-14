@@ -253,6 +253,72 @@ export async function notifyScanSummary(
   }
 }
 
+interface FeedImportSummary {
+  source: string;            // "JPCERT/CC"
+  fetchedCount: number;
+  insertedCount: number;
+  brandHitCount: number;
+  alertedOrgCount: number;
+  totalInDb: number;
+  durationSec: number;
+}
+
+/**
+ * 外部脅威フィード取り込み完了の通知（グローバルWebhook向け、社内監視用）。
+ */
+export async function notifyFeedImportSummary(summary: FeedImportSummary): Promise<void> {
+  if (!GLOBAL_SLACK_WEBHOOK_URL) return;
+
+  const headerEmoji = summary.brandHitCount > 0 ? '⚠️' : '✅';
+  const headerText = summary.brandHitCount > 0
+    ? `${headerEmoji} ${summary.source} 取り込み完了 — Pro顧客ブランドに新規ヒットあり`
+    : `${headerEmoji} ${summary.source} 取り込み完了`;
+
+  const payload = {
+    blocks: [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: headerText, emoji: true },
+      },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: `*取得件数:*\n${summary.fetchedCount.toLocaleString()}` },
+          { type: 'mrkdwn', text: `*新規DB追加:*\n${summary.insertedCount.toLocaleString()}` },
+          { type: 'mrkdwn', text: `*Pro顧客ブランド該当:*\n*${summary.brandHitCount}* 件` },
+          { type: 'mrkdwn', text: `*通知対象組織:*\n${summary.alertedOrgCount} 組織` },
+          { type: 'mrkdwn', text: `*累計DB件数:*\n${summary.totalInDb.toLocaleString()}` },
+          { type: 'mrkdwn', text: `*所要時間:*\n${summary.durationSec}秒` },
+        ],
+      },
+    ],
+  };
+
+  await sendToWebhook(GLOBAL_SLACK_WEBHOOK_URL, payload);
+}
+
+/**
+ * フィード取り込み失敗時の通知（社内監視用）。
+ */
+export async function notifyFeedImportFailure(source: string, errorMessage: string): Promise<void> {
+  if (!GLOBAL_SLACK_WEBHOOK_URL) return;
+
+  const payload = {
+    blocks: [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: `🚨 ${source} 取り込み失敗`, emoji: true },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `\`\`\`${errorMessage.slice(0, 1000)}\`\`\`` },
+      },
+    ],
+  };
+
+  await sendToWebhook(GLOBAL_SLACK_WEBHOOK_URL, payload);
+}
+
 /**
  * Send a test message to a specific webhook URL.
  */

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { captureScreenshot } from '../services/screenshot.js';
 import { runFullScan } from '../services/scheduler.js';
+import { isProOrAbove } from '../lib/plan.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import multer from 'multer';
@@ -485,6 +486,77 @@ router.delete('/:id/trademark-cert', async (req, res) => {
 // ──────── BrandDomain 2-layer management ────────
 
 // List brand domains
+/**
+ * GET /api/brands/:id/jpcert-history — このブランドを騙ったJPCERT観測履歴
+ *
+ * Pro+組織のみ詳細データを返す。Starterは件数のみ + アップセル用情報を返す。
+ * マッチング: Brand.name または Brand.keywords が KnownPhishingUrl.brandLabel に部分一致
+ */
+router.get('/:id/jpcert-history', async (req, res) => {
+  try {
+    const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;
+    const where = isSuperadmin
+      ? { id: req.params.id }
+      : { id: req.params.id, organizationId: req.user!.organizationId! };
+    const brand = await prisma.brand.findFirst({
+      where,
+      include: { organization: { select: { plan: true } } },
+    });
+    if (!brand) return res.status(404).json({ error: 'ブランドが見つかりません。' });
+
+    // ブランド候補キーワード（importerと同じロジック）
+    const keywords = (brand.keywords || '')
+      .split(',')
+      .map((k: string) => k.trim().toLowerCase())
+      .filter((k: string) => k.length >= 2);
+    const candidates = [...new Set([brand.name.toLowerCase(), ...keywords])].filter((c) => c.length >= 2);
+
+    if (candidates.length === 0) {
+      return res.json({ isPro: isProOrAbove(brand.organization?.plan), totalCount: 0, items: [], topBrandLabels: [] });
+    }
+
+    // OR条件で部分一致検索
+    const matches = await prisma.knownPhishingUrl.findMany({
+      where: { OR: candidates.map((c) => ({ brandLabel: { contains: c, mode: 'insensitive' as const } })) },
+      orderBy: { observedAt: 'desc' },
+      take: 200,
+    });
+
+    // brandLabel別の集計（上位5件）
+    const labelCounts = new Map<string, number>();
+    for (const m of matches) {
+      labelCounts.set(m.brandLabel, (labelCounts.get(m.brandLabel) ?? 0) + 1);
+    }
+    const topBrandLabels = [...labelCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, count]) => ({ label, count }));
+
+    const totalCount = matches.length;
+    const isPro = isSuperadmin || isProOrAbove(brand.organization?.plan);
+
+    res.json({
+      isPro,
+      totalCount,
+      topBrandLabels,
+      // Starterは詳細URLを返さない（アップセル）
+      items: isPro
+        ? matches.slice(0, 50).map((m) => ({
+            id: m.id,
+            url: m.url,
+            domain: m.domain,
+            brandLabel: m.brandLabel,
+            observedAt: m.observedAt,
+            source: m.source,
+          }))
+        : null,
+    });
+  } catch (err) {
+    console.error('GET /brands/:id/jpcert-history error:', err);
+    res.status(500).json({ error: 'JPCERT観測履歴の取得に失敗しました。' });
+  }
+});
+
 router.get('/:id/domains', async (req, res) => {
   try {
     const isSuperadmin = req.user?.role === 'superadmin' && !req.user?.organizationId;

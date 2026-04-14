@@ -18,6 +18,7 @@ import socialMonitorRouter from './routes/social-monitor.js';
 import publicDiagnoseRouter from './routes/public-diagnose.js';
 import browserReportsRouter from './routes/browser-reports.js';
 import activityLogsRouter from './routes/activity-logs.js';
+import feedImportsRouter from './routes/feed-imports.js';
 import { startScheduler } from './services/scheduler.js';
 import { authMiddleware, requireOrg, requireSuperAdmin } from './lib/auth-middleware.js';
 import { activityLogger } from './lib/activity-logger.js';
@@ -183,6 +184,7 @@ app.use('/api/takedown-batches', authMiddleware, requireOrg, takedownBatchRouter
 app.use('/api/social-posts', authMiddleware, requireOrg, socialMonitorRouter);
 app.use('/api/browser-reports', authMiddleware, requireOrg, browserReportsRouter);
 app.use('/api/activity-logs', authMiddleware, requireSuperAdmin, activityLogsRouter);
+app.use('/api/admin/feed-imports', authMiddleware, requireSuperAdmin, feedImportsRouter);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

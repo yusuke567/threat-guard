@@ -4,7 +4,8 @@ import { monitorBrand } from './ct-monitor.js';
 import { scanDomainVariations } from './domain-generator.js';
 import { analyzeThreat } from './threat-analyzer.js';
 import { calculateRiskScore } from './risk-scorer.js';
-import { notifyNewThreat, notifyScanSummary, notifySiteChange } from './slack-notifier.js';
+import { notifyNewThreat, notifyScanSummary, notifySiteChange, notifyFeedImportSummary, notifyFeedImportFailure } from './slack-notifier.js';
+import { runJpcertImport } from './jpcert-importer.js';
 import { emailNotifyNewThreat, emailNotifyScanSummary, emailNotifySiteChange } from './email-notifier.js';
 import { probeDomain } from './web-prober.js';
 import { analyzeContent } from './content-analyzer.js';
@@ -271,7 +272,49 @@ export function startScheduler() {
     });
   });
 
+  // JPCERT/CC フィッシングURL履歴フィードの日次取り込み: 03:00
+  // - 当年と前年のCSVのみ取得（既存月は重複スキップで実質増分のみ）
+  // - Pro+組織の登録ブランドに自動マッチ → DetectedDomain自動登録 + 既存アラート発火
+  // - グローバルSlack(社内監視)に取り込みサマリ通知
+  const jpcertSchedule = process.env.JPCERT_IMPORT_CRON || '0 3 * * *';
+  console.log(`[Scheduler] JPCERT import schedule: ${jpcertSchedule}`);
+  cron.schedule(jpcertSchedule, () => {
+    runJpcertImportJob().catch((err) => {
+      console.error('[Scheduler] JPCERT import error:', err);
+    });
+  });
+
   console.log('[Scheduler] ✅ Cron scheduler active');
+}
+
+/**
+ * 日次のJPCERT取り込みジョブ。当年と前年のみ対象（過去年は変動しない）。
+ */
+async function runJpcertImportJob() {
+  const startedAt = Date.now();
+  const currentYear = new Date().getFullYear();
+  console.log(`[Scheduler] Starting JPCERT import (years ${currentYear - 1}-${currentYear})`);
+
+  try {
+    const result = await runJpcertImport({ fromYear: currentYear - 1, toYear: currentYear });
+    const totalInDb = await prisma.knownPhishingUrl.count({ where: { source: 'jpcert' } });
+    const durationSec = Math.round((Date.now() - startedAt) / 1000);
+
+    await notifyFeedImportSummary({
+      source: 'JPCERT/CC',
+      fetchedCount: result.fetchedCount,
+      insertedCount: result.insertedCount,
+      brandHitCount: result.brandHitCount,
+      alertedOrgCount: result.alertedOrgIds.length,
+      totalInDb,
+      durationSec,
+    });
+
+    console.log(`[Scheduler] JPCERT import done. inserted=${result.insertedCount} brandHits=${result.brandHitCount}`);
+  } catch (err: any) {
+    await notifyFeedImportFailure('JPCERT/CC', err?.message || String(err));
+    throw err;
+  }
 }
 
 /**

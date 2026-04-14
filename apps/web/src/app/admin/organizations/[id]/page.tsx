@@ -8,8 +8,23 @@ import { getOrganization, updateOrganization, getOrgUsers, createOrgUser, delete
 interface OrgDetail {
   id: string;
   name: string;
+  plan: string;
   brands: { id: string; name: string; domain: string }[];
   _count: { brands: number; users: number };
+}
+
+const PLAN_OPTIONS: { value: string; label: string; badge: string }[] = [
+  { value: 'starter', label: 'Starter（基本機能のみ）', badge: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200' },
+  { value: 'professional', label: 'Professional（Pro機能利用可）', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  { value: 'enterprise', label: 'Enterprise', badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
+  { value: 'enterprise_plus', label: 'Enterprise+', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+];
+
+function planLabel(plan: string): string {
+  return PLAN_OPTIONS.find((p) => p.value === plan)?.label.split('（')[0] || plan;
+}
+function planBadgeClass(plan: string): string {
+  return PLAN_OPTIONS.find((p) => p.value === plan)?.badge || 'bg-gray-100 text-gray-700';
 }
 
 interface OrgUser {
@@ -33,8 +48,9 @@ export default function AdminOrgDetailPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Edit name
+  // Edit name + plan
   const [editName, setEditName] = useState('');
+  const [editPlan, setEditPlan] = useState<string>('starter');
   const [saving, setSaving] = useState(false);
 
   // Invite form
@@ -53,6 +69,7 @@ export default function AdminOrgDetailPage() {
       ]);
       setOrg(orgData);
       setEditName(orgData.name);
+      setEditPlan(orgData.plan ?? 'starter');
       setUsers(usersData);
       setDeletedUsers(deletedData);
     } catch (e: any) {
@@ -71,9 +88,9 @@ export default function AdminOrgDetailPage() {
     setError('');
     setSuccess('');
     try {
-      const updated = await updateOrganization(orgId, editName.trim());
-      setOrg(prev => prev ? { ...prev, name: updated.name } : prev);
-      setSuccess('Organization名を更新しました');
+      const updated = await updateOrganization(orgId, { name: editName.trim(), plan: editPlan });
+      setOrg(prev => prev ? { ...prev, name: updated.name, plan: updated.plan } : prev);
+      setSuccess('Organization情報を更新しました');
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -160,28 +177,59 @@ export default function AdminOrgDetailPage() {
           </a>
         </div>
 
-        <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">{org.name}</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{org.name}</h1>
+          <span className={`px-2 py-1 rounded-full text-xs font-bold ${planBadgeClass(org.plan ?? 'starter')}`}>
+            {planLabel(org.plan ?? 'starter')}
+          </span>
+        </div>
 
         {error && <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg text-sm">{error}</div>}
         {success && <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg text-sm">{success}</div>}
 
-        {/* Edit Name */}
+        {/* Edit Name + Plan */}
         <div className="bg-surface-card border border-[var(--border-default)] rounded-lg p-4 mb-6">
           <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Organization 情報</h2>
-          <form onSubmit={handleUpdateName} className="flex gap-3">
-            <input
-              type="text"
-              value={editName}
-              onChange={e => setEditName(e.target.value)}
-              className="flex-1 px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <button
-              type="submit"
-              disabled={saving || !editName.trim() || editName.trim() === org.name}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {saving ? '保存中...' : '名前を更新'}
-            </button>
+          <form onSubmit={handleUpdateName} className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">組織名</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                契約プラン
+              </label>
+              <select
+                value={editPlan}
+                onChange={e => setEditPlan(e.target.value)}
+                className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {PLAN_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                Professional以上で「JPCERT/CC連動アラート」「金融庁レポート」等のPro機能が有効になります。
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={
+                  saving ||
+                  !editName.trim() ||
+                  (editName.trim() === org.name && editPlan === (org.plan ?? 'starter'))
+                }
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {saving ? '保存中...' : '更新'}
+              </button>
+            </div>
           </form>
         </div>
 

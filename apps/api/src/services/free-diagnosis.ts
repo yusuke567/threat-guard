@@ -2,6 +2,7 @@ import { chromium, Browser } from 'playwright';
 import { resolve4 } from 'node:dns/promises';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { getDomain } from 'tldts';
 import { prisma } from '../lib/prisma.js';
 import { anthropic } from '../lib/anthropic.js';
 import { lookupWhoisRaw } from './whois-lookup.js';
@@ -92,6 +93,59 @@ async function getChromiumPath(): Promise<string | undefined> {
 }
 
 /**
+ * JPCERT/CC等の既知フィッシングURL履歴と照合する高速判定。
+ * URL完全一致 or 同一ドメインヒットがあれば、ブラウザ起動・AI解析を省略して即時判定。
+ */
+async function checkKnownPhishingMatch(targetUrl: string, domain: string) {
+  // URL完全一致が最優先
+  const urlExactHit = await prisma.knownPhishingUrl.findFirst({
+    where: { url: targetUrl },
+    orderBy: { observedAt: 'desc' },
+  });
+  if (urlExactHit) return { kind: 'url_exact' as const, hit: urlExactHit };
+
+  // 末尾 `/` 有無の揺れを吸収（"https://x.com" / "https://x.com/"）
+  const altUrl = targetUrl.endsWith('/') ? targetUrl.slice(0, -1) : targetUrl + '/';
+  const urlAltHit = await prisma.knownPhishingUrl.findFirst({
+    where: { url: altUrl },
+    orderBy: { observedAt: 'desc' },
+  });
+  if (urlAltHit) return { kind: 'url_exact' as const, hit: urlAltHit };
+
+  // ドメイン一致（過去にこのドメインがフィッシングに使われた履歴）
+  const domainHit = await prisma.knownPhishingUrl.findFirst({
+    where: { domain },
+    orderBy: { observedAt: 'desc' },
+  });
+  if (domainHit) {
+    const total = await prisma.knownPhishingUrl.count({ where: { domain } });
+    return { kind: 'domain' as const, hit: domainHit, total };
+  }
+
+  // 登録ドメイン（eTLD+1）一致：サブドメインを跨いだフィッシング流用を捕捉
+  // 例: JPCERTには `login.evil.com` があり、ユーザが `evil.com` を入力したケース
+  const registeredDomain = getDomain(domain);
+  if (registeredDomain && registeredDomain !== domain) {
+    const subHit = await prisma.knownPhishingUrl.findFirst({
+      where: { domain: { endsWith: `.${registeredDomain}` } },
+      orderBy: { observedAt: 'desc' },
+    });
+    if (subHit) {
+      const total = await prisma.knownPhishingUrl.count({
+        where: { domain: { endsWith: `.${registeredDomain}` } },
+      });
+      return { kind: 'registered_domain' as const, hit: subHit, total, registeredDomain };
+    }
+  }
+
+  return null;
+}
+
+function formatJstDate(d: Date): string {
+  return d.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+/**
  * Run a free diagnosis: DNS check, web probe, screenshot, AI analysis.
  * Lighter version of the full scan — no brand comparison needed.
  */
@@ -101,6 +155,43 @@ export async function runFreeDiagnosis(diagnosisId: string): Promise<void> {
   });
 
   const domain = diagnosis.domain;
+
+  // === Fast-path: JPCERT/CC等の既知フィッシングURL履歴で即判定 ===
+  // ヒット時はブラウザ起動・AI解析を省略しコスト削減＋応答速度向上
+  try {
+    const match = await checkKnownPhishingMatch(diagnosis.targetUrl, domain);
+    if (match) {
+      const observed = formatJstDate(match.hit.observedAt);
+      const sourceLabel = match.hit.source === 'jpcert' ? 'JPCERT/CC' : match.hit.source;
+      let reasoning: string;
+      let confidence: number;
+      if (match.kind === 'url_exact') {
+        reasoning = `${sourceLabel}が${observed}に「${match.hit.brandLabel}」を装ったフィッシングURLとして観測した完全一致URLです。即座にアクセスを中止してください。`;
+        confidence = 1.0;
+      } else if (match.kind === 'domain') {
+        reasoning = `${sourceLabel}が過去に「${match.hit.brandLabel}」を装ったフィッシングURLとして観測したドメイン（最終観測: ${observed}、観測回数: ${match.total}件）です。同一ドメイン上の他のページも危険な可能性が極めて高いです。`;
+        confidence = 0.95;
+      } else {
+        reasoning = `登録ドメイン「${match.registeredDomain}」配下で、${sourceLabel}が過去に「${match.hit.brandLabel}」を装ったフィッシングURLとして観測しています（最終観測: ${observed}、配下サブドメイン観測数: ${match.total}件）。このドメイン全体の信頼性が損なわれています。`;
+        confidence = 0.85;
+      }
+
+      await prisma.freeDiagnosis.update({
+        where: { id: diagnosisId },
+        data: {
+          status: 'completed',
+          riskScore: 100,
+          category: 'phishing',
+          confidence,
+          reasoning,
+        },
+      });
+      console.log(`[FreeDiagnosis] JPCERT fast-path hit (${match.kind}) for ${diagnosis.targetUrl}`);
+      return;
+    }
+  } catch (err) {
+    console.error(`[FreeDiagnosis] JPCERT lookup failed (continuing with normal flow):`, err);
+  }
   let ip: string | null = null;
   let dnsResolved = false;
   let httpStatus: number | null = null;

@@ -20,6 +20,7 @@ import {
 } from '@/lib/api';
 import Image from 'next/image';
 import { Button, useToast } from '@/components/ui';
+import { BrandJpcertHistorySection } from '@/components/BrandJpcertHistorySection';
 
 /* ──────────────────────── types ──────────────────────── */
 interface BrandData {
@@ -1117,6 +1118,9 @@ example.net`}
           )}
         </div>
       )}
+
+      {/* JPCERT/CC観測履歴セクション */}
+      <BrandJpcertHistorySection brandId={brand.id} />
 
       {/* Created at */}
       <div className="text-xs text-gray-400 text-right">

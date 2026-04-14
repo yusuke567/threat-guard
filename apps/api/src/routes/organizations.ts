@@ -29,26 +29,36 @@ router.get('/all', requireSuperAdmin, async (_req, res) => {
   res.json(orgs);
 });
 
+const VALID_PLANS = ['starter', 'professional', 'enterprise', 'enterprise_plus'] as const;
+
 // POST /api/organizations — create organization (admin)
 router.post('/', requireSuperAdmin, async (req, res) => {
-  const { name } = req.body;
+  const { name, plan } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: '組織名を入力してください。' });
   }
-  const org = await prisma.organization.create({ data: { name: name.trim() } });
+  if (plan !== undefined && !VALID_PLANS.includes(plan)) {
+    return res.status(400).json({ error: '不正なプランです。' });
+  }
+  const org = await prisma.organization.create({
+    data: { name: name.trim(), plan: plan ?? 'starter' },
+  });
   res.status(201).json(org);
 });
 
 // PUT /api/organizations/:id — update organization (admin)
 router.put('/:id', requireSuperAdmin, async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, plan } = req.body;
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ error: '組織名を入力してください。' });
   }
+  if (plan !== undefined && !VALID_PLANS.includes(plan)) {
+    return res.status(400).json({ error: '不正なプランです。' });
+  }
   const org = await prisma.organization.update({
     where: { id },
-    data: { name: name.trim() },
+    data: { name: name.trim(), ...(plan !== undefined && { plan }) },
   });
   res.json(org);
 });
