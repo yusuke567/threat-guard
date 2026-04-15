@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getAbuseContacts, getHostingAbuseContacts } from '../services/whois-abuse.js';
 import { generateTakedownTemplate, generatePoliceTemplateBatch, generateJpcertTemplateBatch, generateHostingTemplateBatch, POLICE_RECIPIENT, JPCERT_RECIPIENT, type RecipientType } from '../services/takedown.js';
-import { sendTakedownEmail } from '../services/takedown-export.js';
+import { sendTakedownEmail, sendTakedownEmailGroup } from '../services/takedown-export.js';
 
 const router = Router();
 
@@ -148,7 +148,7 @@ router.post('/', async (req, res) => {
     });
 
     // Create individual takedown requests
-    const requests = [];
+    const requests: Awaited<ReturnType<typeof prisma.takedownRequest.create>>[] = [];
     for (const item of parsed.data.items) {
       const threat = threatMap.get(item.threatId)!;
       const whois = threat.whoisData ? JSON.parse(threat.whoisData) : {};
@@ -199,16 +199,48 @@ router.post('/', async (req, res) => {
       skippedCount++;
     }
 
-    // Send emails
+    // Send emails — JPCERT/Police are consolidated into a single email per recipientType
+    // (the batch template already lists every site); registrar/hosting remain one email per request.
     let sentCount = 0;
     const errors: { threatId: string; error: string }[] = [];
 
-    for (const takedownReq of requests) {
+    const jpcertRequests = requests.filter((r) => r.recipientType === 'jpcert' && r.abuseEmail);
+    const policeRequests = requests.filter((r) => r.recipientType === 'police' && r.abuseEmail);
+    const perDomainRequests = requests.filter(
+      (r) => r.recipientType !== 'jpcert' && r.recipientType !== 'police',
+    );
+
+    // Helper: send one grouped email covering all included requests
+    const sendGroup = async (group: typeof requests) => {
+      if (group.length === 0) return;
+      const ids = group.map((r) => r.id);
+      const recipient = group[0].abuseEmail!;
+      try {
+        await sendTakedownEmailGroup(ids, recipient);
+        sentCount += group.length;
+        for (const r of group) {
+          await prisma.detectedDomain.update({
+            where: { id: r.detectedDomainId },
+            data: { status: 'takedown_sent' },
+          });
+        }
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        for (const r of group) {
+          errors.push({ threatId: r.detectedDomainId, error: msg });
+        }
+      }
+    };
+
+    await sendGroup(jpcertRequests);
+    await sendGroup(policeRequests);
+
+    // Registrar / hosting — one email per takedown
+    for (const takedownReq of perDomainRequests) {
       try {
         if (takedownReq.abuseEmail) {
           await sendTakedownEmail(takedownReq.id, takedownReq.abuseEmail);
           sentCount++;
-          // Update threat status to takedown_sent
           await prisma.detectedDomain.update({
             where: { id: takedownReq.detectedDomainId },
             data: { status: 'takedown_sent' },

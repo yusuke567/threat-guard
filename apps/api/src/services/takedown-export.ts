@@ -445,6 +445,28 @@ export async function sendTakedownEmail(
     ? [{ filename: `takedown-${domain}-evidence.pdf`, content: pdf as Buffer }]
     : undefined;
 
+  // Build subject line (JPCERT/警視庁 requires Japanese + brand name)
+  let subject: string;
+  if (takedown.recipientType === 'jpcert') {
+    // Count total JPCERT takedowns in the same batch (1 for individual requests)
+    const count = takedown.batchId
+      ? await prisma.takedownRequest.count({
+          where: { batchId: takedown.batchId, recipientType: 'jpcert' },
+        })
+      : 1;
+    subject = `${brandName}を偽装するサイトの削除依頼（${count}件）`;
+  } else if (takedown.recipientType === 'police') {
+    // Count total police takedowns in the same batch (1 for individual requests)
+    const count = takedown.batchId
+      ? await prisma.takedownRequest.count({
+          where: { batchId: takedown.batchId, recipientType: 'police' },
+        })
+      : 1;
+    subject = `フィッシングサイト報告 — ${brandName}を偽装する不正サイト（${count}件）`;
+  } else {
+    subject = `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`;
+  }
+
   // Use brand-specific SMTP if configured, otherwise use shared mail (Resend/SMTP)
   if (brand.smtpHost && brand.smtpUser && brand.smtpPass) {
     const port = brand.smtpPort || 465;
@@ -460,7 +482,7 @@ export async function sendTakedownEmail(
     await transporter.sendMail({
       from: senderEmail,
       to: recipientEmail,
-      subject: `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`,
+      subject,
       text: fullBody,
       attachments: pdfAttachments,
     });
@@ -468,7 +490,7 @@ export async function sendTakedownEmail(
     await sendMail({
       from: senderEmail || undefined,
       to: recipientEmail,
-      subject: `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`,
+      subject,
       html: `<pre>${fullBody}</pre>`,
       attachments: pdfAttachments,
     });
@@ -477,6 +499,112 @@ export async function sendTakedownEmail(
   // Update status
   await prisma.takedownRequest.update({
     where: { id: takedownId },
+    data: { status: 'sent', sentAt: new Date() },
+  });
+}
+
+/**
+ * Send ONE email covering multiple takedown requests in a batch (used for JPCERT/Police).
+ * All requests must share the same recipient email and the same template body
+ * (the batch template already lists every site).
+ * Attaches per-domain PDFs (best effort).
+ * Marks every included TakedownRequest as 'sent'.
+ */
+export async function sendTakedownEmailGroup(
+  takedownIds: string[],
+  recipientEmail: string,
+): Promise<void> {
+  if (takedownIds.length === 0) return;
+  if (takedownIds.length === 1) {
+    await sendTakedownEmail(takedownIds[0], recipientEmail);
+    return;
+  }
+
+  const takedowns = await prisma.takedownRequest.findMany({
+    where: { id: { in: takedownIds } },
+    include: {
+      detectedDomain: {
+        include: {
+          brand: { include: { organization: true } },
+        },
+      },
+    },
+  });
+  if (takedowns.length === 0) return;
+
+  const primary = takedowns[0];
+  const brand = primary.detectedDomain.brand;
+  const brandName = brand.name;
+  const senderEmail = brand.senderEmail || process.env.RESEND_FROM;
+  const count = takedowns.length;
+
+  // Generate per-domain PDFs (best effort)
+  const pdfAttachments: { filename: string; content: Buffer }[] = [];
+  for (const t of takedowns) {
+    try {
+      const pdfPromise = generateTakedownPdf(t.id);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('PDF generation timed out (15s)')), 15000)
+      );
+      const pdf = await Promise.race([pdfPromise, timeoutPromise]);
+      pdfAttachments.push({
+        filename: `takedown-${t.detectedDomain.domain}-evidence.pdf`,
+        content: pdf as Buffer,
+      });
+    } catch (err) {
+      console.warn(
+        `[TakedownExport] PDF generation failed for ${t.detectedDomain.domain}, skipping attachment:`,
+        err
+      );
+    }
+  }
+
+  // Subject (Japanese for JPCERT/Police batches — recipient and body are both in Japanese)
+  let subject: string;
+  if (primary.recipientType === 'jpcert') {
+    subject = `${brandName}を偽装するサイトの削除依頼（${count}件）`;
+  } else if (primary.recipientType === 'police') {
+    subject = `フィッシングサイト報告 — ${brandName}を偽装する不正サイト（${count}件）`;
+  } else {
+    const domain = primary.detectedDomain.domain;
+    const risk = primary.detectedDomain.riskScore;
+    subject = `Takedown Request: ${domain} and ${count - 1} more — Brand Infringement on ${brandName} [Risk: ${risk ?? 'N/A'}/100]`;
+  }
+
+  // Body: the batch template already enumerates every site
+  const fullBody = primary.template;
+
+  if (brand.smtpHost && brand.smtpUser && brand.smtpPass) {
+    const port = brand.smtpPort || 465;
+    const transporter = nodemailer.createTransport({
+      host: brand.smtpHost,
+      port,
+      secure: port === 465,
+      auth: { user: brand.smtpUser, pass: brand.smtpPass },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+    await transporter.sendMail({
+      from: senderEmail,
+      to: recipientEmail,
+      subject,
+      text: fullBody,
+      attachments: pdfAttachments,
+    });
+  } else {
+    await sendMail({
+      from: senderEmail || undefined,
+      to: recipientEmail,
+      subject,
+      html: `<pre>${fullBody}</pre>`,
+      attachments: pdfAttachments,
+    });
+  }
+
+  // Mark every included takedown as sent
+  await prisma.takedownRequest.updateMany({
+    where: { id: { in: takedownIds } },
     data: { status: 'sent', sentAt: new Date() },
   });
 }
