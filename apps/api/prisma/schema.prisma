@@ -57,6 +57,10 @@ model Brand {
   smtpUser         String?
   smtpPass         String?
   trademarkCertUrl String?
+  // JPCERT/CC 等の外部フィードからの自動マッチングをスキップするフラグ。
+  // ブランド側が独自に JPCERT へ報告している等、自社報告のエコーを避けたい場合に true にする。
+  // true でも Pro+組織のブランドとしての他機能（グローバル検知ルール等）は通常通り動作する。
+  suppressJpcertAutoMatch Boolean @default(false)
   detectedDomains  DetectedDomain[]
   scanJobs         ScanJob[]
   phishingPatterns PhishingPattern[]

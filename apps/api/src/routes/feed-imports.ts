@@ -156,4 +156,155 @@ router.post('/run', async (req, res) => {
   });
 });
 
+// POST /api/admin/feed-imports/cleanup-brand — 特定ブランドのJPCERT重複整理とsuppress設定
+// body: {
+//   brandDomain: string,     // e.g. "monex.co.jp"
+//   merge?: boolean,         // organic + jpcert_feed の重複をマージ（organicを残す）
+//   archive?: boolean,       // jpcert_feed 単独を status='archived' に
+//   delete?: boolean,        // jpcert_feed 単独を物理削除
+//   suppress?: boolean,      // Brand.suppressJpcertAutoMatch = true
+//   apply?: boolean,         // false(default)ならdry-run、trueで実行
+// }
+router.post('/cleanup-brand', async (req, res) => {
+  const {
+    brandDomain,
+    merge = false,
+    archive = false,
+    delete: doDelete = false,
+    suppress = false,
+    apply = false,
+  } = req.body ?? {};
+
+  if (typeof brandDomain !== 'string' || !brandDomain) {
+    return res.status(400).json({ error: 'brandDomain が必要です' });
+  }
+  if (archive && doDelete) {
+    return res.status(400).json({ error: 'archive と delete は同時指定できません' });
+  }
+
+  const brands = await prisma.brand.findMany({
+    where: { domain: brandDomain },
+    include: { organization: { select: { id: true, name: true, plan: true } } },
+  });
+  if (brands.length === 0) {
+    return res.status(404).json({ error: `ブランドが見つかりません: ${brandDomain}` });
+  }
+
+  const report: any[] = [];
+
+  for (const brand of brands) {
+    const detected = await prisma.detectedDomain.findMany({
+      where: { brandId: brand.id },
+      select: {
+        id: true,
+        domain: true,
+        source: true,
+        status: true,
+        firstSeen: true,
+        jpcertConfirmedAt: true,
+      },
+      orderBy: { firstSeen: 'asc' },
+    });
+
+    const byDomain = new Map<string, typeof detected>();
+    for (const d of detected) {
+      const arr = byDomain.get(d.domain) ?? [];
+      arr.push(d);
+      byDomain.set(d.domain, arr);
+    }
+    const dupGroups = [...byDomain.entries()].filter(([, arr]) => arr.length > 1);
+    const jpcertOnly = detected.filter(
+      (d) => d.source === 'jpcert_feed' && (byDomain.get(d.domain)?.length ?? 0) === 1,
+    );
+
+    const actions: any = {
+      brandId: brand.id,
+      brandName: brand.name,
+      organization: brand.organization?.name,
+      plan: brand.organization?.plan,
+      before: {
+        totalDetected: detected.length,
+        duplicateGroups: dupGroups.length,
+        jpcertFeedOnly: jpcertOnly.length,
+        suppressJpcertAutoMatch: (brand as any).suppressJpcertAutoMatch ?? false,
+      },
+      changes: {
+        mergedGroups: 0,
+        archivedIds: [] as string[],
+        deletedIds: [] as string[],
+        suppressSet: false,
+      },
+      apply,
+    };
+
+    if (merge) {
+      for (const [domain, arr] of dupGroups) {
+        const organic = arr
+          .filter((a) => a.source !== 'jpcert_feed')
+          .sort((a, b) => a.firstSeen.getTime() - b.firstSeen.getTime())[0];
+        const jpcertFeed = arr.find((a) => a.source === 'jpcert_feed');
+        if (!organic || !jpcertFeed) continue;
+
+        const hit = await prisma.knownPhishingUrl.findFirst({
+          where: { domain },
+          orderBy: { observedAt: 'asc' },
+          select: { observedAt: true },
+        });
+        const newConfirmed = hit?.observedAt ?? jpcertFeed.firstSeen;
+        const willUpdate =
+          !organic.jpcertConfirmedAt || organic.jpcertConfirmedAt > newConfirmed;
+
+        if (apply) {
+          await prisma.$transaction(async (tx) => {
+            if (willUpdate) {
+              await tx.detectedDomain.update({
+                where: { id: organic.id },
+                data: { jpcertConfirmedAt: newConfirmed },
+              });
+            }
+            await tx.detectedDomain.delete({ where: { id: jpcertFeed.id } });
+          });
+        }
+        actions.changes.mergedGroups++;
+      }
+    }
+
+    const targetsJpcertOnly = merge
+      ? jpcertOnly
+      : detected.filter((d) => d.source === 'jpcert_feed');
+
+    if (archive) {
+      actions.changes.archivedIds = targetsJpcertOnly.map((t) => t.id);
+      if (apply && targetsJpcertOnly.length > 0) {
+        await prisma.detectedDomain.updateMany({
+          where: { id: { in: targetsJpcertOnly.map((t) => t.id) } },
+          data: { status: 'archived' },
+        });
+      }
+    }
+    if (doDelete) {
+      actions.changes.deletedIds = targetsJpcertOnly.map((t) => t.id);
+      if (apply && targetsJpcertOnly.length > 0) {
+        await prisma.detectedDomain.deleteMany({
+          where: { id: { in: targetsJpcertOnly.map((t) => t.id) } },
+        });
+      }
+    }
+
+    if (suppress) {
+      actions.changes.suppressSet = true;
+      if (apply) {
+        await prisma.brand.update({
+          where: { id: brand.id },
+          data: { suppressJpcertAutoMatch: true } as any,
+        });
+      }
+    }
+
+    report.push(actions);
+  }
+
+  res.json({ apply, report });
+});
+
 export default router;

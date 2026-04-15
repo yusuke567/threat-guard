@@ -119,9 +119,12 @@ async function upsertBatch(rows: JpcertRow[]): Promise<number> {
 export async function matchAgainstProBrands(
   sinceImportedAt: Date,
 ): Promise<{ newHits: number; confirmedHits: number; alertedOrgIds: Set<string> }> {
-  // Pro+組織の全ブランドを取得
+  // Pro+組織の全ブランドを取得（suppressJpcertAutoMatch=true は除外）
   const proBrands = await prisma.brand.findMany({
-    where: { organization: { plan: { in: ['professional', 'enterprise', 'enterprise_plus'] } } },
+    where: {
+      organization: { plan: { in: ['professional', 'enterprise', 'enterprise_plus'] } },
+      suppressJpcertAutoMatch: false,
+    },
     include: { organization: { select: { id: true, plan: true } } },
   });
 
