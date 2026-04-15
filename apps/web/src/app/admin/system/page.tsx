@@ -196,9 +196,17 @@ export default function SystemAdminPage() {
                           <dd className="text-right text-[var(--text-primary)] font-medium">
                             {s.lastInsertedCount.toLocaleString()}
                           </dd>
-                          <dt className="text-[var(--text-secondary)]">Pro顧客ヒット</dt>
+                          <dt className="text-[var(--text-secondary)]" title="JPCERT経由で初把握した新規">
+                            前回新規検知
+                          </dt>
                           <dd className="text-right text-[var(--text-primary)] font-medium">
-                            {s.lastBrandHitCount}件
+                            {(s.lastNewBrandHits ?? 0)}件
+                          </dd>
+                          <dt className="text-[var(--text-secondary)]" title="自社が先行検知したドメインをJPCERTが後日確認">
+                            前回既検知確認
+                          </dt>
+                          <dd className="text-right text-[var(--text-secondary)]">
+                            {(s.lastConfirmedBrandHits ?? 0)}件
                           </dd>
                         </dl>
                         {!healthy && (
@@ -227,7 +235,12 @@ export default function SystemAdminPage() {
                           <th className="text-left px-3 py-2 font-medium">開始</th>
                           <th className="text-right px-3 py-2 font-medium">取得</th>
                           <th className="text-right px-3 py-2 font-medium">新規追加</th>
-                          <th className="text-right px-3 py-2 font-medium">Pro顧客ヒット</th>
+                          <th className="text-right px-3 py-2 font-medium" title="JPCERT経由で初把握した新規フィッシング">
+                            新規検知
+                          </th>
+                          <th className="text-right px-3 py-2 font-medium" title="自社が先行検知済みのドメインをJPCERTが後日確認（エコー）">
+                            既検知確認
+                          </th>
                           <th className="text-right px-3 py-2 font-medium">所要</th>
                         </tr>
                       </thead>
@@ -253,9 +266,18 @@ export default function SystemAdminPage() {
                               {r.insertedCount.toLocaleString()}
                             </td>
                             <td className="px-3 py-2 text-right">
-                              {r.brandHitCount > 0 ? (
+                              {r.newBrandHits > 0 ? (
                                 <span className="font-bold text-orange-600 dark:text-orange-400">
-                                  {r.brandHitCount}
+                                  {r.newBrandHits}
+                                </span>
+                              ) : (
+                                <span className="text-[var(--text-tertiary)]">0</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {r.confirmedBrandHits > 0 ? (
+                                <span className="text-[var(--text-secondary)]">
+                                  {r.confirmedBrandHits}
                                 </span>
                               ) : (
                                 <span className="text-[var(--text-tertiary)]">0</span>

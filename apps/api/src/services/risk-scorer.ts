@@ -158,12 +158,18 @@ export async function calculateRiskScore(detectedDomainId: string): Promise<numb
   const globalVictimBoost = (globalRule?.victimCount ?? 0) > 0 ? 10 : 0;
 
   // JPCERT/CC等の第三者機関による過去フィッシング観測実績ブースト
-  // 同一ドメインで観測歴があれば極めて高い信頼度の悪性シグナル
+  // エコーループを避けるため、観測順序で重み付けを変える:
+  //   JPCERTが先(observedAt < firstSeen): +30（独立した追加情報）
+  //   我々が先(observedAt >= firstSeen):   +10（既検知の外部確認で追加情報価値は限定的）
   const jpcertHit = await prisma.knownPhishingUrl.findFirst({
     where: { domain: domain.domain },
-    select: { id: true },
+    orderBy: { observedAt: 'asc' },
+    select: { id: true, observedAt: true },
   });
-  const jpcertBoost = jpcertHit ? 30 : 0;
+  let jpcertBoost = 0;
+  if (jpcertHit) {
+    jpcertBoost = jpcertHit.observedAt < domain.firstSeen ? 30 : 10;
+  }
 
   // Layer 4: JPCERTコーパスから学習した検知パターンによるブースト
   // 未観測ドメインでも、既知フィッシングと類似のパターン（"-login", "/verify", ".xyz"等）

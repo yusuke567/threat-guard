@@ -257,7 +257,9 @@ interface FeedImportSummary {
   source: string;            // "JPCERT/CC"
   fetchedCount: number;
   insertedCount: number;
-  brandHitCount: number;
+  brandHitCount: number;            // 合計（後方互換、newBrandHits + confirmedBrandHits）
+  newBrandHits?: number;            // 当方未検知の新規
+  confirmedBrandHits?: number;      // 既検知の外部確認（エコー）
   alertedOrgCount: number;
   totalInDb: number;
   durationSec: number;
@@ -269,9 +271,11 @@ interface FeedImportSummary {
 export async function notifyFeedImportSummary(summary: FeedImportSummary): Promise<void> {
   if (!GLOBAL_SLACK_WEBHOOK_URL) return;
 
-  const headerEmoji = summary.brandHitCount > 0 ? '⚠️' : '✅';
-  const headerText = summary.brandHitCount > 0
-    ? `${headerEmoji} ${summary.source} 取り込み完了 — Pro顧客ブランドに新規ヒットあり`
+  const newHits = summary.newBrandHits ?? summary.brandHitCount;
+  const confirmedHits = summary.confirmedBrandHits ?? 0;
+  const headerEmoji = newHits > 0 ? '⚠️' : '✅';
+  const headerText = newHits > 0
+    ? `${headerEmoji} ${summary.source} 取り込み完了 — 新規ヒットあり`
     : `${headerEmoji} ${summary.source} 取り込み完了`;
 
   const payload = {
@@ -285,7 +289,8 @@ export async function notifyFeedImportSummary(summary: FeedImportSummary): Promi
         fields: [
           { type: 'mrkdwn', text: `*取得件数:*\n${summary.fetchedCount.toLocaleString()}` },
           { type: 'mrkdwn', text: `*新規DB追加:*\n${summary.insertedCount.toLocaleString()}` },
-          { type: 'mrkdwn', text: `*Pro顧客ブランド該当:*\n*${summary.brandHitCount}* 件` },
+          { type: 'mrkdwn', text: `*新規検知:*\n*${newHits}* 件\n_(JPCERT経由で初把握)_` },
+          { type: 'mrkdwn', text: `*既検知の外部確認:*\n${confirmedHits} 件\n_(自社先行検知のエコー)_` },
           { type: 'mrkdwn', text: `*通知対象組織:*\n${summary.alertedOrgCount} 組織` },
           { type: 'mrkdwn', text: `*累計DB件数:*\n${summary.totalInDb.toLocaleString()}` },
           { type: 'mrkdwn', text: `*所要時間:*\n${summary.durationSec}秒` },

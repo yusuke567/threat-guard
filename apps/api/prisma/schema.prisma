@@ -96,6 +96,11 @@ model DetectedDomain {
   screenshotUrl String?
   whoisData     String?
   sslInfo       String?
+  // JPCERT/CC フィードで後日確認された日時。
+  // nullなら「我々だけが検知」、値ありなら「外部機関も確認済み」の意味。
+  // 値 > firstSeen: 我々が先行検知し、後日JPCERTが確認（エコー）
+  // 値 < firstSeen: JPCERTが先、我々は後追い（独立した追加情報）
+  jpcertConfirmedAt DateTime?
   analyses      ThreatAnalysis[]
   takedowns     TakedownRequest[]
   webProbes     WebProbe[]
@@ -109,6 +114,7 @@ model DetectedDomain {
   @@index([status])
   @@index([riskScore])
   @@index([domain])
+  @@index([jpcertConfirmedAt])
 }
 
 model ThreatStatusLog {
@@ -375,7 +381,9 @@ model FeedImportRun {
   status        String    @default("running") // "running" | "success" | "failed"
   fetchedCount  Int       @default(0)         // CSVから取得した行数
   insertedCount Int       @default(0)         // 新規DBインサート件数（重複除く）
-  brandHitCount Int       @default(0)         // Pro+組織の登録ブランドに該当した件数
+  brandHitCount Int       @default(0)         // Pro+組織の登録ブランドに該当した件数（新規+既存確認の合計、後方互換）
+  newBrandHits  Int       @default(0)         // 当方未検知だった新規URL（純粋にJPCERT経由で初把握）
+  confirmedBrandHits Int  @default(0)         // 既検知ドメインの外部確認（エコー）
   alertedOrgIds String    @default("")        // 通知対象組織IDのCSV
   startedAt     DateTime  @default(now())
   completedAt   DateTime?

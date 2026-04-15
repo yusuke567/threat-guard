@@ -306,12 +306,17 @@ async function runJpcertImportJob() {
       fetchedCount: result.fetchedCount,
       insertedCount: result.insertedCount,
       brandHitCount: result.brandHitCount,
+      newBrandHits: result.newBrandHits,
+      confirmedBrandHits: result.confirmedBrandHits,
       alertedOrgCount: result.alertedOrgIds.length,
       totalInDb,
       durationSec,
     });
 
-    console.log(`[Scheduler] JPCERT import done. inserted=${result.insertedCount} brandHits=${result.brandHitCount}`);
+    console.log(
+      `[Scheduler] JPCERT import done. inserted=${result.insertedCount} ` +
+      `newHits=${result.newBrandHits} confirmedHits=${result.confirmedBrandHits}`,
+    );
 
     // Layer 4: パターン学習（取り込み成功後に実行）
     // コーパスから検知パターンを抽出し JpcertLearnedPattern に upsert。

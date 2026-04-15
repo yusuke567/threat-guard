@@ -46,7 +46,8 @@ async function run() {
 
     console.log(`\n[import-jpcert] Done.`);
     console.log(`  fetched=${result.fetchedCount} inserted=${result.insertedCount}`);
-    console.log(`  brand hits (Pro+): ${result.brandHitCount}`);
+    console.log(`  new brand hits (JPCERT先): ${result.newBrandHits}`);
+    console.log(`  confirmed brand hits (自社先行検知のエコー): ${result.confirmedBrandHits}`);
     console.log(`  alerted orgs: ${result.alertedOrgIds.length}`);
     console.log(`  total in DB: ${totalInDb}`);
 
@@ -56,6 +57,8 @@ async function run() {
         fetchedCount: result.fetchedCount,
         insertedCount: result.insertedCount,
         brandHitCount: result.brandHitCount,
+        newBrandHits: result.newBrandHits,
+        confirmedBrandHits: result.confirmedBrandHits,
         alertedOrgCount: result.alertedOrgIds.length,
         totalInDb,
         durationSec,

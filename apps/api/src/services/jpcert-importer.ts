@@ -25,7 +25,9 @@ interface JpcertRow {
 export interface ImportResult {
   fetchedCount: number;
   insertedCount: number;
-  brandHitCount: number;
+  brandHitCount: number;       // newBrandHits + confirmedBrandHits（後方互換）
+  newBrandHits: number;        // 当方未検知で純粋にJPCERT経由で初把握
+  confirmedBrandHits: number;  // 既検知ドメインの外部確認（エコー）
   alertedOrgIds: string[];
   monthlyBreakdown: Record<string, number>; // "YYYY-MM" -> count
 }
@@ -116,7 +118,7 @@ async function upsertBatch(rows: JpcertRow[]): Promise<number> {
  */
 export async function matchAgainstProBrands(
   sinceImportedAt: Date,
-): Promise<{ hitCount: number; alertedOrgIds: Set<string> }> {
+): Promise<{ newHits: number; confirmedHits: number; alertedOrgIds: Set<string> }> {
   // Pro+組織の全ブランドを取得
   const proBrands = await prisma.brand.findMany({
     where: { organization: { plan: { in: ['professional', 'enterprise', 'enterprise_plus'] } } },
@@ -124,7 +126,7 @@ export async function matchAgainstProBrands(
   });
 
   if (proBrands.length === 0) {
-    return { hitCount: 0, alertedOrgIds: new Set() };
+    return { newHits: 0, confirmedHits: 0, alertedOrgIds: new Set() };
   }
 
   // 安全側ガード: organization.plan が想定外の値だった場合は除外
@@ -146,7 +148,8 @@ export async function matchAgainstProBrands(
     select: { id: true, url: true, domain: true, brandLabel: true, observedAt: true },
   });
 
-  let hitCount = 0;
+  let newHits = 0;
+  let confirmedHits = 0;
   const alertedOrgIds = new Set<string>();
 
   for (const url of newUrls) {
@@ -156,13 +159,34 @@ export async function matchAgainstProBrands(
       const matched = candidates.some((c) => labelLower.includes(c) || c.includes(labelLower));
       if (!matched) continue;
 
-      // 既に同一(brandId, domain)のDetectedDomainがある場合はスキップ
+      // 既存の DetectedDomain があるか確認
       const existing = await prisma.detectedDomain.findFirst({
         where: { brandId: brand.id, domain: url.domain },
-        select: { id: true },
+        select: { id: true, firstSeen: true, jpcertConfirmedAt: true },
       });
-      if (existing) continue;
 
+      if (existing) {
+        // エコー: 当方が先行検知していたドメインをJPCERTが後日確認
+        // DetectedDomainを新規作成せず、jpcertConfirmedAt を更新するだけ
+        // （既にjpcertConfirmedAt が設定されていて、今回のobservedAtより古い場合は更新しない）
+        const shouldUpdate =
+          !existing.jpcertConfirmedAt || existing.jpcertConfirmedAt > url.observedAt;
+        if (shouldUpdate) {
+          try {
+            await prisma.detectedDomain.update({
+              where: { id: existing.id },
+              data: { jpcertConfirmedAt: url.observedAt },
+            });
+            confirmedHits++;
+          } catch (err) {
+            console.error(`[JpcertImporter] Failed to update jpcertConfirmedAt for ${brand.name}/${url.domain}:`, err);
+          }
+        }
+        // 再アラートは抑止（既に検知時点でアラート済み）
+        continue;
+      }
+
+      // 新規: 当方未検知のURLをJPCERT経由で初把握
       try {
         const detected = await prisma.detectedDomain.create({
           data: {
@@ -170,6 +194,7 @@ export async function matchAgainstProBrands(
             domain: url.domain,
             source: 'jpcert_feed',
             firstSeen: url.observedAt, // JPCERT観測日を採用
+            jpcertConfirmedAt: url.observedAt, // 初回検知時点でJPCERT確認済
             status: 'new_domain',
           },
         });
@@ -177,8 +202,6 @@ export async function matchAgainstProBrands(
         // リスクスコア計算（jpcertBoost +30 が効くので必ず60超えるはず）
         const score = await calculateRiskScore(detected.id);
 
-        // 既存のアラートフロー（Starterでもメールアラートは届くが、
-        // ここに到達するのはPro+のブランドのみなので差別化を担保）
         if (score >= 60) {
           await notifyNewThreat({
             brandId: brand.id,
@@ -203,7 +226,7 @@ export async function matchAgainstProBrands(
           }
         }
 
-        hitCount++;
+        newHits++;
         alertedOrgIds.add(brand.organizationId);
       } catch (err) {
         console.error(`[JpcertImporter] Failed to register DetectedDomain for ${brand.name}/${url.domain}:`, err);
@@ -211,7 +234,7 @@ export async function matchAgainstProBrands(
     }
   }
 
-  return { hitCount, alertedOrgIds };
+  return { newHits, confirmedHits, alertedOrgIds };
 }
 
 /**
@@ -248,8 +271,9 @@ export async function runJpcertImport(opts: {
       }
     }
 
-    // Pro+組織のブランドへの自動マッチング
-    const { hitCount, alertedOrgIds } = await matchAgainstProBrands(startedAt);
+    // Pro+組織のブランドへの自動マッチング（新規 vs 既存確認を区別）
+    const { newHits, confirmedHits, alertedOrgIds } = await matchAgainstProBrands(startedAt);
+    const hitCount = newHits + confirmedHits;
 
     const completedAt = new Date();
     await prisma.feedImportRun.update({
@@ -259,6 +283,8 @@ export async function runJpcertImport(opts: {
         fetchedCount,
         insertedCount,
         brandHitCount: hitCount,
+        newBrandHits: newHits,
+        confirmedBrandHits: confirmedHits,
         alertedOrgIds: [...alertedOrgIds].join(','),
         completedAt,
         metadata: JSON.stringify({ monthlyBreakdown }),
@@ -270,6 +296,8 @@ export async function runJpcertImport(opts: {
       fetchedCount,
       insertedCount,
       brandHitCount: hitCount,
+      newBrandHits: newHits,
+      confirmedBrandHits: confirmedHits,
       alertedOrgIds: [...alertedOrgIds],
       monthlyBreakdown,
     };

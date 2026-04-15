@@ -20,6 +20,7 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('threatguard_token');
       localStorage.removeItem('threatguard_user');
+      localStorage.removeItem('threatguard_session_start');
       window.location.href = '/login';
     }
     throw new Error('ログインが必要です。ログイン画面からログインしてください。');
@@ -235,6 +236,8 @@ export interface FeedImportRunDto {
   fetchedCount: number;
   insertedCount: number;
   brandHitCount: number;
+  newBrandHits: number;
+  confirmedBrandHits: number;
   alertedOrgIds: string[];
   startedAt: string;
   completedAt: string | null;
@@ -249,6 +252,8 @@ export interface FeedImportStatusDto {
   totalInDb: number;
   lastInsertedCount: number;
   lastBrandHitCount: number;
+  lastNewBrandHits: number;
+  lastConfirmedBrandHits: number;
 }
 export const getFeedImports = (limit = 20, source?: string) => {
   const params = new URLSearchParams({ limit: String(limit) });

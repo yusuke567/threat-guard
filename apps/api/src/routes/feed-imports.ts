@@ -28,6 +28,8 @@ router.get('/', async (req, res) => {
       fetchedCount: r.fetchedCount,
       insertedCount: r.insertedCount,
       brandHitCount: r.brandHitCount,
+      newBrandHits: r.newBrandHits,
+      confirmedBrandHits: r.confirmedBrandHits,
       alertedOrgIds: r.alertedOrgIds ? r.alertedOrgIds.split(',').filter(Boolean) : [],
       startedAt: r.startedAt,
       completedAt: r.completedAt,
@@ -68,6 +70,8 @@ router.get('/status', async (_req, res) => {
         totalInDb,
         lastInsertedCount: lastSuccess?.insertedCount ?? 0,
         lastBrandHitCount: lastSuccess?.brandHitCount ?? 0,
+        lastNewBrandHits: lastSuccess?.newBrandHits ?? 0,
+        lastConfirmedBrandHits: lastSuccess?.confirmedBrandHits ?? 0,
       };
     }),
   );
@@ -117,13 +121,18 @@ router.post('/run', async (req, res) => {
       const result = await runJpcertImport({ fromYear, toYear });
       const totalInDb = await prisma.knownPhishingUrl.count({ where: { source: 'jpcert' } });
       const durationSec = Math.round((Date.now() - startedAt) / 1000);
-      console.log(`[feed-imports/run] done: fetched=${result.fetchedCount} inserted=${result.insertedCount} hits=${result.brandHitCount}`);
+      console.log(
+        `[feed-imports/run] done: fetched=${result.fetchedCount} inserted=${result.insertedCount} ` +
+        `newHits=${result.newBrandHits} confirmedHits=${result.confirmedBrandHits}`,
+      );
       if (notify) {
         await notifyFeedImportSummary({
           source: 'JPCERT/CC',
           fetchedCount: result.fetchedCount,
           insertedCount: result.insertedCount,
           brandHitCount: result.brandHitCount,
+          newBrandHits: result.newBrandHits,
+          confirmedBrandHits: result.confirmedBrandHits,
           alertedOrgCount: result.alertedOrgIds.length,
           totalInDb,
           durationSec,
