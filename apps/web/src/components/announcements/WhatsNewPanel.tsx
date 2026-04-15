@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useAnnouncements } from './AnnouncementProvider';
 import type { AnnouncementPriority } from '@/data/announcements';
 
@@ -11,6 +12,7 @@ const priorityDot: Record<AnnouncementPriority, string> = {
 
 export default function WhatsNewPanel() {
   const { allAnnouncements, isRead } = useAnnouncements();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   if (allAnnouncements.length === 0) {
     return (
@@ -20,14 +22,23 @@ export default function WhatsNewPanel() {
     );
   }
 
+  const toggle = (id: string) =>
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+
   return (
     <div className="max-h-[60vh] overflow-y-auto">
       {allAnnouncements.map((a, i) => {
         const read = isRead(a.id);
+        const isExpanded = expanded[a.id] ?? false;
         return (
           <div key={a.id}>
             {i > 0 && <div className="border-t border-[var(--border-subtle)]" />}
-            <div className="px-4 py-3 hover:bg-surface-elevated transition-colors">
+            <button
+              type="button"
+              onClick={() => toggle(a.id)}
+              aria-expanded={isExpanded}
+              className="w-full text-left px-4 py-3 hover:bg-surface-elevated transition-colors"
+            >
               <div className="flex items-center gap-2 mb-1">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${priorityDot[a.priority]}`} />
                 <span className="text-xs text-[var(--text-tertiary)]">{a.date}</span>
@@ -38,10 +49,17 @@ export default function WhatsNewPanel() {
               <p className={`text-sm ${read ? 'text-[var(--text-secondary)] font-normal' : 'text-[var(--text-primary)] font-semibold'}`}>
                 {a.title}
               </p>
-              <p className="text-xs text-[var(--text-tertiary)] mt-0.5 line-clamp-2">
+              <p
+                className={`text-xs text-[var(--text-tertiary)] mt-0.5 whitespace-pre-wrap ${
+                  isExpanded ? '' : 'line-clamp-2'
+                }`}
+              >
                 {a.description}
               </p>
-            </div>
+              <span className="text-[11px] text-brand-600 dark:text-brand-400 mt-1 inline-block">
+                {isExpanded ? '閉じる' : 'もっと見る'}
+              </span>
+            </button>
           </div>
         );
       })}
