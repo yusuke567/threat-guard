@@ -2,6 +2,19 @@ import { prisma } from '../lib/prisma.js';
 
 const GLOBAL_SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL || '';
 
+/**
+ * Global kill-switch for outgoing Slack alerts.
+ * Set DISABLE_SLACK_ALERTS=true in the environment to suppress ALL Slack
+ * notifications (new threat / site change / scan summary / feed import).
+ * sendSlackTest is intentionally excluded — it's driven by explicit user
+ * action and should always work so operators can verify the integration
+ * while alerts are muted.
+ */
+function alertsMuted(): boolean {
+  const v = (process.env.DISABLE_SLACK_ALERTS || '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 // Track failed webhook URLs to avoid log spam (URL → failure timestamp)
 const failedWebhooks = new Map<string, number>();
 const WEBHOOK_COOLDOWN_MS = 30 * 60 * 1000; // 30 min cooldown after failure
@@ -134,6 +147,10 @@ async function sendToWebhook(url: string, payload: object): Promise<void> {
 // ── Public notification functions (backward-compatible signatures + brandId overloads) ──
 
 export async function notifyNewThreat(alert: ThreatAlert & { brandId?: string }): Promise<void> {
+  if (alertsMuted()) {
+    console.log('[Slack] DISABLE_SLACK_ALERTS is set, skipping new threat notification');
+    return;
+  }
   const emoji = riskEmoji(alert.riskScore);
 
   const payload = {
@@ -175,6 +192,10 @@ export async function notifyNewThreat(alert: ThreatAlert & { brandId?: string })
 }
 
 export async function notifySiteChange(alert: SiteChangeAlert & { brandId?: string }): Promise<void> {
+  if (alertsMuted()) {
+    console.log('[Slack] DISABLE_SLACK_ALERTS is set, skipping site change notification');
+    return;
+  }
   const changeList = alert.changes.map((c) => `• ${c}`).join('\n');
 
   const payload = {
@@ -222,6 +243,10 @@ export async function notifyScanSummary(
   brandId?: string,
 ): Promise<void> {
   if (newThreats === 0) return;
+  if (alertsMuted()) {
+    console.log('[Slack] DISABLE_SLACK_ALERTS is set, skipping scan summary notification');
+    return;
+  }
 
   const payload = {
     blocks: [
@@ -269,6 +294,10 @@ interface FeedImportSummary {
  * 外部脅威フィード取り込み完了の通知（グローバルWebhook向け、社内監視用）。
  */
 export async function notifyFeedImportSummary(summary: FeedImportSummary): Promise<void> {
+  if (alertsMuted()) {
+    console.log('[Slack] DISABLE_SLACK_ALERTS is set, skipping feed import summary');
+    return;
+  }
   if (!GLOBAL_SLACK_WEBHOOK_URL) return;
 
   const newHits = summary.newBrandHits ?? summary.brandHitCount;
@@ -306,6 +335,10 @@ export async function notifyFeedImportSummary(summary: FeedImportSummary): Promi
  * フィード取り込み失敗時の通知（社内監視用）。
  */
 export async function notifyFeedImportFailure(source: string, errorMessage: string): Promise<void> {
+  if (alertsMuted()) {
+    console.log('[Slack] DISABLE_SLACK_ALERTS is set, skipping feed import failure notification');
+    return;
+  }
   if (!GLOBAL_SLACK_WEBHOOK_URL) return;
 
   const payload = {

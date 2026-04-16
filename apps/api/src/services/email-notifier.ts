@@ -2,6 +2,18 @@ import nodemailer from 'nodemailer';
 import { prisma } from '../lib/prisma.js';
 import { sendMail, isMailConfigured } from './mail.js';
 
+/**
+ * Global kill-switch for outgoing email alerts.
+ * Set DISABLE_EMAIL_ALERTS=true in the environment to suppress ALL email
+ * notifications (new threat / site change / scan summary). Intended for
+ * one-off maintenance windows such as large backfill re-analysis runs
+ * where thousands of domains would otherwise trigger duplicate alerts.
+ */
+function alertsMuted(): boolean {
+  const v = (process.env.DISABLE_EMAIL_ALERTS || '').toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 interface EmailThreatAlert {
   brandId: string;
   brandName: string;
@@ -243,6 +255,10 @@ async function isDuplicate(userId: string, detectedDomainId: string, type: strin
 }
 
 export async function emailNotifyNewThreat(alert: EmailThreatAlert): Promise<void> {
+  if (alertsMuted()) {
+    console.log('[Email] DISABLE_EMAIL_ALERTS is set, skipping new threat notification');
+    return;
+  }
   const config = await getSenderConfig(alert.brandId);
   if (!config) {
     console.log('[Email] Mail not configured, skipping email notification');
@@ -292,6 +308,10 @@ export async function emailNotifyNewThreat(alert: EmailThreatAlert): Promise<voi
 }
 
 export async function emailNotifySiteChange(alert: EmailSiteChangeAlert): Promise<void> {
+  if (alertsMuted()) {
+    console.log('[Email] DISABLE_EMAIL_ALERTS is set, skipping site change notification');
+    return;
+  }
   const config = await getSenderConfig(alert.brandId);
   if (!config) {
     console.log('[Email] Mail not configured, skipping site change notification');
@@ -347,6 +367,10 @@ export async function emailNotifyScanSummary(
   highRiskCount: number,
 ): Promise<void> {
   if (newThreats === 0) return;
+  if (alertsMuted()) {
+    console.log('[Email] DISABLE_EMAIL_ALERTS is set, skipping scan summary notification');
+    return;
+  }
 
   const config = await getSenderConfig(brandId);
   if (!config) {
