@@ -9,17 +9,18 @@
  * the rows that were orphaned before the fix shipped.
  *
  * Usage:
- *   npx tsx scripts/reset-stuck-analyzing.ts            # dry-run (default)
- *   npx tsx scripts/reset-stuck-analyzing.ts --apply    # actually update
- *   npx tsx scripts/reset-stuck-analyzing.ts --apply --brand <brandId>
+ *   npx tsx scripts/reset-stuck-analyzing.ts                        # dry-run (default, 30 min threshold)
+ *   npx tsx scripts/reset-stuck-analyzing.ts --apply                # actually update
+ *   npx tsx scripts/reset-stuck-analyzing.ts --apply --brand <id>   # limit to one brand
+ *   npx tsx scripts/reset-stuck-analyzing.ts --apply --stale-minutes 10
  */
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Only reset rows older than this threshold, so a domain currently mid-analysis
-// in a live scheduler run doesn't get yanked out from under it.
-const STALE_MINUTES = 30;
+// Default threshold. Rows last updated within this window are considered
+// potentially mid-analysis by a live scheduler and skipped.
+const DEFAULT_STALE_MINUTES = 30;
 
 async function main() {
   const args = process.argv.slice(2);
@@ -27,7 +28,15 @@ async function main() {
   const brandIdIdx = args.indexOf('--brand');
   const brandId = brandIdIdx >= 0 ? args[brandIdIdx + 1] : undefined;
 
-  const staleBefore = new Date(Date.now() - STALE_MINUTES * 60 * 1000);
+  const staleIdx = args.indexOf('--stale-minutes');
+  const staleMinutes =
+    staleIdx >= 0 && args[staleIdx + 1] ? Number(args[staleIdx + 1]) : DEFAULT_STALE_MINUTES;
+  if (!Number.isFinite(staleMinutes) || staleMinutes < 0) {
+    console.error(`[reset-stuck-analyzing] invalid --stale-minutes: ${args[staleIdx + 1]}`);
+    process.exit(1);
+  }
+
+  const staleBefore = new Date(Date.now() - staleMinutes * 60 * 1000);
 
   const where = {
     status: 'analyzing',
@@ -49,7 +58,7 @@ async function main() {
   });
   const brandNameById = new Map(brandMap.map((b) => [b.id, b.name]));
 
-  console.log(`[reset-stuck-analyzing] Found ${count} rows stuck in 'analyzing' older than ${STALE_MINUTES} min`);
+  console.log(`[reset-stuck-analyzing] Found ${count} rows stuck in 'analyzing' older than ${staleMinutes} min`);
   for (const row of byBrand) {
     console.log(`  - ${brandNameById.get(row.brandId) ?? row.brandId}: ${row._count}`);
   }
