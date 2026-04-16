@@ -69,6 +69,7 @@ export default function Dashboard() {
     if (summaryFilter === 'action_needed') {
       params.minRiskScore = '60';
       params.excludeResolved = 'true';
+      params.excludeTakedownSent = 'true';
       delete params.status;
     } else if (summaryFilter === 'monitoring') {
       params.minRiskScore = '40';

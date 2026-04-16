@@ -28,6 +28,7 @@ router.get('/', async (req, res) => {
     minRiskScore,
     maxRiskScore,
     excludeResolved,
+    excludeTakedownSent,
     brandId,
     sortBy = 'riskScore',
     order = 'desc',
@@ -60,8 +61,11 @@ router.get('/', async (req, res) => {
   }
 
   // Exclude resolved/false_positive if requested
-  if (excludeResolved === 'true') {
-    where.status = { notIn: ['resolved', 'false_positive'] };
+  if (excludeResolved === 'true' || excludeTakedownSent === 'true') {
+    const excludeStatuses: string[] = [];
+    if (excludeResolved === 'true') excludeStatuses.push('resolved', 'false_positive');
+    if (excludeTakedownSent === 'true') excludeStatuses.push('takedown_sent');
+    where.status = { notIn: excludeStatuses };
   }
 
   if (category) {
