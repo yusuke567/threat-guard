@@ -27,6 +27,7 @@ router.get('/stats', async (req, res) => {
     for (const t of threats) {
       const s = t.riskScore ?? 0;
       const isResolved = t.status === 'resolved' || t.status === 'false_positive';
+      const isTakedownSent = t.status === 'takedown_sent';
 
       // Risk level counts (all threats)
       if (s >= 80) riskCounts.danger++;
@@ -37,6 +38,8 @@ router.get('/stats', async (req, res) => {
       // Status counts for summary cards
       if (isResolved) {
         statusCounts.resolved++;
+      } else if (isTakedownSent) {
+        statusCounts.monitoring++;
       } else if (s >= 60) {
         statusCounts.action_needed++;
       } else if (s >= 40) {
