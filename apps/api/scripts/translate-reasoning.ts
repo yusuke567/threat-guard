@@ -18,7 +18,7 @@ function isEnglish(text: string): boolean {
  */
 async function translateToJapanese(text: string): Promise<string> {
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 1024,
     messages: [
       {

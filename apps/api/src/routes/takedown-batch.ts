@@ -509,7 +509,7 @@ The letter should:
 Format it as a ready-to-send email body (no Subject line needed).`;
 
         const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 3000,
           messages: [{ role: 'user', content: prompt }],
         });
