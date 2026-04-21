@@ -445,7 +445,7 @@ export async function sendTakedownEmail(
     ? [{ filename: `takedown-${domain}-evidence.pdf`, content: pdf as Buffer }]
     : undefined;
 
-  // Build subject line (JPCERT/警視庁 requires Japanese + brand name)
+  // Build subject line (JPCERT requires Japanese + brand name)
   let subject: string;
   if (takedown.recipientType === 'jpcert') {
     // Count total JPCERT takedowns in the same batch (1 for individual requests)
@@ -455,14 +455,6 @@ export async function sendTakedownEmail(
         })
       : 1;
     subject = `${brandName}を偽装するサイトの削除依頼（${count}件）`;
-  } else if (takedown.recipientType === 'police') {
-    // Count total police takedowns in the same batch (1 for individual requests)
-    const count = takedown.batchId
-      ? await prisma.takedownRequest.count({
-          where: { batchId: takedown.batchId, recipientType: 'police' },
-        })
-      : 1;
-    subject = `フィッシングサイト報告 — ${brandName}を偽装する不正サイト（${count}件）`;
   } else {
     subject = `Takedown Request: ${domain} — Brand Infringement on ${brandName} [Risk: ${dd.riskScore ?? 'N/A'}/100]`;
   }
@@ -504,7 +496,7 @@ export async function sendTakedownEmail(
 }
 
 /**
- * Send ONE email covering multiple takedown requests in a batch (used for JPCERT/Police).
+ * Send ONE email covering multiple takedown requests in a batch (used for JPCERT).
  * All requests must share the same recipient email and the same template body
  * (the batch template already lists every site).
  * Attaches per-domain PDFs (best effort).
@@ -559,12 +551,10 @@ export async function sendTakedownEmailGroup(
     }
   }
 
-  // Subject (Japanese for JPCERT/Police batches — recipient and body are both in Japanese)
+  // Subject (Japanese for JPCERT batches — recipient and body are both in Japanese)
   let subject: string;
   if (primary.recipientType === 'jpcert') {
     subject = `${brandName}を偽装するサイトの削除依頼（${count}件）`;
-  } else if (primary.recipientType === 'police') {
-    subject = `フィッシングサイト報告 — ${brandName}を偽装する不正サイト（${count}件）`;
   } else {
     const domain = primary.detectedDomain.domain;
     const risk = primary.detectedDomain.riskScore;

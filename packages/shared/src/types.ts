@@ -12,7 +12,7 @@ export type DomainStatus =
 
 export type TakedownStatus = 'draft' | 'sent' | 'acknowledged' | 'completed' | 'rejected';
 
-export type TakedownRecipientType = 'registrar' | 'police' | 'jpcert' | 'hosting';
+export type TakedownRecipientType = 'registrar' | 'jpcert' | 'hosting';
 
 export type ScanType = 'ct_monitor' | 'domain_generation' | 'manual';
 

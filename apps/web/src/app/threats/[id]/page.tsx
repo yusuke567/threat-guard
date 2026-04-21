@@ -583,10 +583,9 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
   const [submittingGoogle, setSubmittingGoogle] = useState(false);
   const [submittingMicrosoft, setSubmittingMicrosoft] = useState(false);
 
-  // Registrar/Police/JPCERT/Hosting state
+  // Registrar/JPCERT/Hosting state
   const [registrar, setRegistrar] = useState('');
   const [abuseEmail, setAbuseEmail] = useState('');
-  const [policeRecipient, setPoliceRecipient] = useState<{ name: string; email: string } | null>(null);
   const [jpcertRecipient, setJpcertRecipient] = useState<{ name: string; email: string } | null>(null);
   const [hostingProvider, setHostingProvider] = useState('');
   const [hostingAbuseEmail, setHostingAbuseEmail] = useState('');
@@ -594,15 +593,12 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
 
   // Selection state
   const [sendToRegistrar, setSendToRegistrar] = useState(true);
-  const [sendToPolice, setSendToPolice] = useState(false);
   const [sendToJpcert, setSendToJpcert] = useState(false);
 
   // Template generation state
   const [registrarTemplate, setRegistrarTemplate] = useState('');
-  const [policeTemplate, setPoliceTemplate] = useState('');
   const [jpcertTemplate, setJpcertTemplate] = useState('');
   const [generatingRegistrar, setGeneratingRegistrar] = useState(false);
-  const [generatingPolice, setGeneratingPolice] = useState(false);
   const [generatingJpcert, setGeneratingJpcert] = useState(false);
   const [hostingTemplate, setHostingTemplate] = useState('');
   const [generatingHosting, setGeneratingHosting] = useState(false);
@@ -613,7 +609,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
   const [success, setSuccess] = useState('');
 
   // Expanded sections
-  const [expandedSection, setExpandedSection] = useState<'browser' | 'registrar' | 'police' | 'jpcert' | 'hosting' | null>(null);
+  const [expandedSection, setExpandedSection] = useState<'browser' | 'registrar' | 'jpcert' | 'hosting' | null>(null);
 
   // Fetch browser reports
   const fetchBrowserReports = useCallback(async () => {
@@ -638,9 +634,6 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
         const t = data.threats[0];
         setRegistrar(t.registrar || '');
         setAbuseEmail(t.abuseEmail || '');
-      }
-      if (data.policeRecipient) {
-        setPoliceRecipient(data.policeRecipient);
       }
       if (data.jpcertRecipient) {
         setJpcertRecipient(data.jpcertRecipient);
@@ -697,10 +690,10 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
     }
   };
 
-  const generateTemplate = async (type: 'registrar' | 'police' | 'jpcert' | 'hosting') => {
-    const setGenerating = type === 'registrar' ? setGeneratingRegistrar : type === 'police' ? setGeneratingPolice : type === 'hosting' ? setGeneratingHosting : setGeneratingJpcert;
-    const setTemplate = type === 'registrar' ? setRegistrarTemplate : type === 'police' ? setPoliceTemplate : type === 'hosting' ? setHostingTemplate : setJpcertTemplate;
-    const email = type === 'registrar' ? abuseEmail : type === 'police' ? policeRecipient?.email : type === 'hosting' ? hostingAbuseEmail : jpcertRecipient?.email;
+  const generateTemplate = async (type: 'registrar' | 'jpcert' | 'hosting') => {
+    const setGenerating = type === 'registrar' ? setGeneratingRegistrar : type === 'hosting' ? setGeneratingHosting : setGeneratingJpcert;
+    const setTemplate = type === 'registrar' ? setRegistrarTemplate : type === 'hosting' ? setHostingTemplate : setJpcertTemplate;
+    const email = type === 'registrar' ? abuseEmail : type === 'hosting' ? hostingAbuseEmail : jpcertRecipient?.email;
 
     if (!email) return;
 
@@ -722,10 +715,10 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
     }
   };
 
-  const handleSendTakedown = async (type: 'registrar' | 'police' | 'jpcert' | 'hosting') => {
-    const template = type === 'registrar' ? registrarTemplate : type === 'police' ? policeTemplate : type === 'hosting' ? hostingTemplate : jpcertTemplate;
-    const email = type === 'registrar' ? abuseEmail : type === 'police' ? policeRecipient?.email : type === 'hosting' ? hostingAbuseEmail : jpcertRecipient?.email;
-    const recipientName = type === 'registrar' ? registrar : type === 'police' ? policeRecipient?.name : type === 'hosting' ? hostingProvider : jpcertRecipient?.name;
+  const handleSendTakedown = async (type: 'registrar' | 'jpcert' | 'hosting') => {
+    const template = type === 'registrar' ? registrarTemplate : type === 'hosting' ? hostingTemplate : jpcertTemplate;
+    const email = type === 'registrar' ? abuseEmail : type === 'hosting' ? hostingAbuseEmail : jpcertRecipient?.email;
+    const recipientName = type === 'registrar' ? registrar : type === 'hosting' ? hostingProvider : jpcertRecipient?.name;
 
     if (!email || !template) return;
 
@@ -741,7 +734,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
         recipientType: type,
         recipientName,
       }]);
-      const labels: Record<string, string> = { registrar: 'レジストラ', police: '警視庁', jpcert: 'JPCERT/CC', hosting: 'ホスティング事業者' };
+      const labels: Record<string, string> = { registrar: 'レジストラ', jpcert: 'JPCERT/CC', hosting: 'ホスティング事業者' };
       setSuccess(`${labels[type]}への削除申請を送信しました`);
       setExpandedSection(null);
     } catch (e: any) {
@@ -984,55 +977,7 @@ function UnifiedTakedownSection({ threat }: { threat: any }) {
           </div>
         )}
 
-        {/* 4. 警視庁へのフィッシング報告 */}
-        {policeRecipient && (
-          <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
-            <button
-              onClick={() => setExpandedSection(expandedSection === 'police' ? null : 'police')}
-              className="w-full flex items-center justify-between p-4 bg-surface-base hover:bg-surface-elevated transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">🚔</span>
-                <div className="text-left">
-                  <h3 className="font-medium text-[var(--text-primary)]">警視庁へのフィッシング報告</h3>
-                  <p className="text-xs text-[var(--text-secondary)]">{policeRecipient.name}</p>
-                </div>
-              </div>
-              <span className="text-gray-400">{expandedSection === 'police' ? '▲' : '▼'}</span>
-            </button>
-            {expandedSection === 'police' && (
-              <div className="p-4 border-t border-[var(--border-default)] space-y-4">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  警視庁サイバー犯罪対策課に情報提供します。フィッシングサイトの捜査・対応に活用されます。
-                </p>
-                <div className="text-sm">
-                  <span className="text-[var(--text-secondary)]">送信先: </span>
-                  <span className="font-mono">{policeRecipient.email}</span>
-                </div>
-                {!policeTemplate ? (
-                  <Button variant="primary" onClick={() => generateTemplate('police')} disabled={generatingPolice}>
-                    {generatingPolice ? '生成中...' : 'フィッシング報告文面を生成'}
-                  </Button>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">情報提供内容（編集可能）</label>
-                      <textarea value={policeTemplate} onChange={(e) => setPoliceTemplate(e.target.value)} rows={10} className="w-full px-3 py-2 border border-[var(--border-default)] rounded-lg text-xs font-mono" />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => generateTemplate('police')} disabled={generatingPolice}>再生成</Button>
-                      <Button variant="danger" onClick={() => handleSendTakedown('police')} disabled={submitting}>
-                        {submitting ? '送信中...' : '情報提供を送信'}
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 5. JPCERT/CCへのフィッシング報告 */}
+        {/* 4. JPCERT/CCへのフィッシング報告 */}
         {jpcertRecipient && (
           <div className="border border-[var(--border-default)] rounded-lg overflow-hidden">
             <button

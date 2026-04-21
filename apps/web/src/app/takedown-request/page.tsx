@@ -20,12 +20,6 @@ interface ThreatInfo {
   screenshotUrl: string | null;
 }
 
-interface PoliceRecipient {
-  type: 'police';
-  name: string;
-  email: string;
-}
-
 interface JpcertRecipient {
   type: 'jpcert';
   name: string;
@@ -37,7 +31,7 @@ interface AbuseGroup {
   abuseEmail: string | null;
   registrar: string;
   threats: ThreatInfo[];
-  recipientType?: 'registrar' | 'police' | 'jpcert' | 'hosting';
+  recipientType?: 'registrar' | 'jpcert' | 'hosting';
   recipientName?: string;
   // Step 2 fields
   template?: string;
@@ -74,8 +68,6 @@ export default function TakedownRequestPage() {
   const [threats, setThreats] = useState<ThreatInfo[]>([]);
   const [groups, setGroups] = useState<AbuseGroup[]>([]);
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
-  const [policeRecipient, setPoliceRecipient] = useState<PoliceRecipient | null>(null);
-  const [sendToPolice, setSendToPolice] = useState(true);
   const [jpcertRecipient, setJpcertRecipient] = useState<JpcertRecipient | null>(null);
   const [sendToJpcert, setSendToJpcert] = useState(true);
   const [sendToBrowser, setSendToBrowser] = useState(true);
@@ -112,9 +104,6 @@ export default function TakedownRequestPage() {
           template: '',
           manualEmail: '',
         })));
-        if (data.policeRecipient) {
-          setPoliceRecipient(data.policeRecipient);
-        }
         if (data.jpcertRecipient) {
           setJpcertRecipient(data.jpcertRecipient);
         }
@@ -135,7 +124,7 @@ export default function TakedownRequestPage() {
 
   const activeThreats = threats.filter((t) => !excludedIds.has(t.threatId));
 
-  // Build groups: registrar groups + optional police group
+  // Build groups: registrar groups + optional JPCERT/hosting groups
   const registrarGroups = groups
     .map((g, originalIndex) => ({
       ...g,
@@ -144,23 +133,6 @@ export default function TakedownRequestPage() {
       threats: g.threats.filter((t) => !excludedIds.has(t.threatId)),
     }))
     .filter((g) => g.threats.length > 0);
-
-  // Police group: all active threats combined into one group
-  const policeGroup: AbuseGroup & { originalIndex: number } | null =
-    sendToPolice && policeRecipient && activeThreats.length > 0
-      ? {
-          abuseEmail: policeRecipient.email,
-          registrar: '',
-          recipientType: 'police' as const,
-          recipientName: policeRecipient.name,
-          threats: activeThreats,
-          language: 'ja',
-          evidenceTypes: ['screenshot', 'whois'],
-          template: '',
-          manualEmail: '',
-          originalIndex: -1, // sentinel for police group
-        }
-      : null;
 
   // JPCERT group: all active threats combined into one group
   const jpcertGroup: AbuseGroup & { originalIndex: number } | null =
@@ -193,20 +165,11 @@ export default function TakedownRequestPage() {
 
   const activeGroups = [
     ...registrarGroups,
-    ...(policeGroup ? [policeGroup] : []),
     ...(jpcertGroup ? [jpcertGroup] : []),
     ...activeHostingGroups,
   ];
 
   const unresolvedCount = registrarGroups.filter((g) => !g.abuseEmail && !g.manualEmail).length;
-
-  // Police group state (separate from registrar groups since it's virtual)
-  const [policeGroupState, setPoliceGroupState] = useState<{
-    template: string;
-    loading: boolean;
-    language: string;
-    evidenceTypes: string[];
-  }>({ template: '', loading: false, language: 'ja', evidenceTypes: ['screenshot', 'whois'] });
 
   // JPCERT group state (separate from registrar groups since it's virtual)
   const [jpcertGroupState, setJpcertGroupState] = useState<{
@@ -248,9 +211,6 @@ export default function TakedownRequestPage() {
       }),
     );
 
-    if (sendToPolice && policeRecipient && activeThreats.length > 0) {
-      setPoliceGroupState((prev) => ({ ...prev, loading: true }));
-    }
     if (sendToJpcert && jpcertRecipient && activeThreats.length > 0) {
       setJpcertGroupState((prev) => ({ ...prev, loading: true }));
     }
@@ -282,25 +242,6 @@ export default function TakedownRequestPage() {
         setGroups((prev) => prev.map((p, j) =>
           j === idx ? { ...p, template: '(テンプレート生成に失敗しました。手動で入力してください。)', loading: false } : p,
         ));
-      });
-    }
-
-    // Police
-    if (sendToPolice && policeRecipient && activeThreats.length > 0) {
-      fetchWithTimeout({
-        threatIds: activeThreats.map((t) => t.threatId),
-        abuseEmail: policeRecipient.email,
-        registrar: '',
-        language: 'ja',
-        recipientType: 'police',
-      }).then((template) => {
-        setPoliceGroupState((prev) => ({ ...prev, template, loading: false }));
-      }).catch(() => {
-        setPoliceGroupState((prev) => ({
-          ...prev,
-          template: '(テンプレート生成に失敗しました。手動で入力してください。)',
-          loading: false,
-        }));
       });
     }
 
@@ -344,7 +285,7 @@ export default function TakedownRequestPage() {
         });
       }
     }
-  }, [groups, excludedIds, sendToPolice, policeRecipient, sendToJpcert, jpcertRecipient, sendToHosting, activeHostingGroups, activeThreats]);
+  }, [groups, excludedIds, sendToJpcert, jpcertRecipient, sendToHosting, activeHostingGroups, activeThreats]);
 
   // Move to step 2
   const goToStep2 = () => {
@@ -384,21 +325,6 @@ export default function TakedownRequestPage() {
             language: g.language || 'en',
             evidenceTypes: (g.evidenceTypes || []).join(','),
             recipientType: 'registrar',
-          });
-        }
-      }
-
-      // Police items
-      if (sendToPolice && policeRecipient && policeGroupState.template) {
-        for (const t of activeThreats) {
-          items.push({
-            threatId: t.threatId,
-            abuseEmail: policeRecipient.email,
-            template: policeGroupState.template,
-            language: 'ja',
-            evidenceTypes: policeGroupState.evidenceTypes.join(','),
-            recipientType: 'police',
-            recipientName: policeRecipient.name,
           });
         }
       }
@@ -795,34 +721,7 @@ export default function TakedownRequestPage() {
               </div>
             )}
 
-            {/* 4. 警視庁へのフィッシング報告 */}
-            {policeRecipient && (
-              <div className={`border rounded-lg p-4 transition-colors ${sendToPolice ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-[var(--border-default)]'}`}>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={sendToPolice}
-                    onChange={(e) => setSendToPolice(e.target.checked)}
-                    className="rounded border-[var(--border-default)] text-blue-600 w-4 h-4 mt-1"
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium text-[var(--text-primary)] flex items-center gap-2">
-                      <span className="text-lg">🚔</span>
-                      警視庁へのフィッシング報告
-                    </h4>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">
-                      {policeRecipient.name}（{policeRecipient.email}）に情報提供します
-                    </p>
-                    <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                      ※ レジストラへの申請とは別に、並行して警視庁サイバー犯罪対策課にも報告します
-                    </p>
-                  </div>
-                  <span className="text-xs text-[var(--text-tertiary)] bg-surface-elevated px-2 py-0.5 rounded">{activeThreats.length}件</span>
-                </label>
-              </div>
-            )}
-
-            {/* 5. JPCERT/CCへの報告 */}
+            {/* 4. JPCERT/CCへの報告 */}
             {jpcertRecipient && (
               <div className={`border rounded-lg p-4 transition-colors ${sendToJpcert ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/20' : 'border-[var(--border-default)]'}`}>
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -1121,95 +1020,6 @@ export default function TakedownRequestPage() {
             );
           })}
 
-          {/* Police group */}
-          {sendToPolice && policeRecipient && (
-            <div className="bg-surface-card rounded-xl border-2 border-blue-300 dark:border-blue-700 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                    🚔 {policeRecipient.name}
-                    <span className="text-sm font-normal text-[var(--text-secondary)]">({activeThreats.length}件)</span>
-                  </h3>
-                  <p className="text-xs text-[var(--text-secondary)]">送信先: {policeRecipient.email}</p>
-                </div>
-                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-bold">警察通報</span>
-              </div>
-
-              <div className="text-sm text-[var(--text-secondary)]">
-                対象: {activeThreats.map((t) => t.domain).join(' / ')}
-              </div>
-
-              {policeGroupState.loading ? (
-                <div className="flex items-center gap-2 py-8 justify-center text-[var(--text-secondary)]">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
-                  <span className="text-sm">警察向け通報文を生成中...</span>
-                </div>
-              ) : (
-                <textarea
-                  value={policeGroupState.template}
-                  onChange={(e) => setPoliceGroupState((prev) => ({ ...prev, template: e.target.value }))}
-                  rows={14}
-                  className="w-full border border-[var(--border-default)] rounded-lg p-3 text-sm font-mono resize-y"
-                />
-              )}
-
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    setPoliceGroupState((prev) => ({ ...prev, loading: true }));
-                    try {
-                      const res = await generateBatchTemplate({
-                        threatIds: activeThreats.map((t) => t.threatId),
-                        abuseEmail: policeRecipient.email,
-                        registrar: '',
-                        language: 'ja',
-                        recipientType: 'police',
-                      });
-                      setPoliceGroupState((prev) => ({ ...prev, template: res.template, loading: false }));
-                    } catch {
-                      setPoliceGroupState((prev) => ({ ...prev, loading: false }));
-                    }
-                  }}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  🔄 再生成
-                </Button>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">添付エビデンス:</h4>
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { key: 'screenshot', label: 'スクリーンショット' },
-                    { key: 'whois', label: 'WHOIS情報' },
-                  ].map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={policeGroupState.evidenceTypes.includes(key)}
-                        onChange={(e) => {
-                          setPoliceGroupState((prev) => {
-                            const types = [...prev.evidenceTypes];
-                            if (e.target.checked) types.push(key);
-                            else {
-                              const ti = types.indexOf(key);
-                              if (ti >= 0) types.splice(ti, 1);
-                            }
-                            return { ...prev, evidenceTypes: types };
-                          });
-                        }}
-                        className="rounded border-[var(--border-default)] text-blue-600"
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* JPCERT group */}
           {sendToJpcert && jpcertRecipient && (
             <div className="bg-surface-card rounded-xl border-2 border-green-300 dark:border-green-700 p-6 space-y-4">
@@ -1311,7 +1121,6 @@ export default function TakedownRequestPage() {
               onClick={() => setStep(3)}
               disabled={
                 registrarGroups.some((g) => !g.template || g.loading) ||
-                (sendToPolice && (!policeGroupState.template || policeGroupState.loading)) ||
                 (sendToJpcert && (!jpcertGroupState.template || jpcertGroupState.loading))
               }
               className="px-4 sm:px-6"
@@ -1399,28 +1208,6 @@ export default function TakedownRequestPage() {
               );
             })}
 
-            {/* Police group */}
-            {sendToPolice && policeRecipient && (
-              <div className="border-b border-[var(--border-subtle)] py-4 last:border-0">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium text-[var(--text-primary)]">
-                    🚔 {policeRecipient.name} — {activeThreats.length}件
-                  </h3>
-                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded text-xs font-bold">警察通報</span>
-                </div>
-                <div className="text-sm text-[var(--text-secondary)] space-y-1">
-                  <div>送信先: <span className="font-mono">{policeRecipient.email}</span></div>
-                  <div>文面: 日本語</div>
-                  <div>添付: {policeGroupState.evidenceTypes.map((t) =>
-                    t === 'screenshot' ? 'スクショ' : t === 'whois' ? 'WHOIS' : t
-                  ).join(' + ') || 'なし'}</div>
-                  <div className="text-xs text-[var(--text-tertiary)] mt-1">
-                    対象: {activeThreats.map((t) => t.domain).join(', ')}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* JPCERT group */}
             {sendToJpcert && jpcertRecipient && (
               <div className="border-b border-[var(--border-subtle)] py-4 last:border-0">
@@ -1444,7 +1231,7 @@ export default function TakedownRequestPage() {
             )}
 
             <div className="mt-4 pt-4 border-t border-[var(--border-default)] text-sm text-[var(--text-primary)] font-medium">
-              合計: {activeThreats.length}件の脅威 → {sendToBrowser && browserProviders.length > 0 ? `ブラウザ報告（${browserProviders.length}社） + ` : ''}{registrarGroups.length + activeHostingGroups.length + (sendToPolice ? 1 : 0) + (sendToJpcert ? 1 : 0)}通のメールを送信
+              合計: {activeThreats.length}件の脅威 → {sendToBrowser && browserProviders.length > 0 ? `ブラウザ報告（${browserProviders.length}社） + ` : ''}{registrarGroups.length + activeHostingGroups.length + (sendToJpcert ? 1 : 0)}通のメールを送信
             </div>
           </div>
 

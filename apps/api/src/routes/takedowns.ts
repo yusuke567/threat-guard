@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
-import { generateTakedownTemplate, generatePoliceTemplate, generateJpcertTemplate, generateHostingTemplate, JPCERT_RECIPIENT } from '../services/takedown.js';
+import { generateTakedownTemplate, generateJpcertTemplate, generateHostingTemplate, JPCERT_RECIPIENT } from '../services/takedown.js';
 import { generateTakedownPdf, sendTakedownEmail } from '../services/takedown-export.js';
 
 const router = Router();
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
   const orgId = req.user!.organizationId;
   const schema = z.object({
     detectedDomainId: z.string().uuid(),
-    recipientType: z.enum(['registrar', 'police', 'jpcert', 'hosting']).default('registrar'),
+    recipientType: z.enum(['registrar', 'jpcert', 'hosting']).default('registrar'),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -41,9 +41,7 @@ router.post('/', async (req, res) => {
   if (!domain) return res.status(404).json({ error: '指定されたドメインが見つかりません。' });
 
   let result;
-  if (parsed.data.recipientType === 'police') {
-    result = await generatePoliceTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);
-  } else if (parsed.data.recipientType === 'jpcert') {
+  if (parsed.data.recipientType === 'jpcert') {
     result = await generateJpcertTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);
   } else if (parsed.data.recipientType === 'hosting') {
     result = await generateHostingTemplate(parsed.data.detectedDomainId, req.user?.name || undefined);

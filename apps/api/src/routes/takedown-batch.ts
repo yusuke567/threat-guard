@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getAbuseContacts, getHostingAbuseContacts } from '../services/whois-abuse.js';
-import { generateTakedownTemplate, generatePoliceTemplateBatch, generateJpcertTemplateBatch, generateHostingTemplateBatch, POLICE_RECIPIENT, JPCERT_RECIPIENT, type RecipientType } from '../services/takedown.js';
+import { generateTakedownTemplate, generateJpcertTemplateBatch, generateHostingTemplateBatch, JPCERT_RECIPIENT, type RecipientType } from '../services/takedown.js';
 import { sendTakedownEmail, sendTakedownEmailGroup } from '../services/takedown-export.js';
 
 const router = Router();
@@ -87,7 +87,6 @@ router.post('/abuse-contacts', async (req, res) => {
       threats: results,
       groups: Object.values(groups),
       hostingGroups: Object.values(hostingGroups),
-      policeRecipient: POLICE_RECIPIENT,
       jpcertRecipient: JPCERT_RECIPIENT,
     });
   } catch (err: any) {
@@ -106,7 +105,7 @@ router.post('/', async (req, res) => {
       template: z.string().min(1),
       language: z.string().default('en'),
       evidenceTypes: z.string().default(''),
-      recipientType: z.enum(['registrar', 'police', 'jpcert', 'hosting']).default('registrar'),
+      recipientType: z.enum(['registrar', 'jpcert', 'hosting']).default('registrar'),
       recipientName: z.string().optional(),
     });
     const skippedItemSchema = z.object({
@@ -154,13 +153,11 @@ router.post('/', async (req, res) => {
       const whois = threat.whoisData ? JSON.parse(threat.whoisData) : {};
       const registrar = whois?.registrar || 'Unknown';
 
-      const recipientName = item.recipientType === 'police'
-        ? (item.recipientName || POLICE_RECIPIENT.name)
-        : item.recipientType === 'jpcert'
-          ? (item.recipientName || JPCERT_RECIPIENT.name)
-          : item.recipientType === 'hosting'
-            ? (item.recipientName || 'Hosting Provider')
-            : registrar;
+      const recipientName = item.recipientType === 'jpcert'
+        ? (item.recipientName || JPCERT_RECIPIENT.name)
+        : item.recipientType === 'hosting'
+          ? (item.recipientName || 'Hosting Provider')
+          : registrar;
 
       const takedown = await prisma.takedownRequest.create({
         data: {
@@ -199,15 +196,14 @@ router.post('/', async (req, res) => {
       skippedCount++;
     }
 
-    // Send emails — JPCERT/Police are consolidated into a single email per recipientType
+    // Send emails — JPCERT is consolidated into a single email per recipientType
     // (the batch template already lists every site); registrar/hosting remain one email per request.
     let sentCount = 0;
     const errors: { threatId: string; error: string }[] = [];
 
     const jpcertRequests = requests.filter((r) => r.recipientType === 'jpcert' && r.abuseEmail);
-    const policeRequests = requests.filter((r) => r.recipientType === 'police' && r.abuseEmail);
     const perDomainRequests = requests.filter(
-      (r) => r.recipientType !== 'jpcert' && r.recipientType !== 'police',
+      (r) => r.recipientType !== 'jpcert',
     );
 
     // Helper: send one grouped email covering all included requests
@@ -233,7 +229,6 @@ router.post('/', async (req, res) => {
     };
 
     await sendGroup(jpcertRequests);
-    await sendGroup(policeRequests);
 
     // Registrar / hosting — one email per takedown
     for (const takedownReq of perDomainRequests) {
@@ -416,7 +411,7 @@ router.post('/generate-template', async (req, res) => {
       abuseEmail: z.string().email(),
       registrar: z.string(),
       language: z.enum(['ja', 'en']).default('en'),
-      recipientType: z.enum(['registrar', 'police', 'jpcert', 'hosting']).default('registrar'),
+      recipientType: z.enum(['registrar', 'jpcert', 'hosting']).default('registrar'),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
@@ -445,12 +440,6 @@ router.post('/generate-template', async (req, res) => {
       if (hasJpHost) {
         parsed.data.language = 'ja';
       }
-    }
-
-    // Police template uses a separate generation path
-    if (parsed.data.recipientType === 'police') {
-      const policeTemplate = await generatePoliceTemplateBatch(threats as any, req.user?.name || undefined);
-      return res.json({ template: policeTemplate, language: 'ja' });
     }
 
     // JPCERT template uses JPCERT's official format
